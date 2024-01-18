@@ -1,1 +1,11 @@
 *.flock
+*.bsf
+*.cmp
+*.inc
+*.qws
+*.rpt
+db/
+greybox_tmp/
+incremental_db/
+output_files/
+simulation/
