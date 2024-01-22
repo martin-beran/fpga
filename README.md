@@ -3,6 +3,10 @@
 Unless specified otherwise, all projects are for a development kit containing
 Altera Cyclone IV EP4CE6E22C8N.
 
+## adder4b
+
+A 4-bit full adder
+
 ## full_adder
 
 A 1-bit full adder
