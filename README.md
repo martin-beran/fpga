@@ -1,7 +1,9 @@
 # Projects
 
-Unless specified otherwise, all projects are for a development kit containing
-Altera Cyclone IV EP4CE6E22C8N.
+Unless stated otherwise, all projects are:
+
+- implemented in VHDL 
+- intended for a development kit containing Altera Cyclone IV EP4CE6E22C8N
 
 ## adder4b
 
@@ -18,7 +20,12 @@ A 1-bit half adder
 ## led_blink
 
 A counter driven by on-board 50 MHz crystal, with 4 highest (most slowly
-changing) bits indicated by LEDs
+changing) bits indicated by LEDs. Defined by a block diagram.
+
+## led_blink_vhdl
+
+Alternatively blinking LEDs controlled by a counter driven by the on-board 50
+MHz crystal.
 
 # Knowledge base
 
@@ -28,6 +35,7 @@ FPGA __Altera Cyclone IV EP4CE6E22C8N__
 
 Kit __RZ-EasyFPGA A2.2__
 
+- 23 FPGA_CLK 50 MHz
 - 87 LED1
 - 86 LED2
 - 85 LED3
