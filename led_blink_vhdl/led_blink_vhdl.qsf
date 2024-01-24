@@ -79,4 +79,6 @@ set_location_assignment PIN_87 -to led1
 set_location_assignment PIN_86 -to led2
 set_location_assignment PIN_88 -to start
 set_location_assignment PIN_89 -to stop
+set_location_assignment PIN_85 -to led3
+set_location_assignment PIN_84 -to led4
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
