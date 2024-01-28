@@ -81,4 +81,6 @@ set_location_assignment PIN_88 -to start
 set_location_assignment PIN_89 -to stop
 set_location_assignment PIN_85 -to led3
 set_location_assignment PIN_84 -to led4
+set_global_assignment -name SYNCHRONIZER_IDENTIFICATION AUTO
+set_global_assignment -name SDC_FILE led_blink_vhdl.sdc
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
