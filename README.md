@@ -9,6 +9,36 @@ Unless stated otherwise, all projects are:
 
 A 4-bit full adder
 
+## alarm_clock
+
+An alarm clock that uses on-board peripherals
+
+- 4x7 segment display shows:
+    - time as HH.MM, with . blinking each second
+    - seconds as .SS
+    - time of alarm as HH.MM
+    - setting of clock or alarm time, blinking the value being currently
+      adjusted (either HH or MM)
+- LEDs indicating modes:
+    - LED1: off = clock view, on = alarm view
+    - LED4: off = alarm disabled, on = alarm enabled
+    - LED2+3: blinking = alarm time
+- Speaker: playing sound at alarm time
+- Buttons:
+    - Button1: selection
+        - when viewing: switches HH.MM -> .SS -> alarm HH.MM
+        - when setting: switches between HH and MM
+    - Button2:
+        - when viewing: enables/disables the alarm
+        - when setting: increases the currently selected value
+    - Button3:
+        - when viewing: enables/disables the alarm
+        - when setting: decreases the currently selected value
+    - Button4: set
+        - long press switches from view to set mode
+        - switches from set to view mode and sets seconds to 00 
+    - any button: stops a sounding alarm
+
 ## full_adder
 
 A 1-bit full adder
@@ -53,14 +83,24 @@ Kit __RZ-EasyFPGA A2.2__
 - 136 DIG3 (7seg. digit 3)
 - 137 DIG4 (7seg. digit 4)
 - 128 SEG0 (7seg. a)
-- 121 SEG1 (7seg. b)      aaa
-- 125 SEG2 (7seg. c)     f   b
-- 129 SEG3 (7seg. d)     f   b
-- 132 SEG4 (7seg. e)      ggg
-- 126 SEG5 (7seg. f)     e   c
-- 124 SEG6 (7seg. g)     e   c
-- 127 SEG7 (7seg. dp)     ddd   dp
+- 121 SEG1 (7seg. b)
+- 125 SEG2 (7seg. c)
+- 129 SEG3 (7seg. d)
+- 132 SEG4 (7seg. e)
+- 126 SEG5 (7seg. f)
+- 124 SEG6 (7seg. g)
+- 127 SEG7 (7seg. dp)
+- 110 BEEP (speaker)
 
+### 7 segment display
+
+     aaa
+    f   b
+    f   b
+     ggg
+    e   c
+    e   c
+     ddd  dp
 ## VHDL
 
 Comments start with `--` (like in SQL)
