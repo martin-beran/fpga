@@ -27,7 +27,41 @@ end entity;
 
 architecture main of button is
 begin
-	Click <= '0';
-	LongClick <='0';
-	-- TODO
+	process (Clk) is
+		variable cnt: integer := 0;
+		variable repeat_cnt: integer := 0;
+		variable long_cnt: integer := 0;
+	begin
+		if rising_edge(Clk) then
+			Click <= '0';
+			LongClick <= '0';
+			if Btn /= '1' then
+				cnt := 0;
+				long_cnt := 0;
+			else
+				if cnt <= press then
+					if cnt = press then
+						Click <= '1';
+						repeat_cnt := 1;
+					end if;
+					cnt := cnt + 1;
+				else
+					if autorepeat then
+						if repeat_cnt < repeat then
+							repeat_cnt := repeat_cnt + 1;
+						else
+							repeat_cnt := 1;
+							Click <= '1';
+						end if;							
+					end if;
+				end if;
+				if long_cnt <= long then
+					if long_cnt = long then
+						LongClick <= '1';
+					end if;
+					long_cnt := long_cnt + 1;
+				end if;
+			end if;
+		end if;
+	end process;
 end architecture;
