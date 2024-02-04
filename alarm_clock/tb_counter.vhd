@@ -40,6 +40,6 @@ begin
 		generic map (bits=>bits1, max=>max1, max2=>max2)
 		port map (Clk=>Clk, Rst=>Rst, Inc=>Inc, Dec=>Dec, CInc=>CInc, CDec=>CDec, Value=>Value1);
 	cnt10: entity work.counter
-		generic map (bits=>bits10, max=>max10, in_carry=>true)
-		port map (Clk=>Clk, Rst=>Rst, Inc=>Inc, Dec=>Dec, InCInc=>CInc, InCDec=>CDec, Value=>Value10);
+		generic map (bits=>bits10, max=>max10)
+		port map (Clk=>Clk, Rst=>Rst, Inc=>Inc, Dec=>Dec, InCInc=>CInc, InCDec=>CDec, InCarry=>'1', Value=>Value10);
 end architecture;

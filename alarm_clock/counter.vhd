@@ -12,8 +12,7 @@ entity counter is
 	generic (
 		bits: integer; -- bit width of the counter
 		max: integer; -- maximum value of the counter
-		max2: integer := 0; -- a second maximum value
-		in_carry: boolean := false -- value changes controlled by InCInc, InCDec
+		max2: integer := 0 -- a second maximum value
 	);
 	port (
 		Clk: in std_logic; -- the main system clock
@@ -22,6 +21,7 @@ entity counter is
 		Dec: in std_logic; -- decrement the value (sync)
 		InCInc: in std_logic := '0'; -- input carry of increment (async)
 		InCDec: in std_logic := '0'; -- input carry of decrement (async)
+		InCarry: in std_logic := '0'; -- value changes controlled by InCInc, InCDec
 		Value: out unsigned(bits - 1 downto 0); -- the current value
 		CInc: out std_logic; -- output carry of increment (async)
 		CDec: out std_logic -- output carry of decrement (async)
@@ -43,12 +43,12 @@ architecture main of counter is
 	signal i_cnt2, o_inc_cnt2, o_dec_cnt2: integer range 0 to maximum(max, max2);
 begin
 	o_inc_cnt <=
-		i_cnt when in_carry and InCInc = '0' else
+		i_cnt when InCarry = '1' and InCInc = '0' else
 		0 when max2 > max and i_cnt2 = max2 else
 		0 when i_cnt = max else
 		i_cnt + 1;
 	o_inc_cnt2 <=
-		i_cnt2 when in_carry and InCInc = '0' else
+		i_cnt2 when InCarry = '1' and InCInc = '0' else
 		0 when max2 > max and i_cnt2 = max2 else
 		i_cnt2 + 1 when i_cnt = max and max2 > max else
 		i_cnt2 + 1 when max2 > max else
@@ -59,12 +59,12 @@ begin
 		'0';
 
 	o_dec_cnt <=
-		i_cnt when in_carry and InCDec = '0' else
+		i_cnt when InCarry = '1' and InCDec = '0' else
 		max2 mod (max + 1) when max2 > max and i_cnt2 = 0 else
 		max when i_cnt = 0 else
 		i_cnt - 1;
 	o_dec_cnt2 <=
-		i_cnt2 when in_carry and InCDec = '0' else
+		i_cnt2 when InCarry = '1' and InCDec = '0' else
 		max2 when max2 > max and i_cnt2 = 0 else
 		i_cnt2 - 1 when i_cnt = 0 and max2 > max else
 		i_cnt2 - 1 when max2 > max else
