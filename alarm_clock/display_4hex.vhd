@@ -6,7 +6,7 @@ use ieee.numeric_std.all;
 
 package pkg_display_4hex is
 	constant n_digits: integer := 4; -- number of display digits
-	subtype digit_t is unsigned(15 downto 0);
+	subtype digit_t is unsigned(3 downto 0);
 	type digits_t is array (n_digits - 1 downto 0) of digit_t;
 	subtype digit_sel_t is std_logic_vector(n_digits - 1 downto 0);
 	-- display input signals
@@ -75,7 +75,7 @@ architecture main of display_4hex is
 	signal mDigitEna, mDigitBlink, mDPEna, mDPBlink: digit_sel_t := (others=>'0');
 	signal mDigits: digits_t := (others=>to_digit_t(0));
 begin
-	store: process (Clk) is
+	store: process (Clk, Ctrl) is
 	begin
 		if rising_edge(Clk) and Ctrl.wr = '1' then
 			mDigitEna <= Ctrl.digit_ena;

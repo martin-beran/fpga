@@ -21,7 +21,7 @@ end entity;
 architecture main of alarm_clock is
 	signal Sel, Up, Down, Set, SetClick, AnyBtn: std_logic; -- processed buttons
 	signal RTC, BlinkClk: std_logic;
-	signal RstClk, AlarmTime, SoundAlarm, AlarmShow, AlarmActive: std_logic;
+	signal RstClk, AlarmNow, SoundAlarm, ClockSecShow, AlarmShow, AlarmActive: std_logic;
 	signal SelHour, SelMin, StepUp, StepDown: std_logic;
 	signal DisplayCtrl: display_in_t;
 begin
@@ -33,7 +33,7 @@ begin
 	AnyBtn <= Sel or Up or Down or SetClick;
 	
 	-- display and sound
-	blink: process (Clk) is
+	blink: process (Clk, RTC) is
 		variable state: std_logic := '0';
 	begin
 		if rising_edge(Clk) and RTC = '1' then
@@ -52,19 +52,19 @@ begin
 	rt_clock: entity work.rt_clock(main) port map (Clk=>Clk, Rst=>RstClk, RTC=>RTC);
 	time_keeping: entity work.time_keeping(main)
 		port map (
-			Clk=>Clk, RTC=>RTC, RstSec=>RstClk,
-			AlarmShow=>AlarmShow, SelHour=>SelHour, SelMin=>SelMin, StepUp=>StepUp, StepDown=>StepDown,
-			Display=>DisplayCtrl
+			Clk=>Clk, RTC=>RTC, RstClockSec=>RstClk,
+			ClockSecShow=>ClockSecShow, AlarmShow=>AlarmShow,
+			SelHour=>SelHour, SelMin=>SelMin, StepUp=>StepUp, StepDown=>StepDown,
+			Display=>DisplayCtrl, AlarmNow=>AlarmNow
 		);
 	
 	-- controller
 	control: entity work.control(main)
 		port map(
-			Clk=>Clk, AlarmTime=>AlarmTime,
+			Clk=>Clk, AlarmNow=>AlarmNow,
 			CtrlSel=>Sel, CtrlUp=>Up, CtrlDown=>Down, CtrlSet=>Set,
-			StopAlarm=>AnyBtn,
-			SoundAlarm=>SoundAlarm, RstClk=>RstClk,
-			AlarmShow=>AlarmShow, AlarmActive=>AlarmActive,
+			StopAlarm=>AnyBtn, SoundAlarm=>SoundAlarm, RstClockSec=>RstClk,
+			ClockSecShow=>ClockSecShow, AlarmShow=>AlarmShow, AlarmActive=>AlarmActive,
 			SelHour=>SelHour, SelMin=>SelMin, StepUp=>StepUp, StepDown=>StepDown
 		);
 end architecture;

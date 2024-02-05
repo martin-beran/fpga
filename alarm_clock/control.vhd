@@ -8,7 +8,7 @@ entity control is
 	port (
 		-- input
 		Clk: in std_logic; -- the main system clock
-		AlarmTime: in std_logic; -- the alarm time is now (edge)
+		AlarmNow: in std_logic; -- the alarm time is now (edge)
 		CtrlSel: in std_logic; -- select views and digits (edge)
 		CtrlUp: in std_logic; -- increase a value (edge)
 		CtrlDown: in std_logic; -- decrease a value (edge)
@@ -16,7 +16,8 @@ entity control is
 		StopAlarm: in std_logic; -- stop sounding alarm (edge)
 		-- output
 		SoundAlarm: out std_logic; -- play the alarm sound (level)
-		RstClk: out std_logic; -- reset realtime clock (edge)
+		RstClockSec: out std_logic; -- reset seconds to 00 (edge)
+		ClockSecShow: out std_logic; -- show seconds in clock display (level)
 		AlarmShow: out std_logic; -- show alarm on display (level)
 		AlarmActive: out std_logic; -- alarm is enabled (level)
 		SelHour: out std_logic; -- select hours for setting (level)
@@ -29,12 +30,13 @@ end entity;
 architecture main of control is
 begin
 	SoundAlarm <= '0';
-	RstClk <= '0';
-	AlarmShow <= '0';
+	RstClockSec <= CtrlSet;
+	ClockSecShow <= '0';
+	AlarmShow <= CtrlSel;
 	AlarmActive <= '0';
 	SelHour <= '0';
 	SelMin <= '0';
-	StepUp <= '0';
-	StepDown <= '0';
+	StepUp <= CtrlUp;
+	StepDown <= CtrlDown;
 	-- TODO
 end;

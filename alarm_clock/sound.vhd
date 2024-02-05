@@ -14,5 +14,6 @@ end entity;
 
 architecture main of sound is
 begin
+	Speaker <= '0';
 	-- TODO
 end;
