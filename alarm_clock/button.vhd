@@ -3,16 +3,15 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use work.common.all;
-use work.pkg_display_4hex.all;
 
 entity button is
 	generic (
-		-- clock cycles for detection of button short press or release
+		-- clock cycles for detection of button short press and release
 		press: integer := 2_000_000; -- 40 ms
-		-- clock cycles for detection of button long press
-		long: integer := 50_000_000; -- 1 s
+		-- clock cycles for detection of button long press and release
+		long: integer := 52_000_000; -- 1.040 s
 		-- autorepeat period (clock cycles)
-		repeat: integer := 10_000_000; -- 200 ms
+		repeat: integer := 25_000_000; -- 500 ms
 		-- true: enable autorepeat, send repeated Click
 		-- false: disable autorepeat, send Click, then LongClick
 		autorepeat: boolean := false
@@ -35,7 +34,7 @@ begin
 		if rising_edge(Clk) then
 			Click <= '0';
 			LongClick <= '0';
-			if Btn /= '1' then
+			if Btn /= '0' then
 				cnt := 0;
 				long_cnt := 0;
 			else

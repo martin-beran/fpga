@@ -19,13 +19,14 @@
 #
 # Quartus Prime
 # Version 23.1std.0 Build 991 11/28/2023 SC Lite Edition
-# Date created = 17:36:32  January 29, 2024
+# Date created = 23:15:30  February 06, 2024
 #
 # -------------------------------------------------------------------------- #
 
 QUARTUS_VERSION = "23.1"
-DATE = "17:36:32  January 29, 2024"
+DATE = "23:15:30  February 06, 2024"
 
 # Revisions
 
 PROJECT_REVISION = "alarm_clock"
+PROJECT_REVISION = "hwtb_button"
