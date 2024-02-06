@@ -27,16 +27,17 @@ An alarm clock that uses on-board peripherals
 - Buttons:
     - Button1: selection
         - when viewing: switches HH.MM -> .SS -> alarm HH.MM
-        - when setting: switches between HH and MM
+        - when setting clock or alarm: switches between HH and MM
     - Button2:
-        - when viewing: enables/disables the alarm
-        - when setting: increases the currently selected value
+        - when viewing alarm: enables/disables the alarm
+        - when setting clock or alarm: increases the currently selected value
     - Button3:
-        - when viewing: enables/disables the alarm
-        - when setting: decreases the currently selected value
+        - when viewing alarm: enables/disables the alarm
+        - when setting clock or alarm: decreases the currently selected value
     - Button4: set
-        - long press switches from view to set mode
-        - switches from set to view mode and sets seconds to 00 
+        - long press switches from clock/alarm view to clock/alarm set mode
+        - switches from clock set to view mode and sets seconds to 00 
+        - switches from alarm set to view mode
     - any button: stops a sounding alarm
 
 ## full_adder

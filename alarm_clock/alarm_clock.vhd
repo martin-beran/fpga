@@ -62,7 +62,7 @@ begin
 	control: entity work.control(main)
 		port map(
 			Clk=>Clk, AlarmNow=>AlarmNow,
-			CtrlSel=>Sel, CtrlUp=>Up, CtrlDown=>Down, CtrlSet=>Set,
+			CtrlSel=>Sel, CtrlUp=>Up, CtrlDown=>Down, CtrlSet=>Set, CtrlSave=>SetClick,
 			StopAlarm=>AnyBtn, SoundAlarm=>SoundAlarm, RstClockSec=>RstClk,
 			ClockSecShow=>ClockSecShow, AlarmShow=>AlarmShow, AlarmActive=>AlarmActive,
 			SelHour=>SelHour, SelMin=>SelMin, StepUp=>StepUp, StepDown=>StepDown
