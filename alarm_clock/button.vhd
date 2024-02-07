@@ -20,7 +20,8 @@ entity button is
 		Clk: in std_logic; -- the main system clock
 		Btn: in std_logic; -- the button input
 		Click: out std_logic; -- the button was pressed or autorepeat fired
-		LongClick: out std_logic -- the button was pressed for a longer time
+		LongClick: out std_logic; -- the button was pressed for a longer time
+		Pressed: out std_logic -- the button is held pressed
 	);
 end entity;
 
@@ -30,6 +31,7 @@ begin
 		variable cnt: integer := 0;
 		variable repeat_cnt: integer := 0;
 		variable long_cnt: integer := 0;
+		variable press_state: std_logic := '0';
 	begin
 		if rising_edge(Clk) then
 			Click <= '0';
@@ -37,11 +39,13 @@ begin
 			if Btn /= '0' then
 				cnt := 0;
 				long_cnt := 0;
+				press_state := '0';
 			else
 				if cnt <= press then
 					if cnt = press then
 						Click <= '1';
 						repeat_cnt := 1;
+						press_state := '1';
 					end if;
 					cnt := cnt + 1;
 				else
@@ -61,6 +65,7 @@ begin
 					long_cnt := long_cnt + 1;
 				end if;
 			end if;
+			Pressed <= press_state;
 		end if;
 	end process;
 end architecture;

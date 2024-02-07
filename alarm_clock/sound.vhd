@@ -9,7 +9,8 @@ entity sound is
 		hz: positive := master_clock_hz; -- main system clock frequency
 		tone_hz: positive := 880; -- tone frequency
 		pulse_ms: positive := 100; -- period of pulses (ms, half tone, half silence)
-		batch_len: positive := 4 -- pulses in a batch
+		batch_len: positive := 4; -- pulses in a batch
+		batches: positive := 75 -- play this number of batches (1 minute)
 	);
 	port (
 		Clk: in std_logic; -- the main system clock (edge)
@@ -19,21 +20,27 @@ entity sound is
 end entity;
 
 architecture main of sound is
-	signal Rst, Tone, Pulse, Batch: std_logic;
-	signal state: std_logic_vector(0 to 1) := "00";
-	signal edge: boolean;
+	signal Rst, Tone, Pulse, Batch, Silence: std_logic;
 begin
-	edge <= state(0) = '1' and state(1) = '0';
 	process (Clk) is
+		variable b: natural;
+		variable prev_play, prev_batch: std_logic := '0';
 	begin
 		if rising_edge(Clk) then
-			if edge then
+			Silence <= '0';
+			if Play = '1' and prev_play = '0' then
 				Rst <= '1';
+				b:= 0;
 			else
 				Rst <= '0';
+				if b < batches and Batch = '0' and prev_batch = '1' then
+					b := b + 1;
+				elsif b = batches then
+					Silence <= '1';
+				end if;
 			end if;
-			state(1) <= state(0);
-			state(0) <= Play;
+			prev_play := Play;
+			prev_batch := Batch;
 		end if;
 	end process;
 	tone_gen: entity work.waveform
@@ -45,5 +52,5 @@ begin
 	batch_gen: entity work.waveform
 		generic map (period=>2*batch_len, use_i=>true)
 		port map (Clk=>Clk, Rst=>Rst, I=>Pulse, O=>Batch);
-	Speaker <= not (Play and Tone and Pulse and Batch);
+	Speaker <= not (Play and Tone and Pulse and Batch and not Silence);
 end;

@@ -30,23 +30,25 @@ entity control is
 end entity;
 
 architecture main of control is
-	signal AlarmOnOff, AlarmSetting: boolean;
+	signal AlarmOnOff, AlarmSetting, AnySetting: boolean;
 begin
 	-- View FSM
 	view_fsm: block is
 		type state is (ClockHM, ClockS, ClockSetH, ClockSetM, ClockSetS, AlarmHM, AlarmSetH, AlarmSetM);
 		signal current_state, next_state: state := ClockHM;
 	begin
-		step: process (Clk) is
+		step: process (Clk, AlarmSetting) is
 		begin
 			if rising_edge(Clk) then
 				current_state <= next_state;
 			end if;
 		end process;
-		transition: process (current_state, CtrlSel, CtrlUp, CtrlDown, CtrlSet, CtrlSave) is
+		transition: process (current_state, CtrlSel, CtrlUp, CtrlDown, CtrlSet, CtrlSave, AlarmSetting) is
 		begin
 			AlarmOnOff <= current_state = AlarmHM;
 			AlarmSetting <= current_state = AlarmSetH or current_state = AlarmSetM;
+			AnySetting <= AlarmSetting or
+				current_state = ClockSetH or current_state = ClockSetM or current_state = ClockSetS;
 			RstClockSec <= '0';
 			ClockSecShow <= '0';
 			AlarmShow <= '0';
@@ -137,13 +139,13 @@ begin
 		type state is (Disabled, Enabled, Sounding);
 		signal current_state, next_state: state := Disabled;
 	begin
-		step: process (Clk) is
+		step: process (Clk, AlarmSetting) is
 		begin
 			if rising_edge(Clk) then
 				current_state <= next_state;
 			end if;
 		end process;
-		transition: process (current_state, AlarmOnOff, AlarmNow, CtrlUp, CtrlDown, StopAlarm) is
+		transition: process (current_state, AlarmOnOff, AlarmNow, CtrlUp, CtrlDown, StopAlarm, AlarmSetting, AnySetting) is
 		begin
 			SoundAlarm <= '0';
 			AlarmActive <= '0';
@@ -159,7 +161,7 @@ begin
 				when Enabled =>
 					if AlarmOnOff and (CtrlUp = '1' or CtrlDown = '1') then
 						next_state <= Disabled;
-					elsif AlarmNow = '1' then
+					elsif AlarmNow = '1' and not AnySetting then
 						next_state <= Sounding;
 					end if;
 					AlarmActive <= '1';

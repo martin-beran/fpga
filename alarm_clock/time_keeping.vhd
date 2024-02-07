@@ -14,6 +14,7 @@ entity time_keeping is
 		RstClockSec: in std_logic; -- reset seconds to 00
 		ClockSecShow: in std_logic; -- display seconds in clock view
 		AlarmShow: in std_logic; -- display alarm
+		Blink: in std_logic; -- blink selected hours or minutes
 		SelHour: in std_logic; -- select hours for setting
 		SelMin: in std_logic; -- select minutes for setting
 		SelSec: in std_logic; -- select seconds for setting
@@ -56,8 +57,8 @@ begin
 		"0011" when not AlarmShow and ClockSecShow else
 		"1111";
 	Display.digit_blink <=
-		"1100" when not ClockSecShow and SelHour else
-		"0011" when not ClockSecShow and SelMin else
+		"1100" when not ClockSecShow and SelHour and Blink else
+		"0011" when not ClockSecShow and SelMin and Blink else
 		"0011" when ClockSecShow and SelSec else
 		"0000";
 	Display.dp_ena <= "0100";
