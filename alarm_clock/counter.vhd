@@ -54,6 +54,7 @@ begin
 		i_cnt2 + 1 when max2 > max else
 		i_cnt2;
 	CInc <=
+		'0' when InCarry = '1' and InCInc = '0' else
 		'1' when max2 > max and i_cnt2 = max2 else
 		'1' when i_cnt = max else
 		'0';
@@ -70,6 +71,7 @@ begin
 		i_cnt2 - 1 when max2 > max else
 		i_cnt2;
 	CDec <=
+		'0' when InCarry = '1' and InCDec = '0' else
 		'1' when max2 > max and i_cnt2 = 0 else
 		'1' when i_cnt = 0 else
 		'0';

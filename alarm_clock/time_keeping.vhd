@@ -16,6 +16,7 @@ entity time_keeping is
 		AlarmShow: in std_logic; -- display alarm
 		SelHour: in std_logic; -- select hours for setting
 		SelMin: in std_logic; -- select minutes for setting
+		SelSec: in std_logic; -- select seconds for setting
 		StepUp: in std_logic; -- increase the selected value
 		StepDown: in std_logic; -- decrease the selected value
 		Display: out display_in_t; -- controlling display
@@ -31,18 +32,18 @@ architecture main of time_keeping is
 		ClockHourUp, ClockHourDown, ClockMinUp, ClockMinDown,
 		AlarmHourUp, AlarmHourDown, AlarmMinUp, AlarmMinDown,
 		ClockHourCInc, ClockHourCDec, ClockMinCInc, ClockMinCDec, ClockSecCInc, ClockSecCDec,
-		ClockHMCInc, ClockHMCDec, ClockHMCarry, ClockMSCInc, ClockMSCDec,
+		ClockHMCInc, ClockHMCDec, ClockCarry, ClockMSCInc, ClockMSCDec,
 		AlarmHourCInc, AlarmHourCDec, AlarmMinCInc, AlarmMinCDec: std_logic;
 	signal MuxDisplay: mux_display;
 	signal MuxSel: mux_sel_t;
 begin
 	Rst <= '0'; -- ready for reset, but currently not implemented
-	ClockHMCarry <= not (SelMin and (StepUp or StepDown)); -- do not change hours when stepping minutes
+	ClockCarry <= not ((SelHour or SelMin) and (StepUp or StepDown));
 	
 	-- Up/Down signals for individual counters
-	ClockHourUp <= not AlarmShow and not ClockSecShow and SelHour and StepUp;
+	ClockHourUp <= RTC or (not AlarmShow and not ClockSecShow and SelHour and StepUp);
 	ClockHourDown <= not AlarmShow and not ClockSecShow and SelHour and StepDown;
-	ClockMinUp <= not AlarmShow and not ClockSecShow and SelMin and StepUp;
+	ClockMinUp <= RTC or (not AlarmShow and not ClockSecShow and SelMin and StepUp);
 	ClockMinDown <= not AlarmShow and not ClockSecShow and SelMin and StepDown;
 	AlarmHourUp <= AlarmShow and SelHour and StepUp;
 	AlarmHourDown <= AlarmShow and SelHour and StepDown;
@@ -56,7 +57,8 @@ begin
 		"1111";
 	Display.digit_blink <=
 		"1100" when not ClockSecShow and SelHour else
-		"0011" when not CLockSecShow and SelMin else
+		"0011" when not ClockSecShow and SelMin else
+		"0011" when ClockSecShow and SelSec else
 		"0000";
 	Display.dp_ena <= "0100";
 	Display.dp_blink <=
@@ -92,7 +94,7 @@ begin
 	clock_hour1: entity work.counter
 		generic map (bits=>4, max=>9, max2=>23)
 		port map(Clk=>Clk, Rst=>Rst, Inc=>ClockHourUp, Dec=>ClockHourDown,
-			InCInc=>ClockHMCInc, InCDec=>ClockHMCDec, InCarry=>ClockHMCarry,
+			InCInc=>ClockHMCInc, InCDec=>ClockHMCDec, InCarry=>ClockCarry,
 			Value=>MuxDisplay(2, mux_hm), CInc=>ClockHourCInc, CDec=>ClockHourCDec);
 	clock_hour10: entity work.counter
 		generic map (bits=>4, max=>2)
@@ -102,7 +104,7 @@ begin
 	clock_min1: entity work.counter
 		generic map (bits=>4, max=>9)
 		port map(Clk=>Clk, Rst=>Rst, Inc=>ClockMinUp, Dec=>ClockMinDown,
-			InCInc=>ClockMSCInc, InCDec=>ClockMSCDec, InCarry=>'1',
+			InCInc=>ClockMSCInc, InCDec=>ClockMSCDec, InCarry=>ClockCarry,
 			Value=>MuxDisplay(0, mux_hm), CInc=>ClockMinCInc, CDec=>ClockMinCDec);
 	clock_min10: entity work.counter
 		generic map (bits=>4, max=>5)
@@ -116,7 +118,7 @@ begin
 			Value=>MuxDisplay(0, mux_s), CInc=>ClockSecCInc, CDec=>ClockSecCDec);
 	clock_sec10: entity work.counter
 		generic map (bits=>4, max=>5)
-		port map(Clk=>Clk, Rst=>RstClockSec, Inc=>'0', Dec=>'0',
+		port map(Clk=>Clk, Rst=>RstClockSec, Inc=>RTC, Dec=>'0',
 			InCInc=>ClockSecCInc, InCDec=>ClockSecCDec, InCarry=>'1',
 			Value=>MuxDisplay(1, mux_s), CInc=>ClockMSCInc, CDec=>ClockMSCDec);
 	

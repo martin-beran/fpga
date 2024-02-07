@@ -23,6 +23,7 @@ entity control is
 		AlarmActive: out std_logic; -- alarm is enabled (level)
 		SelHour: out std_logic; -- select hours for setting (level)
 		SelMin: out std_logic; -- select minutes for setting (level)
+		SelSec: out std_logic; -- select seconds for setting (level)
 		StepUp: out std_logic; -- increase the selected value (edge)
 		StepDown: out std_logic -- decrease the selected value (edge)
 	);
@@ -33,7 +34,7 @@ architecture main of control is
 begin
 	-- View FSM
 	view_fsm: block is
-		type state is (ClockHM, ClockS, ClockSetH, ClockSetM, AlarmHM, AlarmSetH, AlarmSetM);
+		type state is (ClockHM, ClockS, ClockSetH, ClockSetM, ClockSetS, AlarmHM, AlarmSetH, AlarmSetM);
 		signal current_state, next_state: state := ClockHM;
 	begin
 		step: process (Clk) is
@@ -50,6 +51,7 @@ begin
 			AlarmShow <= '0';
 			SelHour <= '0';
 			SelMin <= '0';
+			SelSec <= '0';
 			StepUp <= '0';
 			StepDown <= '0';
 			if current_state = ClockSetH or current_state = ClockSetM or
@@ -60,6 +62,10 @@ begin
 				elsif CtrlDown = '1' then
 					StepDown <= '1';
 				end if;
+			elsif current_state = ClockSetS then
+				if CtrlUp = '1' or CtrlDown = '1' then
+					RstClockSec <= '1';
+				end if;
 			end if;
 			next_state <= current_state;
 			case current_state is
@@ -69,31 +75,33 @@ begin
 					elsif CtrlSet = '1' then
 						next_state <= ClockSetH;
 					end if;
-					null;
 				when ClockS =>
 					if CtrlSel = '1' then
 						next_state <= AlarmHM;
 					end if;
 					ClockSecShow <= '1';
-					null;
 				when ClockSetH =>
 					if CtrlSave = '1' then
 						next_state <= ClockHM;
-						RstClockSec <= '1';
 					elsif CtrlSel = '1' then
 						next_state <= ClockSetM;
 					end if;
 					SelHour <= '1';
-					null;
 				when ClockSetM =>
 					if CtrlSave = '1' then
 						next_state <= ClockHM;
-						RstClockSec <= '1';
+					elsif CtrlSel = '1' then
+						next_state <= ClockSetS;
+					end if;
+					SelMin <= '1';
+				when ClockSetS =>
+					if CtrlSave = '1' then
+						next_state <= ClockHM;
 					elsif CtrlSel = '1' then
 						next_state <= ClockSetH;
 					end if;
-					SelMin <= '1';
-					null;
+					ClockSecShow <= '1';
+					SelSec <= '1';
 				when AlarmHM =>
 					if CtrlSel then
 						next_state <= ClockHM;
@@ -101,25 +109,22 @@ begin
 						next_state <= AlarmSetH;
 					end if;
 					AlarmShow <= '1';
-					null;
 				when AlarmSetH =>
 					if CtrlSave = '1' then
 						next_state <= AlarmHM;
-					elsif CtrlSet = '1' then
+					elsif CtrlSel = '1' then
 						next_state <= AlarmSetM;
 					end if;
 					AlarmShow <= '1';
 					SelHour <= '1';
-					null;
 				when AlarmSetM =>
 					if CtrlSave = '1' then
 						next_state <= AlarmHM;
-					elsif CtrlSet = '1' then
+					elsif CtrlSel = '1' then
 						next_state <= AlarmSetH;
 					end if;
 					AlarmShow <= '1';
 					SelMin <= '1';
-					null;
 				when others =>
 					null;
 			end case;
@@ -147,7 +152,6 @@ begin
 					if AlarmOnOff and (CtrlUp = '1' or CtrlDown = '1') then
 						next_state <= Enabled;
 					end if;
-					null;
 				when Enabled =>
 					if AlarmOnOff and (CtrlUp = '1' or CtrlDown = '1') then
 						next_state <= Disabled;
@@ -155,14 +159,12 @@ begin
 						next_state <= Sounding;
 					end if;
 					AlarmActive <= '1';
-					null;
 				when Sounding =>
 					if StopAlarm then
 						next_state <= Enabled;
 					end if;
 					SoundAlarm <= '1';
 					AlarmActive <= '1';
-					null;
 				when others =>
 					null;
 			end case;
