@@ -68,7 +68,11 @@ MHz crystal.
 
 FPGA __Altera Cyclone IV EP4CE6E22C8N__
 
+Configuration memory: __EPCS16__
+
 Kit __RZ-EasyFPGA A2.2__
+
+### PINs
 
 - 23 FPGA_CLK 50 MHz
 - 87 LED1
@@ -92,6 +96,17 @@ Kit __RZ-EasyFPGA A2.2__
 - 124 SEG6 (7seg. g)
 - 127 SEG7 (7seg. dp)
 - 110 BEEP (speaker)
+
+### Flash programming
+
+1. Quartus / File /Convert Programming Files – configuration device EPCS16, set
+   output file name to `output_files/*.pof`, click "SOF Data", click "Add
+   File", select `output_files/*.sof` file, click
+   "Generate"
+1. Programmer – switch mode to "Active Serial Programming", click "Add Device",
+   select EPCS16, click device line, click "Change File", select
+   `output_files/*.sof` file, check "Program/Configure" and "Verify", click
+   "Start"
 
 ### 7 segment display
 
