@@ -30,7 +30,7 @@ entity control is
 end entity;
 
 architecture main of control is
-	signal AlarmOnOff: boolean;
+	signal AlarmOnOff, AlarmSetting: boolean;
 begin
 	-- View FSM
 	view_fsm: block is
@@ -46,6 +46,7 @@ begin
 		transition: process (current_state, CtrlSel, CtrlUp, CtrlDown, CtrlSet, CtrlSave) is
 		begin
 			AlarmOnOff <= current_state = AlarmHM;
+			AlarmSetting <= current_state = AlarmSetH or current_state = AlarmSetM;
 			RstClockSec <= '0';
 			ClockSecShow <= '0';
 			AlarmShow <= '0';
@@ -150,6 +151,9 @@ begin
 			case current_state is
 				when Disabled =>
 					if AlarmOnOff and (CtrlUp = '1' or CtrlDown = '1') then
+						next_state <= Enabled;
+					end if;
+					if AlarmSetting then
 						next_state <= Enabled;
 					end if;
 				when Enabled =>

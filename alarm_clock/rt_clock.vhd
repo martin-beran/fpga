@@ -2,11 +2,12 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use work.common.all;
 
 entity rt_clock is
 	generic (
 		-- frequency of the input clock
-		hz: integer := 50_000_000;
+		hz: integer := master_clock_hz;
 		-- divider of the fast clock
 		fast_div: integer := 2
 	);
