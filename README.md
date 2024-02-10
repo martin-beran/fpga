@@ -1,9 +1,33 @@
 # Projects
 
-Unless stated otherwise, all projects are:
+Unless stated otherwise, for all projects:
 
-- implemented in VHDL 
-- intended for a development kit containing Altera Cyclone IV EP4CE6E22C8N
+- Source files are contained in a directory of the same name as the project
+- Usually each `ENTITY` is defined in its own file `ENTITY.vhd`
+- Test files of a project are stored in subdirectory `test/` of the project
+  directory
+    - Projects created before adding this rule do not have subdirectory
+      `test/`: adder4b, alarm_clock, full_adder, half_adder, hex_counter_7seg,
+      led_blink, led_blink_vhdl
+- Test entity for an `ENTITY` is named `tb_ENTITY` and is stored in file
+  `test/tb_ENTITY.vhd`
+- Implementation language is VHDL
+- Implementation is intended for a development kit containing Altera Cyclone IV
+  EP4CE6E22C8N
+
+## lib
+
+Libraries intended to be used in multiple other projects. Individual libraries
+are in subdirectories. Tests of library `XYZ` are stored in subdirectory `test`
+of the library directory (`lib/XYZ/test/`).
+
+### lib/infrared
+
+A receiver for infrared control
+
+### lib/util
+
+Various common definitions and utilities
 
 ## adder4b
 
@@ -48,9 +72,14 @@ A 1-bit full adder
 
 A 1-bit half adder
 
-## #hex_counter_7seg
+## hex_counter_7seg
 
 A counter displaying a hexadecimal value on 7-segment LED
+
+## infrared_rcv
+
+A receiver for infrared control. It displays received codes. It demonstrates
+using library `infrared`.
 
 ## led_blink
 
@@ -72,7 +101,9 @@ Configuration memory: __EPCS16__
 
 Kit __RZ-EasyFPGA A2.2__
 
-### PINs
+### Pins
+
+All pins are inverted (active level '0')
 
 - 23 FPGA_CLK 50 MHz
 - 87 LED1
@@ -97,6 +128,16 @@ Kit __RZ-EasyFPGA A2.2__
 - 127 SEG7 (7seg. dp)
 - 110 BEEP (speaker)
 
+### 7 segment display
+
+     aaa
+    f   b
+    f   b
+     ggg
+    e   c
+    e   c
+     ddd  dp
+
 ### Flash programming
 
 1. Quartus / File /Convert Programming Files – configuration device EPCS16, set
@@ -108,15 +149,6 @@ Kit __RZ-EasyFPGA A2.2__
    `output_files/*.sof` file, check "Program/Configure" and "Verify", click
    "Start"
 
-### 7 segment display
-
-     aaa
-    f   b
-    f   b
-     ggg
-    e   c
-    e   c
-     ddd  dp
 ## VHDL
 
 Comments start with `--` (like in SQL)
@@ -145,28 +177,28 @@ changed in _Project Navigator / Settings_.
 1. The default logic for pins is 2.5 V. Change to 3.3 V LVTTL in _Device
    / Device and Pin Options_.
 
-## Glossary
+# Glossary
 
-### DUT
+## DUT
 
 Design Under Test
 
-### DUV
+## DUV
 
 Design Under Verification
 
-### full adder
+## full adder
 
 An adder with input carry and output carry
 
-### half adder
+## half adder
 
 An adder without input carry and with output carry
 
-### test bench (TB)
+## test bench (TB)
 
 A piece of VHDL code used to verify functional correctness
 
-### UUT
+## UUT
 
 Unit Under Test
