@@ -73,6 +73,8 @@ set_global_assignment -name VHDL_FILE infrared_receiver.vhd
 set_global_assignment -name VHDL_FILE lib/util/shift_register.vhd -library lib_util
 set_global_assignment -name VHDL_FILE lib/util/test/tb_shift_register.vhd
 set_global_assignment -name OPTIMIZATION_MODE BALANCED
+set_global_assignment -name VHDL_FILE ../lib/util/clock.vhd -library lib_util
+set_global_assignment -name VHDL_FILE ../lib/util/test/tb_clock.vhd
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
