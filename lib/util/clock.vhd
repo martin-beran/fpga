@@ -12,9 +12,7 @@ package pkg_clock is
 			-- if false, then divide frequency of Clk and ignore I
 			use_I: boolean := false;
 			-- number of input clock periods between output pulses
-			factor: positive;
-			-- number of input clock periods before the first pulse
-			phase: natural := 0
+			factor: positive
 		);
 		port (
 			-- the master system clock
@@ -22,7 +20,7 @@ package pkg_clock is
 			-- Reset and start from the beginning
 			Rst: in std_logic;
 			-- the input clock
-			I: in std_logic := '0';
+			I: in std_logic := '1';
 			-- the output clock
 			O: out std_logic
 		);
@@ -37,8 +35,7 @@ use lib_util.pkg_clock.all;
 entity clock_divider is
 	generic (
 		use_I: boolean;
-		factor: positive;
-		phase: natural
+		factor: positive
 	);
 	port (
 		Clk, Rst, I: in std_logic;
@@ -47,34 +44,29 @@ entity clock_divider is
 end entity;
 
 architecture main of clock_divider is
+	signal f: integer range 0 to factor := 0;
 begin
+	O <= '1' when Rst /= '1' and I = '1' and f = 0 else '0';
 	process (Clk, Rst, I) is
-		variable f: integer range 0 to factor := 0;
-		variable p: integer range 0 to phase := 0;
-		variable prev: std_logic := '0';
+		variable prev_i, prev_rst: std_logic := '0';
 	begin
 		if rising_edge(Clk) then
-			O <= '0';
-			if Rst = '1' then
-				prev := '0';
-				f := 0;
-				p := 0;
-			elsif not use_I or (I = '1' and prev /= '1') then
-				if phase > 0 and p < phase then
-					p := p + 1;
-				else
-					if f = 0 then
-						O <= '1';
-					end if;
-					f := f + 1;
-					if f = factor then
-						f := 0;
+			if prev_rst = '1' then
+				prev_i := '0';
+				f <= 0;
+			else
+				if not use_I or (I = '0' and prev_i /= '0') then
+					if f < factor - 1 then
+						f <= f + 1;
+					else
+						f <= 0;
 					end if;
 				end if;
 			end if;
 			if use_I then
-				prev := I;
+				prev_i := I;
 			end if;
+			prev_rst := Rst;
 		end if;
 	end process;
 end architecture;
