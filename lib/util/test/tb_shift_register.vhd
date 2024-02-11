@@ -5,10 +5,10 @@ use ieee.std_logic_1164.all;
 library lib_util;
 use lib_util.pkg_shift_register.all;
 
-entity tb_shift_register is
+entity tb_shift_register_io is
 end entity;
 
-architecture main of tb_shift_register is
+architecture main of tb_shift_register_io is
 	constant bits: positive := 4;
 	subtype data_t is std_logic_vector(bits - 1 downto 0);
 	signal Clk: std_logic := '0';
@@ -36,16 +36,16 @@ begin
 	Data2 <= "1101" after 10 ns, "0000" after 20 ns;
 	ShiftR2 <= '1' after 10 ns, '0' after 60 ns;
 	
- 	dut_serial_w_left: shift_register
-		generic map (bits=>bits, shift_w_dir=>left)
+ 	dut_serial_w_left: shift_register_io
+		generic map (bits=>bits, shift_dir=>left)
 		port map (Clk=>Clk, Rst=>Rst1, R=>R1, W=>W1, ShiftR=>ShiftR1, ShiftW=>ShiftW1, Data=>Data1L, Serial=>Serial1);
-	dut_serial_w_right: shift_register
-		generic map (bits=>bits, shift_w_dir=>right)
+	dut_serial_w_right: shift_register_io
+		generic map (bits=>bits, shift_dir=>right)
 		port map (Clk=>Clk, Rst=>Rst1, R=>R1, W=>W1, ShiftR=>ShiftR1, ShiftW=>ShiftW1, Data=>Data1R, Serial=>Serial1);
-	dut_serial_r_left: shift_register
-		generic map (bits=>bits, shift_w_dir=>right)
+	dut_serial_r_left: shift_register_io
+		generic map (bits=>bits, shift_dir=>left)
 		port map (Clk=>Clk, Rst=>Rst2, R=>R2, W=>W2, ShiftR=>ShiftR2, ShiftW=>ShiftW2, Data=>Data2, Serial=>Serial2L);
-	dut_serial_r_right: shift_register
-		generic map (bits=>bits, shift_w_dir=>left)
+	dut_serial_r_right: shift_register_io
+		generic map (bits=>bits, shift_dir=>right)
 		port map (Clk=>Clk, Rst=>Rst2, R=>R2, W=>W2, ShiftR=>ShiftR2, ShiftW=>ShiftW2, Data=>Data2, Serial=>Serial2R);
 end architecture;

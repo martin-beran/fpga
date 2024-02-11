@@ -1,18 +1,21 @@
--- Shift register
+-- Shift registers
 
 library ieee;
 use ieee.std_logic_1164.all;
 
 package pkg_shift_register is
 	-- shift direction
-	type direction is (left, right);
-	component shift_register is
+	type direction is (
+		left, -- MSB to LSB
+		right -- LSB to MSB
+	);
+	-- Shift register with inout parallel and serial ports
+	component shift_register_io is
 		generic (
 			-- number of bits in the register
 			bits: positive;
-			-- shift direction of serial writing to the register
-			-- serial reading from the register is in the opposite direction
-			shift_w_dir: direction
+			-- shift direction of serial reading/writing
+			shift_dir: direction
 		);
 		port (
 			-- the master system clock
@@ -23,9 +26,9 @@ package pkg_shift_register is
 			R: in std_logic;
 			-- write Data to the register
 			W: in std_logic;
-			-- shift the register in the direction opposite to shift_w_dir and return one bit in Serial
+			-- shift the register and return one bit in Serial
 			ShiftR: in std_logic;
-			-- shift the register in the direction shift_w_dir and write Serial to it
+			-- shift the register and write Serial to it
 			ShiftW: in std_logic;
 			-- parallel access to data (all bits)
 			Data: inout std_logic_vector(bits - 1 downto 0);
@@ -40,10 +43,10 @@ use ieee.std_logic_1164.all;
 library lib_util;
 use lib_util.pkg_shift_register.all;
 
-entity shift_register is
+entity shift_register_io is
 	generic (
-		bits: positive;
-		shift_w_dir: direction
+		bits: positive := 8;
+		shift_dir: direction := left
 	);
 	port (
 		Clk, Rst, R, W, ShiftR, ShiftW: in std_logic;
@@ -52,7 +55,7 @@ entity shift_register is
 	);
 end entity;
 
-architecture main of shift_register is
+architecture main of shift_register_io is
 begin
 	process (Clk, Rst, R, W, ShiftR, ShiftW) is
 		variable memory: std_logic_vector(bits - 1 downto 0) := (others=>'0');
@@ -66,7 +69,7 @@ begin
 				if W = '1' then
 					memory := Data;
 				elsif ShiftW = '1' then
-					case shift_w_dir is
+					case shift_dir is
 						when left => memory := memory(bits - 2 downto 0) & Serial;
 						when right => memory := Serial & memory(bits - 1 downto 1);
 						when others => null; -- should not occur
@@ -76,13 +79,13 @@ begin
 					Data <= memory;
 				end if;
 				if ShiftR = '1' then
-					case shift_w_dir is
+					case shift_dir is
 						when left =>
-							Serial <= memory(0);
-							memory := '0' & memory(bits - 1 downto 1);
-						when right =>
 							Serial <= memory(bits - 1);
 							memory := memory(bits - 2 downto 0) & '0';
+						when right =>
+							Serial <= memory(0);
+							memory := '0' & memory(bits - 1 downto 1);
 						when others => null; -- should not occur
 					end case;
 				end if;
