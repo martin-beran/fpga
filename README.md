@@ -14,10 +14,6 @@ Unless stated otherwise, for all projects:
 - Implementation language is VHDL
 - Implementation is intended for a development kit containing Altera Cyclone IV
   EP4CE6E22C8N
-- Each project contains symlink `lib -> ../lib` in order to be able
-    - to add paths for each used LIBRARY as `lib/LIBRARY` with "Use project's
-      relative path" in "Settings / Libraries"
-    - to add library files to the project using relative paths
 
 ## lib
 
@@ -25,9 +21,9 @@ Libraries intended to be used in multiple other projects. Individual libraries
 are in subdirectories. Tests of library `XYZ` are stored in subdirectory `test`
 of the library directory (`lib/XYZ/test/`).
 
-### lib_infrared
+### lib_io
 
-A receiver for infrared control
+Controllers for I/O devices
 
 ### lib_util
 
@@ -68,6 +64,15 @@ An alarm clock that uses on-board peripherals
         - switches from alarm set to view mode
     - any button: stops a sounding alarm
 
+## demo_lib_led
+
+Four blinking LED with periods 100, 200, 300, 500 ms. A demo of library
+packages:
+
+- lib_util.pkg_clock
+- lib_io.pkg_crystal
+- lib_io.pkg_led
+
 ## full_adder
 
 A 1-bit full adder
@@ -83,7 +88,7 @@ A counter displaying a hexadecimal value on 7-segment LED
 ## infrared_receiver
 
 A receiver for infrared control. It displays received codes. It demonstrates
-using library `infrared`.
+using library package `lib_io.pkg_infrared`.
 
 ## led_blink
 
@@ -187,6 +192,10 @@ changed in _Project Navigator / Settings_.
 ## DUT
 
 Design Under Test
+
+## duty cycle
+
+The ratio of time a signal in ON to the time the signal is OFF
 
 ## DUV
 
