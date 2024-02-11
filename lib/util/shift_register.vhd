@@ -167,11 +167,14 @@ begin
 					end case;
 				end if;
 			end if;
-			POut <= memory;
-			case shift_dir is
-				when left => SOut <= memory(bits - 1);
-				when right => SOut <= memory(0);
-			end case;
 		end if;
+		-- These assignments of output signals must be outside "if rising_edge". Otherwise,
+		-- additional LEs and registers would be allocated for a copy of memory, instead of
+		-- feeding output signals back to input.
+		POut <= memory;
+		case shift_dir is
+			when left => SOut <= memory(bits - 1);
+			when right => SOut <= memory(0);
+		end case;
 	end process;
 end architecture;
