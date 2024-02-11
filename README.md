@@ -14,6 +14,10 @@ Unless stated otherwise, for all projects:
 - Implementation language is VHDL
 - Implementation is intended for a development kit containing Altera Cyclone IV
   EP4CE6E22C8N
+- Each project contains symlink `lib -> ../lib` in order to be able
+    - to add paths for each used LIBRARY as `lib/LIBRARY` with "Use project's
+      relative path" in "Settings / Libraries"
+    - to add library files to the project using relative paths
 
 ## lib
 
@@ -21,11 +25,11 @@ Libraries intended to be used in multiple other projects. Individual libraries
 are in subdirectories. Tests of library `XYZ` are stored in subdirectory `test`
 of the library directory (`lib/XYZ/test/`).
 
-### lib/infrared
+### lib_infrared
 
 A receiver for infrared control
 
-### lib/util
+### lib_util
 
 Various common definitions and utilities
 
@@ -76,7 +80,7 @@ A 1-bit half adder
 
 A counter displaying a hexadecimal value on 7-segment LED
 
-## infrared_rcv
+## infrared_receiver
 
 A receiver for infrared control. It displays received codes. It demonstrates
 using library `infrared`.
@@ -127,6 +131,7 @@ All pins are inverted (active level '0')
 - 124 SEG6 (7seg. g)
 - 127 SEG7 (7seg. dp)
 - 110 BEEP (speaker)
+- 100 IR (infrared receiver)
 
 ### 7 segment display
 
