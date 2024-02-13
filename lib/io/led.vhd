@@ -14,12 +14,14 @@ package pkg_led is
 		port (
 			-- the master system clock
 			Clk: in std_logic;
+			-- Reset and turn all LEDs off
+			Rst: in std_logic := '0';
 			-- Values of LEDs ('1'=on, '0'=off)
 			I: in std_logic_vector(count - 1 downto 0);
 			-- Select which values from I will be applied
 			Sel: in std_logic_vector(count - 1 downto 0) := (others=>'1');
 			-- Signals to be connected to LED control pins
-			LED: out std_logic_vector(count -1 downto 0)
+			LED: out std_logic_vector(count - 1 downto 0)
 		);
 	end component;
 end package;
@@ -35,7 +37,7 @@ entity led_group is
 		inverted: boolean
 	);
 	port (
-		Clk: in std_logic;
+		Clk, Rst: in std_logic;
 		I, Sel: in std_logic_vector(count - 1 downto 0);
 		LED: out std_logic_vector(count - 1 downto 0)
 	);
@@ -45,5 +47,14 @@ architecture main of led_group is
 	signal state: std_logic_vector(count - 1 downto 0) := (others=>'0');
 begin
 	LED <= not state when inverted else state;
-	state <= (state and not Sel) or (Sel and I) when rising_edge(Clk) else unaffected;
+	process (Clk) is
+	begin
+		if rising_edge(Clk) then
+			if Rst = '1' then
+				state <= (others=>'0');
+			else
+				state <= (state and not Sel) or (Sel and I);
+			end if;
+		end if;
+	end process;
 end architecture;

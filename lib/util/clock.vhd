@@ -18,7 +18,7 @@ package pkg_clock is
 			-- the master system clock
 			Clk: in std_logic;
 			-- Reset and start from the beginning
-			Rst: in std_logic;
+			Rst: in std_logic := '0';
 			-- the input clock
 			I: in std_logic := '1';
 			-- the output clock
