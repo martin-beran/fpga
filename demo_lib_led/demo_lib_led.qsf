@@ -81,11 +81,13 @@ set_location_assignment PIN_90 -to Button[2]
 set_location_assignment PIN_91 -to Button[3]
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
+set_location_assignment PIN_25 -to RstBtn
 set_global_assignment -name VHDL_FILE ../lib/util/clock.vhd -library lib_util
 set_global_assignment -name VHDL_FILE ../lib/io/button.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/crystal.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/led.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/reset.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/speaker.vhd -library lib_io
 set_global_assignment -name VHDL_FILE demo_lib_led.vhd
-set_location_assignment PIN_25 -to RstBtn
+set_location_assignment PIN_110 -to Speaker
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
