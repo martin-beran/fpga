@@ -115,6 +115,7 @@ Kit __RZ-EasyFPGA A2.2__
 All pins are inverted (active level '0')
 
 - 23 FPGA_CLK 50 MHz
+- 25 RESET
 - 87 LED1
 - 86 LED2
 - 85 LED3
