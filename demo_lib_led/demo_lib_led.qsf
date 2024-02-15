@@ -83,15 +83,6 @@ set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_location_assignment PIN_25 -to RstBtn
 set_location_assignment PIN_110 -to Speaker
-set_global_assignment -name VHDL_FILE ../lib/util/clock.vhd -library lib_util
-set_global_assignment -name VHDL_FILE ../lib/util/multiplexer.vhd -library lib_util
-set_global_assignment -name VHDL_FILE ../lib/io/button.vhd -library lib_io
-set_global_assignment -name VHDL_FILE ../lib/io/crystal.vhd -library lib_io
-set_global_assignment -name VHDL_FILE ../lib/io/led.vhd -library lib_io
-set_global_assignment -name VHDL_FILE ../lib/io/reset.vhd -library lib_io
-set_global_assignment -name VHDL_FILE ../lib/io/seg7.vhd -library lib_io
-set_global_assignment -name VHDL_FILE ../lib/io/speaker.vhd -library lib_io
-set_global_assignment -name VHDL_FILE demo_lib_led.vhd
 set_location_assignment PIN_133 -to DIG[3]
 set_location_assignment PIN_135 -to DIG[2]
 set_location_assignment PIN_136 -to DIG[1]
@@ -104,4 +95,14 @@ set_location_assignment PIN_132 -to SEG[4]
 set_location_assignment PIN_126 -to SEG[5]
 set_location_assignment PIN_124 -to SEG[6]
 set_location_assignment PIN_127 -to SEG[7]
+set_global_assignment -name SDC_FILE demo_lib_led.sdc
+set_global_assignment -name VHDL_FILE ../lib/util/clock.vhd -library lib_util
+set_global_assignment -name VHDL_FILE ../lib/util/multiplexer.vhd -library lib_util
+set_global_assignment -name VHDL_FILE ../lib/io/button.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/crystal.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/led.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/reset.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/seg7.vhd -library lib_io
+set_global_assignment -name VHDL_FILE ../lib/io/speaker.vhd -library lib_io
+set_global_assignment -name VHDL_FILE demo_lib_led.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
