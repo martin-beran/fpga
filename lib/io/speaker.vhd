@@ -50,7 +50,7 @@ package pkg_speaker is
 			-- half of the sound period (Clk ticks), zero to mute
 			I: in unsigned(bits - 1 downto 0);
 			-- start/stop playing sound according to I
-			Set: in std_logic;
+			W: in std_logic;
 			-- signal to be connected to the speaker output pin
 			Speaker: out std_logic
 		);
@@ -69,7 +69,7 @@ entity play_sound is
 	port (
 		Clk, Rst: in std_logic;
 		I: in unsigned(bits - 1 downto 0);
-		Set: in std_logic;
+		W: in std_logic;
 		Speaker: out std_logic
 	);
 end entity;
@@ -83,13 +83,13 @@ begin
 		variable cnt: unsigned(bits - 1 downto 0) := to_unsigned(0, bits);
 	begin
 		if rising_edge(Clk) then
-			if Set = '1' then
+			if W = '1' then
 				half_period := I;
 			end if;
 			if Rst = '1' then
 				half_period := to_unsigned(0, bits);
 			end if;
-			if Set = '1' or Rst = '1' then
+			if W = '1' or Rst = '1' then
 				cnt := to_unsigned(0, bits);
 				state <= '0';
 			end if;

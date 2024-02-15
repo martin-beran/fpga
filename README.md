@@ -66,12 +66,17 @@ An alarm clock that uses on-board peripherals
 
 ## demo_lib_led
 
-Four blinking LED with periods 100, 200, 300, 500 ms. A demo of library
+Four blinking LED with periods 100, 200, 300, 500 ms and 7-segment display,
+speaker, controlled by buttons and the reset button. A demo of library
 packages:
 
 - lib_util.pkg_clock
+- lib_io.pkg_button
 - lib_io.pkg_crystal
 - lib_io.pkg_led
+- lib_io.pkg_reset
+- lib_io.pkg_seg7
+- lib_io.pkg_speaker
 
 ## full_adder
 

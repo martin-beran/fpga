@@ -18,8 +18,8 @@ package pkg_led is
 			Rst: in std_logic := '0';
 			-- Values of LEDs ('1'=on, '0'=off)
 			I: in std_logic_vector(count - 1 downto 0);
-			-- Select which values from I will be applied
-			Sel: in std_logic_vector(count - 1 downto 0) := (others=>'1');
+			-- Select which values from I will be applied (written)
+			W: in std_logic_vector(count - 1 downto 0) := (others=>'1');
 			-- Signals to be connected to LED control pins
 			LED: out std_logic_vector(count - 1 downto 0)
 		);
@@ -38,7 +38,7 @@ entity led_group is
 	);
 	port (
 		Clk, Rst: in std_logic;
-		I, Sel: in std_logic_vector(count - 1 downto 0);
+		I, W: in std_logic_vector(count - 1 downto 0);
 		LED: out std_logic_vector(count - 1 downto 0)
 	);
 end entity;
@@ -53,7 +53,7 @@ begin
 			if Rst = '1' then
 				state <= (others=>'0');
 			else
-				state <= (state and not Sel) or (Sel and I);
+				state <= (state and not W) or (W and I);
 			end if;
 		end if;
 	end process;
