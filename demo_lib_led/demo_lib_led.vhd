@@ -28,7 +28,7 @@ end entity;
 
 architecture main of demo_lib_led is
 	signal rst: std_logic;
-	signal ms100, ms200, ms300, ms500, ms2000: std_logic;
+	signal ms100, sync100, ms200, ms300, ms500, sync500, ms2000: std_logic;
 	signal button_state: std_logic_vector(3 downto 0);
 	signal led_state: std_logic_vector(3 downto 0);
 	signal led_w: std_logic_vector(3 downto 0);
@@ -42,11 +42,11 @@ begin
 	-- handle reset button
 	reset: reset_button generic map (initial_rst=>false) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
 	-- generate pulses with double the target frequency
-	clock_ms100: clock_divider generic map (factor=>crystal_hz/20) port map (Clk=>Clk, Rst=>rst, O=>ms100);
-	clock_ms200: clock_divider generic map (use_I=>true, factor=>2) port map (Clk=>Clk, Rst=>rst, I=>ms100, O=>ms200);
-	clock_ms300: clock_divider generic map (use_I=>true, factor=>3) port map (Clk=>Clk, Rst=>rst, I=>ms100, O=>ms300);
-	clock_ms500: clock_divider generic map (use_I=>true, factor=>5) port map (Clk=>Clk, Rst=>rst, I=>ms100, O=>ms500);
-	clock_ms2000: clock_divider generic map (use_I=>true, factor=>4) port map (Clk=>Clk, Rst=>rst, I=>ms500, O=>ms2000);
+	clock_ms100: clock_divider generic map (factor=>crystal_hz/20) port map (Clk=>Clk, Rst=>rst, O=>ms100, OSync=>sync100);
+	clock_ms200: clock_divider generic map (factor=>2) port map (Clk=>Clk, Rst=>rst, ISync=>sync100, O=>ms200, OSync=>open);
+	clock_ms300: clock_divider generic map (factor=>3) port map (Clk=>Clk, Rst=>rst, ISync=>sync100, O=>ms300, OSync=>open);
+	clock_ms500: clock_divider generic map (factor=>5) port map (Clk=>Clk, Rst=>rst, ISync=>sync100, O=>ms500, OSync=>sync500);
+	clock_ms2000: clock_divider generic map (factor=>4) port map (Clk=>Clk, Rst=>rst, ISync=>sync500, O=>ms2000, OSync=>open);
 	-- generate signals with the target frequency and duty cycle 50 %
 	blink_ms100: half_f_duty_50 port map (Clk=>Clk, Rst=>rst, I=>ms100, O=>led_state(0));
 	blink_ms200: half_f_duty_50 port map (Clk=>Clk, Rst=>rst, I=>ms200, O=>led_state(1));
