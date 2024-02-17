@@ -54,28 +54,26 @@ begin
 	test_edge: for i in Button'range generate
 	begin
 		edge(i) <= sync(i)(0) xor sync(i)(1);
-		process (Clk) is
+		process (Clk, Rst) is
 			variable cnt: natural range 0 to debounce - 1 := 0;
 		begin
-			if rising_edge(Clk) then
-				if Rst = '1' then
-					sync(i) <= "00";
+			if Rst = '1' then
+				sync(i) <= "00";
+				cnt := 0;
+				O(i) <= '0';
+			elsif rising_edge(Clk) then
+				sync(i)(0) <= Button(i);
+				sync(i)(1) <= sync(i)(0);
+				if edge(i) = '1' then
 					cnt := 0;
-					O(i) <= '0';
+				elsif cnt < debounce - 1 then
+					cnt := cnt + 1;
 				else
-					sync(i)(0) <= Button(i);
-					sync(i)(1) <= sync(i)(0);
-					if edge(i) = '1' then
-						cnt := 0;
-					elsif cnt < debounce - 1 then
-						cnt := cnt + 1;
+					cnt := 0;
+					if inverted then
+						O(i) <= not sync(i)(1);
 					else
-						cnt := 0;
-						if inverted then
-							O(i) <= not sync(i)(1);
-						else
-							O(i) <= sync(i)(1);
-						end if;
+						O(i) <= sync(i)(1);
 					end if;
 				end if;
 			end if;

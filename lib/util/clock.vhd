@@ -64,20 +64,19 @@ architecture main of clock_divider is
 	signal f: natural range 0 to factor - 1 := factor - 1;
 begin
 	OSync <= ISync when f = factor - 1 else '0';
-	process (Clk) is
+	process (Clk, Rst) is
 	begin
-		if rising_edge(Clk) then
+		if Rst then
+			f <= factor - 1;
 			O <= '0';
-			if Rst then
-				f <= factor - 1;
-			else
-				if ISync = '1' then
-					if f = factor - 1 then
-						f <= 0;
-						O <= '1';
-					else
-						f <= f + 1;
-					end if;
+		elsif rising_edge(Clk) then
+			O <= '0';
+			if ISync = '1' then
+				if f = factor - 1 then
+					f <= 0;
+					O <= '1';
+				else
+					f <= f + 1;
 				end if;
 			end if;
 		end if;

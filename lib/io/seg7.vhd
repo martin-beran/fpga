@@ -133,18 +133,16 @@ begin
 	
 	wr: for i in 0 to digits - 1 generate
 	begin
-		seg: process (Clk) is
+		seg: process (Clk, Rst) is
 		begin
-			if rising_edge(Clk) then
-				if (Rst) then
-					memory(i) <= (others=>'0');
-				else					
-					if WSeg7(i) then
-						memory(i)(6 downto 0) <= Seg7(i);
-					end if;
-					if WDP(i) then
-						memory(i)(7) <= DP(i);
-					end if;
+			if (Rst) then
+				memory(i) <= (others=>'0');
+			elsif rising_edge(Clk) then
+				if WSeg7(i) then
+					memory(i)(6 downto 0) <= Seg7(i);
+				end if;
+				if WDP(i) then
+					memory(i)(7) <= DP(i);
 				end if;
 			end if;
 		end process;

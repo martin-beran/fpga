@@ -78,18 +78,19 @@ architecture main of play_sound is
 	signal state: std_logic := '0';
 begin
 	Speaker <= not state when inverted else state;
-	process (Clk) is
+	process (Clk, Rst) is
 		variable half_period: unsigned(bits - 1 downto 0) := to_unsigned(0, bits);
 		variable cnt: unsigned(bits - 1 downto 0) := to_unsigned(0, bits);
 	begin
-		if rising_edge(Clk) then
+		if Rst = '1' then
+			half_period := to_unsigned(0, bits);
+			cnt := to_unsigned(0, bits);
+			state <= '0';
+		elsif rising_edge(Clk) then
 			if W = '1' then
 				half_period := I;
 			end if;
-			if Rst = '1' then
-				half_period := to_unsigned(0, bits);
-			end if;
-			if W = '1' or Rst = '1' then
+			if W = '1' then
 				cnt := to_unsigned(0, bits);
 				state <= '0';
 			end if;

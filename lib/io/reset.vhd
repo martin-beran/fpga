@@ -54,14 +54,14 @@ architecture main of reset_button is
 		end if;
 	end function;
 begin
-	process (Clk) is
+	process (Clk, RstBtn) is
 		variable cnt: natural range 0 to duration := init_cnt(initial_rst);
 	begin
-		if rising_edge(Clk) then
-			if RstBtn = rst_active then
-				cnt := 1;
-				Rst <= '1';
-			elsif cnt = 0 then
+		if RstBtn = rst_active then
+			cnt := 1;
+			Rst <= '1';
+		elsif rising_edge(Clk) then
+			if cnt = 0 then
 				Rst <= '0';
 			elsif cnt < duration then
 				cnt := cnt + 1;

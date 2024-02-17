@@ -40,7 +40,7 @@ architecture main of demo_lib_led is
 	signal seg7_w: std_logic_vector(3 downto 0) := "0011";
 begin
 	-- handle reset button
-	reset: reset_button generic map (initial_rst=>false) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
+	reset: reset_button generic map (initial_rst=>true) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
 	-- generate pulses with double the target frequency
 	clock_ms100: clock_divider generic map (factor=>crystal_hz/20) port map (Clk=>Clk, Rst=>rst, O=>ms100, OSync=>sync100);
 	clock_ms200: clock_divider generic map (factor=>2) port map (Clk=>Clk, Rst=>rst, ISync=>sync100, O=>ms200, OSync=>open);

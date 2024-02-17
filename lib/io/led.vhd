@@ -47,14 +47,12 @@ architecture main of led_group is
 	signal state: std_logic_vector(count - 1 downto 0) := (others=>'0');
 begin
 	LED <= not state when inverted else state;
-	process (Clk) is
+	process (Clk, Rst) is
 	begin
-		if rising_edge(Clk) then
-			if Rst = '1' then
-				state <= (others=>'0');
-			else
-				state <= (state and not W) or (W and I);
-			end if;
+		if Rst = '1' then
+			state <= (others=>'0');
+		elsif rising_edge(Clk) then
+			state <= (state and not W) or (W and I);
 		end if;
 	end process;
 end architecture;
