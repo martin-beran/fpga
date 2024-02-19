@@ -186,6 +186,10 @@ Files to be stored in Git [Getting started 2.9.41]
 The top level entity has the same name as the project by default. It can be
 changed in _Project Navigator / Settings_.
 
+In order to correctly detect FSM state transitions and show them in State
+Machine Viewer, the transitions must be written directly in the process
+implementing the transition table and not in a called procedure or function.
+
 ### New project checklist
 
 1. Set _Use all available processors_ in _Settings / Compilation Process
@@ -206,6 +210,10 @@ The ratio of time a signal in ON to the time the signal is OFF
 ## DUV
 
 Design Under Verification
+
+## FSM
+
+Finite State Machine
 
 ## full adder
 
