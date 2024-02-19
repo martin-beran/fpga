@@ -165,6 +165,34 @@ All pins are inverted (active level '0')
    `output_files/*.sof` file, check "Program/Configure" and "Verify", click
    "Start"
 
+### Infrared remote control
+
+Uses NEC IR transmission protocol
+
+Button codes:
+
+- 0045 CH-
+- 0046 CH
+- 0047 CH+
+- 0044 <<
+- 0040 >>
+- 0043 >|
+- 0007 -
+- 0015 +
+- 0009 EQ
+- 0016 0
+- 0019 FOL- 100+
+- 000d FOL+ 200+
+- 000c 1
+- 0018 2
+- 005e 3
+- 0008 4
+- 001c 5
+- 005a 6
+- 0042 7
+- 0052 8
+- 004a 9
+
 ## VHDL
 
 Comments start with `--` (like in SQL)

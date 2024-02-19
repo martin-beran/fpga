@@ -90,7 +90,7 @@ begin
 							"1110", -- 14 = E
 							"0101", --  5 = r
 							"0101", --  5 = r
-							"1000" --  8 = space
+							"1000"  --  8 = space
 						);
 						cp <= '1';
 						dp <= "0000";
@@ -112,19 +112,22 @@ begin
 	seg7(3) <= seg7(0);
 	seg7_mux: multiplexer
 		generic map (inputs=>4, bits=>4)
-		port map (Sel=>seg7_sel, I=>seg7_mux_i, O=>seg7_mux_o);
+		port map (Sel=>seg7_sel, I=>(seg7_mux_i(0), seg7_mux_i(1), seg7_mux_i(2), seg7_mux_i(3)), O=>seg7_mux_o);
 	refresh: process (Clk) is
 		variable ws: std_logic_vector(3 downto 0) := "0001";
 	begin
 		if rising_edge(Clk) then
-			wseg7 <= ws;
 			ws := ws(2 downto 0) & ws(3);
-			if seg7_sel = 3 then
-				seg7_sel <= 0;
+			wseg7 <= ws;
+			if seg7_sel = 2 then -- will be incremented to 3
 				cp3 <= '0'; -- E from Err
 			else
-				seg7_sel <= seg7_sel + 1;
 				cp3 <= cp; -- digits or r or space from Err
+			end if;
+			if seg7_sel = 3 then
+				seg7_sel <= 0;
+			else
+				seg7_sel <= seg7_sel + 1;
 			end if;
 		end if;
 	end process;

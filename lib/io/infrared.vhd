@@ -57,6 +57,7 @@ entity infrared is
 end entity;
 
 architecture main of infrared is
+	constant cnt_max: unsigned(Cnt'range) := (others=>'1');
 	signal msg_addr, msg_cmd: unsigned(7 downto 0);
 	signal msg, repeat, error: std_logic;
 begin
@@ -112,7 +113,7 @@ begin
 							state <= Ready;
 						elsif msg /= '1' and repeat = '1' then
 							Err <= '0';
-							if Cnt < Cnt'high then
+							if Cnt < cnt_max then
 								CA <= '1';
 								Cnt <= Cnt + 1;
 							end if;
@@ -126,11 +127,11 @@ begin
 	
 	-- NEC IR protocol FSM
 	nec_ir_fsm: block is
-		type state_t is (Init, Start1, Start0, Bit1, Bit0, Final1, Repeat0, Repeat1);
+		type state_t is (Init, Start1, Start0, Bit1, Bit0, Final1, Repeat1);
 		signal state: state_t := Init;
-		signal ir_val, ir_prev: std_logic := '0';
+		signal ir_sync, ir_val, ir_prev: std_logic := '0';
 	begin
-		ir_val <= not IR when inverted else IR;
+		ir_sync <= not IR when inverted else IR;
 		step: process(Clk, Rst) is
 			constant period_us: natural := crystal_hz / 1_000_000; -- Clk ticks in 1 us
 			constant period_basic: natural := period_us * 562 + period_us / 2; -- 562.5 us
@@ -148,33 +149,29 @@ begin
 			variable i_bit: natural range 0 to 7;
 			variable has_bit: boolean;
 			variable bit_val: std_logic;
+			variable DBG_STATE: std_logic_vector(1 to 4) := "0000";
 		begin
 			if Rst = '1' then
 				state <= Init;
 			elsif rising_edge(Clk) then
+				ir_val <= ir_sync;
 				ir_prev <= ir_val;
 				msg <= '0';
 				repeat <= '0';
 				error <= '0';
 				timer := timer + 1;
-				DBG <= "0000";
+				DBG_STATE(4) := ir_val;
 				case state is
 					when Init =>
 						if ir_val = '1' and ir_prev = '0' then
 							timer := 0;
 							state <= Start1;
-							DBG(1) <= '1';
 						end if;
 					when Start1 =>
 						if ir_val = '0' then
 							if timer > period_init1 - delta and timer < period_init1 + delta then
 								timer := 0;
 								state <= Start0;
-								DBG(2) <= '1';
-							elsif timer > period_repeat - delta and timer < period_repeat + delta then
-								timer := 0;
-								state <= Repeat0;
-								DBG(3) <= '1';
 							else
 								error <= '1';
 								state <= Init;
@@ -190,6 +187,9 @@ begin
 								i_data := 0;
 								i_bit := 0;
 								state <= Bit1;
+							elsif timer > period_repeat - delta and timer < period_repeat + delta then
+								timer := 0;
+								state <= Repeat1;
 							else
 								error <= '1';
 								state <= Init;
@@ -236,7 +236,7 @@ begin
 								i_bit := i_bit + 1;
 							elsif i_data < 3 then
 								i_data := i_data + 1;
-								i_bit := 1;
+								i_bit := 0;
 							else
 								state <= Final1;
 							end if;
@@ -259,19 +259,6 @@ begin
 							error <= '1';
 							state <= Init;
 						end if;
-					when Repeat0 =>
-						if ir_val = '1' then
-							if timer > period_repeat - delta and timer < period_repeat + delta then
-								timer := 0;
-								state <= Repeat1;
-							else
-								error <= '1';
-								state <= Init;
-							end if;
-						elsif timer >= period_repeat + delta then
-							error <= '1';
-							state <= Init;
-						end if;
 					when Repeat1 =>
 						if ir_val = '0' then
 							if timer > period_basic - delta and timer < period_basic + delta then
@@ -287,6 +274,7 @@ begin
 					when others =>
 						null;
 				end case;
+				DBG <= DBG_STATE;
 			end if;
 		end process;
 	end block;
