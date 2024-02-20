@@ -119,30 +119,106 @@ Kit __RZ-EasyFPGA A2.2__
 
 All pins are inverted (active level '0')
 
-- 23 FPGA_CLK 50 MHz
-- 25 RESET
-- 87 LED1
-- 86 LED2
-- 85 LED3
-- 84 LED4
-- 88 S1 (KEY1)
-- 89 S2 (KEY2)
-- 90 S3 (KEY3)
-- 91 S4 (KEY4)
-- 133 DIG1 (7seg. digit 1)
-- 135 DIG2 (7seg. digit 2)
-- 136 DIG3 (7seg. digit 3)
-- 137 DIG4 (7seg. digit 4)
-- 128 SEG0 (7seg. a)
-- 121 SEG1 (7seg. b)
-- 125 SEG2 (7seg. c)
-- 129 SEG3 (7seg. d)
-- 132 SEG4 (7seg. e)
-- 126 SEG5 (7seg. f)
-- 124 SEG6 (7seg. g)
-- 127 SEG7 (7seg. dp)
-- 110 BEEP (speaker)
-- 100 IR (infrared receiver)
+- crystal (50 MHz)
+    - 23 FPGA_CLK
+- reset button
+    - 25 RESET
+- LEDs
+    - 87 LED1
+    - 86 LED2
+    - 85 LED3
+    - 84 LED4
+- buttons
+    - 88 S1 (KEY1)
+    - 89 S2 (KEY2)
+    - 90 S3 (KEY3)
+    - 91 S4 (KEY4)
+- 7-segment display
+    - 133 DIG1 (7seg. digit 1)
+    - 135 DIG2 (7seg. digit 2)
+    - 136 DIG3 (7seg. digit 3)
+    - 137 DIG4 (7seg. digit 4)
+    - 128 SEG0 (7seg. a)
+    - 121 SEG1 (7seg. b)
+    - 125 SEG2 (7seg. c)
+    - 129 SEG3 (7seg. d)
+    - 132 SEG4 (7seg. e)
+    - 126 SEG5 (7seg. f)
+    - 124 SEG6 (7seg. g)
+    - 127 SEG7 (7seg. dp)
+- speaker
+    - 110 BEEP
+- infrared receiver (1838)
+    - 100 IR
+- RS232 serial port
+    - 114 UART TXD
+    - 115 UART RXD
+- 1602 12864 LCD
+    - 141 LCD1
+    - 138 LCD2
+    - 143 LCD3
+    - 142 LCD4
+    - 1 LCD5
+    - 144 LCD6
+    - 3 LCD7
+    - 2 LCD8
+    - 10 LCD9
+    - 7 LCD10
+    - 11 LCD11
+- temperature sensor (LM75A)
+    - 113 SDA
+    - 112 SCL
+- serial EEPROM (8192 b, 1024 B, AT24C08)
+    - 99 I2C_SCL
+    - 98 I2C_SDA
+- PS2
+    - 120 PS_DATA
+    - 119 PS_CLOCK
+- VGA
+    - 103 VGA_VSYNC
+    - 101 VGA_HSYNC
+    - 106 VGA_R
+    - 105 VGA_G
+    - 104 VGA_B
+- SDRAM (64 Mb, 4 banks x 1 M x 16 b, HY57V641620FTP-H)
+    - 58 SD_CKE
+    - 43 SD_CKL
+    - 72 SD_CS
+    - 71 SD_RAS
+    - 70 SD_CAS
+    - 69 SD_WE
+    - 42 SD_LDQM
+    - 55 SD_UDQM
+    - 73 SD_BS0
+    - 74 SD_BS1
+    - 76 S_A0
+    - 77 S_A1
+    - 80 S_A2
+    - 83 S_A3
+    - 68 S_A4
+    - 67 S_A5
+    - 66 S_A6
+    - 65 S_A7
+    - 64 S_A8
+    - 60 S_A9
+    - 75 S_A10
+    - 59 S_A11
+    - 28 S_DQ0
+    - 30 S_DQ1
+    - 31 S_DQ2
+    - 32 S_DQ3
+    - 33 S_DQ4
+    - 34 S_DQ5
+    - 38 S_DQ6
+    - 39 S_DQ7
+    - 54 S_DQ8
+    - 53 S_DQ9
+    - 52 S_DQ10
+    - 51 S_DQ11
+    - 50 S_DQ12
+    - 49 S_DQ13
+    - 46 S_DQ14
+    - 44 S_DQ15
 
 ### 7 segment display
 
