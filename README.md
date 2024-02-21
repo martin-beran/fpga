@@ -78,6 +78,10 @@ packages:
 - lib_io.pkg_seg7
 - lib_io.pkg_speaker
 
+## demo_uart
+
+A demo of a serial port controller
+
 ## full_adder
 
 A 1-bit full adder
@@ -150,7 +154,8 @@ All pins are inverted (active level '0')
     - 110 BEEP
 - infrared receiver (1838)
     - 100 IR
-- RS232 serial port
+- RS-232 serial port (MAX3232E multichannel RS-323 line driver and receiver;
+  signaling rate up to 250 kbit/s)
     - 114 UART TXD
     - 115 UART RXD
 - 1602 12864 LCD
@@ -330,6 +335,10 @@ An adder without input carry and with output carry
 ## test bench (TB)
 
 A piece of VHDL code used to verify functional correctness
+
+## UART
+
+Universal Asynchronous Receiver-Transmitter
 
 ## UUT
 
