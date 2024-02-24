@@ -219,8 +219,8 @@ begin
 		tx_bit;
 
 	tx_fsm: block is
-		type state_t is (Ready, Start, Bits, Parity, Stop, Break);
-		signal state: state_t := Ready;
+		type state_t is (Idle, Start, Bits, Parity, Stop, Break);
+		signal state: state_t := Idle;
 	begin
 		step: process (Clk, Rst) is
 			subtype bit_cnt_t is natural range 0 to 1+9+1+2; -- maximum number of start+data+parity+stop
@@ -228,14 +228,14 @@ begin
 			variable timer: natural range 0 to baud_period_data(to_integer(unsigned(uart_baud_1200))); -- maximum period
 		begin
 			if Rst = '1' then
-				state <= Ready;
+				state <= Idle;
 			elsif rising_edge(Clk) then
 				tx_0 <= '0';
 				tx_1 <= '0';
 				tx_shift <= '0';
 				TxReady <= '0';
 				if reconfigured then
-					state <= Ready;
+					state <= Idle;
 				elsif TxBreak = '1' then
 					state <= Break;
 					bit_cnt := 0;
@@ -243,7 +243,7 @@ begin
 					tx_0 <= '1';
 				else
 					case state is
-						when Ready =>
+						when Idle =>
 							tx_1 <= '1';
 							if TxStart = '1' then
 								TxReady <= '0';
@@ -285,7 +285,7 @@ begin
 								if timer < baud_period then
 									timer := timer + 1;
 								else
-									state <= Ready;
+									state <= Idle;
 								end if;
 							end if;
 						when Break =>
@@ -298,7 +298,7 @@ begin
 									bit_cnt := bit_cnt + 1;
 									timer := 0;
 								else
-									state <= Ready;
+									state <= Idle;
 								end if;
 							end if;
 					end case;
@@ -309,19 +309,19 @@ begin
 	
 	-- receiver
 	rx_fsm: block is
-		type state_t is (Ready, Start, Bits, Parity, Stop, Break);
-		signal state: state_t := Ready;
+		type state_t is (Idle, Start, Bits, Parity, Stop, Break);
+		signal state: state_t := Idle;
 	begin
 		step: process (Clk, Rst) is
 		begin
 			if Rst = '1' then
-				state <= Ready;
+				state <= Idle;
 			elsif rising_edge(Clk) then
 				if reconfigured then
-					state <= Ready;
+					state <= Idle;
 				else
 					case state is
-						when Ready =>
+						when Idle =>
 							null;
 						when Start =>
 							null;
