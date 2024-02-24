@@ -94,8 +94,10 @@ end package;
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library lib_util;
 use lib_util.pkg_clock.all;
+use lib_util.pkg_shift_register;
 library lib_io;
 use lib_io.pkg_crystal.crystal_hz;
 use lib_io.pkg_uart.all;
@@ -126,40 +128,49 @@ architecture main of uart is
 	-- There is a low-pass filter which detects an edge only if the level is stable for several last cycles
 	constant sampling_period: positive := 14;
 	constant filter_sz: positive := 4;
-	signal o_sampler, osync_sampler: std_logic; -- RX filtering clock, and its output sync
+	signal sampler: std_logic; -- RX filtering clock, and its output sync
 	signal RXF: std_logic := '1'; -- sampled and filtered RX
 	-- configuration
-	type baud_t is (baud_1200, baud_2400, baud_4800, baud_9600, baud_19200, baud_38400, baud_57600, baud_115200);
 	type config_t is record
 		baud: uart_baud_t;
-		bits: uart_bits_t;
+		bits: natural range 5 to 9;
 		parity: uart_parity_t;
 		stop: uart_stop_t;
 	end record;
 	pure function config_reset return config_t is
 	begin
-		return (baud=>uart_baud_9600, bits=>uart_bits_8, parity=>uart_parity_n, stop=>uart_stop_1);
+		return (baud=>uart_baud_9600, bits=>8, parity=>uart_parity_n, stop=>uart_stop_1);
 	end function;
 	signal config: config_t := config_reset; -- current configuration
 	signal reconfigured: boolean := false; -- notify transmitter and receiver
-	-- periods for baud speeds, in o_sampler ticks
-	type baud_period_t is array(baud_t) of positive;
-	constant baud_period: baud_period_t := (
-		baud_1200   => crystal_hz/sampling_period/1200,
-		baud_2400   => crystal_hz/sampling_period/2400,
-		baud_4800   => crystal_hz/sampling_period/4800,
-		baud_9600   => crystal_hz/sampling_period/9600,
-		baud_19200  => crystal_hz/sampling_period/19200,
-		baud_38400  => crystal_hz/sampling_period/38400,
-		baud_57600  => crystal_hz/sampling_period/57600,
-		baud_115200 => crystal_hz/sampling_period/115200
+	-- periods for baud speeds, in sampler ticks
+	type baud_period_t is array(natural range <>) of positive;
+	constant baud_period_data: baud_period_t := (
+		to_integer(unsigned(uart_baud_1200))   => crystal_hz/sampling_period/1200,
+		to_integer(unsigned(uart_baud_2400))   => crystal_hz/sampling_period/2400,
+		to_integer(unsigned(uart_baud_4800))   => crystal_hz/sampling_period/4800,
+		to_integer(unsigned(uart_baud_9600))   => crystal_hz/sampling_period/9600,
+		to_integer(unsigned(uart_baud_19200))  => crystal_hz/sampling_period/19200,
+		to_integer(unsigned(uart_baud_38400))  => crystal_hz/sampling_period/38400,
+		to_integer(unsigned(uart_baud_57600))  => crystal_hz/sampling_period/57600,
+		to_integer(unsigned(uart_baud_115200)) => crystal_hz/sampling_period/115200
 	);
+	impure function baud_period return positive is
+	begin
+		return baud_period_data(to_integer(unsigned(config.baud(2 downto 0))));
+	end function;
+	-- data and control signals
+	signal tx_w: std_logic; -- write data to transmitter
+	signal tx_shift: std_logic; -- transmit one bit
+	signal tx_bit: std_logic; -- a single bit to be transmitted
+	signal tx_0: std_logic; -- transmit bit '0' (used for break, start, and parity bit)
+	signal tx_1: std_logic; -- transmit bit '1' (used for idle, parity, and stop bit)
 begin
 	-- receiver sampling clock and low pass filter (generates RXF)
 	-- note that serial line idle state is '1'
-	sampler: clock_divider
+	sampler_clock: clock_divider
 		generic map (factor=>sampling_period)
-		port map (Clk=>Clk, Rst=>Rst, O=>o_sampler, OSync=>osync_sampler);
+		port map (Clk=>Clk, Rst=>Rst, O=>sampler);
 	rx_filter: process (Clk, Rst) is
 		variable state: std_logic_vector(filter_sz - 1 downto 0) := (others=>'1');
 		constant state0: std_logic_vector(state'range) := (others=>'0');
@@ -168,7 +179,7 @@ begin
 		if Rst = '1' then
 			state := (others=>'1');
 			RXF <= '1';
-		elsif rising_edge(Clk) and o_sampler = '1' then
+		elsif rising_edge(Clk) and sampler = '1' then
 			state := state(state'high - 1 downto 0) & RX;
 			if state = state0 or state = state1 then
 				RXF <= state(0);
@@ -187,7 +198,7 @@ begin
 				if CfgFrame = '0' then
 					config.baud <= Cfg;
 				else
-					config.bits <= Cfg(6 downto 4);
+					config.bits <= 5 + to_integer(unsigned(Cfg(6 downto 4)));
 					config.parity <= Cfg(3 downto 1);
 					config.stop <= Cfg(0 downto 0);
 				end if;
@@ -196,45 +207,99 @@ begin
 		end if;
 	end process;
 
-	-- transmitter FSM
+	-- transmitter
+	tx_register: pkg_shift_register.shift_register_1dir
+		generic map (bits=>9, shift_dir=>pkg_shift_register.right)
+		port map (Clk=>Clk, Rst=>Rst, W=>tx_w, ShiftR=>tx_shift, PIn=>'0'&TxD, SOut=>tx_bit);
+
+	tx_w <= TxReady and TxStart;
+	TX <=
+		'0' when tx_0 = '1' else
+		'1' when tx_1 = '1' else
+		tx_bit;
+
 	tx_fsm: block is
 		type state_t is (Ready, Start, Bits, Parity, Stop, Break);
 		signal state: state_t := Ready;
 	begin
 		step: process (Clk, Rst) is
-			variable bit_cnt: natural range 0 to 1+9+1+2; -- maximum number of start+data+parity+stop
+			subtype bit_cnt_t is natural range 0 to 1+9+1+2; -- maximum number of start+data+parity+stop
+			variable bit_cnt: bit_cnt_t;
+			variable timer: natural range 0 to baud_period_data(to_integer(unsigned(uart_baud_1200))); -- maximum period
 		begin
 			if Rst = '1' then
 				state <= Ready;
 			elsif rising_edge(Clk) then
+				tx_0 <= '0';
+				tx_1 <= '0';
+				tx_shift <= '0';
+				TxReady <= '0';
 				if reconfigured then
 					state <= Ready;
 				elsif TxBreak = '1' then
 					state <= Break;
 					bit_cnt := 0;
-					TX <= '0';
-					TxReady <= '0';
+					timer := 0;
+					tx_0 <= '1';
 				else
-					TxReady <= '0';
 					case state is
 						when Ready =>
-							TX <= '1';
-							TxReady <= '1';
-						when Start =>
-							TX <= '0';
-						when Bits =>
-							null;
-						when Parity =>
-							null;
-						when Stop =>
-							null;
-						when Break =>
-							-- TxBreak = '0', keep break for 1 character
-							TX <= '0';
-							if bit_cnt < bit_cnt'high then
-								bit_cnt := bit_cnt + 1;
+							tx_1 <= '1';
+							if TxStart = '1' then
+								TxReady <= '0';
+								timer := 0;
+								state <= Start;
 							else
-								state <= Ready;
+								TxReady <= '1';
+							end if;
+						when Start =>
+							tx_0 <= '1';
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								else
+									bit_cnt := 0;
+									timer := 0;
+									state <= Bits;
+								end if;
+							end if;
+						when Bits =>
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								else
+									bit_cnt := bit_cnt + 1;
+									timer := 0;
+									if bit_cnt = config.bits then
+										state <= Stop; -- parity bit not implemented
+									else
+										tx_shift <= '1';
+									end if;
+								end if;
+							end if;
+						when Parity =>
+							null; -- parity bit not implemented
+						when Stop =>
+							tx_1 <= '1';
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								else
+									state <= Ready;
+								end if;
+							end if;
+						when Break =>
+							-- TxBreak = '0', keep break for at least 1 character
+							tx_0 <= '0';
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								elsif bit_cnt < bit_cnt_t'high then
+									bit_cnt := bit_cnt + 1;
+									timer := 0;
+								else
+									state <= Ready;
+								end if;
 							end if;
 					end case;
 				end if;
@@ -242,7 +307,7 @@ begin
 		end process;
 	end block;
 	
-	-- receiver FSM
+	-- receiver
 	rx_fsm: block is
 		type state_t is (Ready, Start, Bits, Parity, Stop, Break);
 		signal state: state_t := Ready;

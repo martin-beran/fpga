@@ -24,15 +24,15 @@ package pkg_shift_register is
 			-- reset the register content
 			Rst: in std_logic;
 			-- read from the register to Data
-			R: in std_logic;
+			R: in std_logic := '0';
 			-- write Data to the register
-			W: in std_logic;
+			W: in std_logic := '0';
 			-- shift the register and return one bit in Serial
-			ShiftR: in std_logic;
+			ShiftR: in std_logic := '0';
 			-- shift the register and write Serial to it
-			ShiftW: in std_logic;
+			ShiftW: in std_logic := '0';
 			-- parallel access to data (all bits)
-			Data: inout std_logic_vector(bits - 1 downto 0);
+			Data: inout std_logic_vector(bits - 1 downto 0) := (others=>'Z');
 			-- serial access to data (one bit)
 			Serial: inout std_logic
 		);
@@ -52,15 +52,15 @@ package pkg_shift_register is
 			-- reset the register content
 			Rst: in std_logic;
 			-- write PIn to the register
-			W: in std_logic;
+			W: in std_logic := '0';
 			-- shift the register and put the next bit to SOut
-			ShiftR: in std_logic;
+			ShiftR: in std_logic := '0';
 			-- shift the register and write SIn to it
-			ShiftW: in std_logic;
+			ShiftW: in std_logic := '0';
 			-- parallel input for writing data to the register
-			PIn: in std_logic_vector(bits - 1 downto 0);
+			PIn: in std_logic_vector(bits - 1 downto 0) := (others=>'0');
 			-- serial input for writing data to the register
-			SIn: in std_logic;
+			SIn: in std_logic := '0';
 			-- parallel output for reading data from the register
 			POut: out std_logic_vector(bits - 1 downto 0);
 			-- serial output for reading data from the register
