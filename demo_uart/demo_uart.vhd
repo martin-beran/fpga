@@ -1,6 +1,11 @@
 -- Demo of library package lib_io.pkg_uart
 -- When button 1 is pressed, it transmits ASCII characters 32-126 and CR.
--- When button 4 is pressed, it transmits break
+-- Button 2 switches between speeds 9600 and 115200 baud.
+-- When button 4 is pressed, it transmits break.
+-- LEDs:
+-- 1 = TX line level
+-- 2 = RX line level
+-- 4 = speed (off=9600, on=115200)
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -22,20 +27,61 @@ entity demo_uart is
 end entity;
 
 architecture main of demo_uart is
-	signal rst, tx_start, tx_break, tx_pin, rx_pin, tx_eol: std_logic := '0';
-	signal tx_ready: std_logic;
-	signal tx_d: std_logic_vector(7 downto 0);
+	signal rst, cfg_set, tx_start, tx_break, tx_pin, speed_led: std_logic := '0';
+	signal rx_pin, tx_ready: std_logic;
+	signal cfg, tx_d: std_logic_vector(7 downto 0);
 	signal pressed: std_logic_vector(3 downto 0);
 begin
 	reset: reset_button generic map (initial_rst=>true) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
 	TX <= tx_pin;
 	rx_pin <= RX;
 	serial_port: uart port map (
-		Clk=>Clk, Rst=>rst, TX=>tx_pin, RX=>rx_pin,
+		Clk=>Clk, Rst=>rst, TX=>tx_pin, RX=>rx_pin, CfgSet=>cfg_set, Cfg=>cfg,
 		TxD=>tx_d, TxStart=>tx_start, TxReady=>tx_ready, TxBreak=>tx_break
 	);
 	buttons: button_group port map (Clk=>Clk, Rst=>rst, Button=>Btn, O=>pressed);
-	leds: led_group port map (Clk=>Clk, Rst=>rst, I=>(tx_pin, rx_pin, tx_eol, others=>'0'), W=>(others=>'1'), LED=>LED);
+	leds: led_group port map (Clk=>Clk, Rst=>rst, I=>(tx_pin, rx_pin, '0', speed_led), W=>(others=>'1'), LED=>LED);
+
+	speed_fsm: process (Clk, rst) is
+		type state_t is (Idle, Change);
+		variable state: state_t := Idle;
+		subtype sel_speed_t is natural range 0 to 1;
+		variable sel_speed: sel_speed_t := 0;
+		type speeds_t is array(sel_speed_t'range) of std_logic_vector(7 downto 0);
+		constant speeds: speeds_t := (uart_baud_9600, uart_baud_115200);
+	begin
+		if rst = '1' then
+			sel_speed := 0;
+			cfg_set <= '0';
+			speed_led <= '0';
+			state := Idle;
+		elsif rising_edge(Clk) then
+			cfg_set <= '0';
+			cfg <= (others=>'0');
+			case sel_speed is
+				when 1 => speed_led <= '1';
+				when others => speed_led <= '0';
+			end case;
+			case state is
+				when Idle =>
+					if pressed(2) = '1' then
+						if sel_speed < sel_speed_t'high then
+							sel_speed := sel_speed + 1;
+						else
+							sel_speed := 0;
+						end if;
+						cfg_set <= '1';
+						cfg <= speeds(sel_speed);
+						state := Change;
+					end if;
+				when Change =>
+					if pressed(2) = '0' then
+						state := Idle;
+					end if;
+			end case;
+		end if;
+	end process;
+
 	ascii_fsm: process (Clk, rst) is
 		type state_t is (Idle, TxChar, TxBusy, TxEol, TxBreak);
 		variable state: state_t := Idle;
@@ -44,7 +90,6 @@ begin
 		if rst = '1' then
 			tx_start <= '0';
 			tx_break <= '0';
-			tx_eol <= '0';
 			state := Idle;
 		elsif rising_edge(Clk) then
 			if pressed(0) then
@@ -73,9 +118,6 @@ begin
 				when TxBusy =>
 					state := TxChar; -- tx_ready will be '0' in the next tick, wait for transmission end
 				when TxEol =>
-					if tx_ready = '1' then
-						tx_eol <= not tx_eol;
-					end if;
 					if tx_ready = '1' and pressed(3) = '0' then
 						state := Idle;
 					end if;

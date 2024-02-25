@@ -61,7 +61,7 @@ package pkg_uart is
 			RX: in std_logic := '1';
 			-- enable setting configuration (stops ongoing communication)
 			CfgSet: in std_logic := '0';
-			-- meaning of Cfg: 0 = speed, 1 = framing
+			-- meaning of Cfg: 0 = speed (one of uart_baud_* constants), 1 = framing
 			CfgFrame: in std_logic := '0';
 			-- configuration byte (read when CfgSet = 1, interpretation defined by CfgFrame)
 			Cfg: in std_logic_vector(7 downto 0) := (others=>'0');
