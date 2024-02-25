@@ -230,8 +230,6 @@ begin
 			if Rst = '1' then
 				state <= Idle;
 			elsif rising_edge(Clk) then
-				tx_0 <= '0';
-				tx_1 <= '0';
 				tx_shift <= '0';
 				TxReady <= '0';
 				if reconfigured then
@@ -241,7 +239,10 @@ begin
 					bit_cnt := 0;
 					timer := 0;
 					tx_0 <= '1';
+					tx_1 <= '0';
 				else
+					tx_0 <= '0';
+					tx_1 <= '0';
 					case state is
 						when Idle =>
 							tx_1 <= '1';
