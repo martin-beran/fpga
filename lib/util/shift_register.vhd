@@ -93,32 +93,31 @@ begin
 		variable wbit: std_logic;
 		variable regR: std_logic;
 	begin
-		if rising_edge(Clk) then
+		if Rst = '1' then
+			memory := (others=>'0');
+			Serial <= 'Z';
+		elsif rising_edge(Clk) then
 			Serial <= 'Z';
 			regR := R; -- synchronous toggling in/out of Data
-			if Rst = '1' then
-				memory := (others=>'0');
+			if W = '1' then
+				memory := Data;
+			end if;
+			if ShiftW = '1' then
+				wbit := Serial;
 			else
-				if W = '1' then
-					memory := Data;
-				end if;
-				if ShiftW = '1' then
-					wbit := Serial;
-				else
-					wbit := '0';
-				end if;
-				if ShiftR = '1' then
-					case shift_dir is
-						when left => Serial <= memory(bits - 1);
-						when right => Serial <= memory(0);
-					end case;
-				end if;
-				if ShiftR = '1' or ShiftW = '1' then
-					case shift_dir is
-						when left => memory := memory(bits - 2 downto 0) & wbit;
-						when right => memory := wbit & memory(bits - 1 downto 1);
-					end case;
-				end if;
+				wbit := '0';
+			end if;
+			if ShiftR = '1' then
+				case shift_dir is
+					when left => Serial <= memory(bits - 1);
+					when right => Serial <= memory(0);
+				end case;
+			end if;
+			if ShiftR = '1' or ShiftW = '1' then
+				case shift_dir is
+					when left => memory := memory(bits - 2 downto 0) & wbit;
+					when right => memory := wbit & memory(bits - 1 downto 1);
+				end case;
 			end if;
 		end if;
 		-- These assignments of output signals must be outside "if rising_edge". Otherwise,
@@ -156,30 +155,28 @@ begin
 	process (Clk, Rst, W, ShiftW) is
 		variable memory: std_logic_vector(bits - 1 downto 0) := (others=>'0');
 	begin
-		if rising_edge(Clk) then
-			if Rst = '1' then
-				memory := (others=>'0');
-				SOut <= '0';
-			else
-				if W = '1' then
-					memory := PIn;
-				end if;
+		if Rst = '1' then
+			memory := (others=>'0');
+			SOut <= '0';
+		elsif rising_edge(Clk) then
+			if W = '1' then
+				memory := PIn;
+			end if;
+			case shift_dir is
+				when left => SOut <= memory(bits - 1);
+				when right => SOut <= memory(0);
+			end case;
+			if ShiftR = '1' then
 				case shift_dir is
-					when left => SOut <= memory(bits - 1);
-					when right => SOut <= memory(0);
+					when left => memory := memory(bits - 2 downto 0) & '0';
+					when right => memory := '0' & memory(bits - 1 downto 1);
 				end case;
-				if ShiftR = '1' then
-					case shift_dir is
-						when left => memory := memory(bits - 2 downto 0) & '0';
-						when right => memory := '0' & memory(bits - 1 downto 1);
-					end case;
-				end if;
-				if ShiftW = '1' then
-					case shift_dir is
-						when left => memory := memory(bits - 2 downto 0) & SIn;
-						when right => memory := SIn & memory(bits - 1 downto 1);
-					end case;
-				end if;
+			end if;
+			if ShiftW = '1' then
+				case shift_dir is
+					when left => memory := memory(bits - 2 downto 0) & SIn;
+					when right => memory := SIn & memory(bits - 1 downto 1);
+				end case;
 			end if;
 		end if;
 		-- These assignments of output signals must be outside "if rising_edge". Otherwise,

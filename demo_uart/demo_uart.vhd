@@ -28,16 +28,28 @@ end entity;
 
 architecture main of demo_uart is
 	signal rst, cfg_set, tx_start, tx_break, tx_pin, speed_led: std_logic := '0';
-	signal rx_pin, tx_ready: std_logic;
-	signal cfg, tx_d: std_logic_vector(7 downto 0);
+	signal rx_pin, tx_ready, rx_valid, rx_err: std_logic;
+	signal cfg, tx_d, rx_d, tx_d_enable, rx_d_enable: std_logic_vector(7 downto 0);
 	signal pressed: std_logic_vector(3 downto 0);
+	constant byte0: std_logic_vector(7 downto 0) := (others=>'0');
+	constant byte1: std_logic_vector(7 downto 0) := (others=>'1');
 begin
 	reset: reset_button generic map (initial_rst=>true) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
 	TX <= tx_pin;
 	rx_pin <= RX;
+	tx_d_enable <= byte1 when tx_start else byte0;
+	rx_d_enable <= byte1 when rx_valid else byte0;
+--	serial_port: uart port map (
+--		Clk=>Clk, Rst=>rst, TX=>tx_pin, RX=>rx_pin, CfgSet=>cfg_set, Cfg=>cfg,
+--		TxD=>(tx_d and tx_d_enable) or (rx_d and rx_d_enable),
+--		TxStart=>tx_start or rx_valid, TxReady=>tx_ready, TxBreak=>tx_break,
+--		RxD=>rx_d, RxValid=>rx_valid, RxAck=>rx_valid or rx_err, RxErr=>rx_err
+--	);
 	serial_port: uart port map (
 		Clk=>Clk, Rst=>rst, TX=>tx_pin, RX=>rx_pin, CfgSet=>cfg_set, Cfg=>cfg,
-		TxD=>tx_d, TxStart=>tx_start, TxReady=>tx_ready, TxBreak=>tx_break
+		TxD=>(tx_d and tx_d_enable) or (rx_d and rx_d_enable),
+		TxStart=>tx_start or rx_valid, TxReady=>tx_ready, TxBreak=>tx_break,
+		RxD=>rx_d, RxValid=>rx_valid, RxAck=>rx_valid or rx_err, RxErr=>rx_err
 	);
 	buttons: button_group port map (Clk=>Clk, Rst=>rst, Button=>Btn, O=>pressed);
 	leds: led_group port map (Clk=>Clk, Rst=>rst, I=>(tx_pin, rx_pin, '0', speed_led), W=>(others=>'1'), LED=>LED);

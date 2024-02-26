@@ -112,9 +112,9 @@ entity uart is
 			TxReady: out std_logic;
 			TxBreak: in std_logic;
 			RxD: out std_logic_vector(7 downto 0);
-			RxValid: out std_logic;
+			RxValid: out std_logic := '0';
 			RxAck: in std_logic;
-			RxErr, RxBreak: out std_logic
+			RxErr, RxBreak: out std_logic := '0'
 	);
 begin
 	-- Check that UART configuration (speed+framing) is 2 bytes
@@ -159,12 +159,20 @@ architecture main of uart is
 	begin
 		return baud_period_data(to_integer(unsigned(config.baud(2 downto 0))));
 	end function;
+	impure function baud_start return positive is
+	begin
+		return baud_period / 2;
+	end function;
 	-- data and control signals
+	subtype bit_cnt_t is natural range 0 to 1+9+1+2; -- maximum number of start+data+parity+stop
 	signal tx_w: std_logic; -- write data to transmitter
 	signal tx_shift: std_logic; -- transmit one bit
 	signal tx_bit: std_logic; -- a single bit to be transmitted
 	signal tx_0: std_logic; -- transmit bit '0' (used for break, start, and parity bit)
 	signal tx_1: std_logic; -- transmit bit '1' (used for idle, parity, and stop bit)
+	signal rx_zero: std_logic := '0'; -- set receiving shift register to all zeros
+	signal rx_shift: std_logic := '0'; -- shift one received bit
+	signal rx_data: std_logic_vector(8 downto 0); -- received bits (5 to 9)
 begin
 	-- receiver sampling clock and low pass filter (generates RXF)
 	-- note that serial line idle state is '1'
@@ -223,7 +231,6 @@ begin
 		signal state: state_t := Idle;
 	begin
 		step: process (Clk, Rst) is
-			subtype bit_cnt_t is natural range 0 to 1+9+1+2; -- maximum number of start+data+parity+stop
 			variable bit_cnt: bit_cnt_t;
 			variable timer: natural range 0 to baud_period_data(to_integer(unsigned(uart_baud_1200))); -- maximum period
 		begin
@@ -309,31 +316,136 @@ begin
 	end block;
 	
 	-- receiver
+	rx_register: pkg_shift_register.shift_register_1dir
+		generic map (bits=>9, shift_dir=>pkg_shift_register.right)
+		port map (Clk=>Clk, Rst=>Rst, W=>rx_zero, ShiftW=>rx_shift, SIn=>RXF, POut=>rx_data);
+
 	rx_fsm: block is
-		type state_t is (Idle, Start, Bits, Parity, Stop, Break);
+		type state_t is (Idle, Start, Bits, Parity, Stop, PendingBreak, Break);
 		signal state: state_t := Idle;
+		signal prev_rxf: std_logic;
 	begin
 		step: process (Clk, Rst) is
+			variable bit_cnt: bit_cnt_t;
+			variable timer: natural range 0 to baud_period_data(to_integer(unsigned(uart_baud_1200))); -- maximum period
 		begin
 			if Rst = '1' then
+				rx_zero <= '0';
+				rx_shift <= '0';
+				RxValid <= '0';
+				RxErr <= '0';
+				RxBreak <= '0';
+				prev_rxf <= '0';
 				state <= Idle;
 			elsif rising_edge(Clk) then
+				rx_zero <= '0';
+				rx_shift <= '0';
+				RxBreak <= '0';
 				if reconfigured then
+					RxValid <= '0';
+					RxErr <= '0';
+					prev_rxf <= '0';
 					state <= Idle;
 				else
+					if RxAck = '1' then
+						RxValid <= '0';
+						RxErr <= '0';
+					end if;
+					prev_rxf <= RXF;
 					case state is
 						when Idle =>
-							null;
+							if prev_rxf = '1' and RXF = '0' then
+								state <= Start;
+								rx_zero <= '1'; -- clear rx_register
+								timer := 0;
+							end if;
 						when Start =>
-							null;
+							if sampler = '1' then
+								if timer < baud_start then
+									timer := timer + 1;
+								else
+									bit_cnt := 0;
+									timer := 0;
+									state <= Bits;
+								end if;
+							end if;
 						when Bits =>
-							null;
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								else
+									rx_shift <= '1';
+									bit_cnt := bit_cnt + 1;
+									timer := 0;
+									if bit_cnt = config.bits then
+										state <= Stop; -- parity bit not implemented
+									end if;
+								end if;
+							end if;
 						when Parity =>
-							null;
+							null; -- parity bit not implemented
 						when Stop =>
-							null;
+							if sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								else
+									if RxValid = '1' or RxErr = '1' then
+										-- previous byte or error not read and acknowledged in time
+										RxD <= uart_err_overrun;
+										RxValid <= '0';
+										RxErr <= '1';
+										if RXF = '1' then
+											state <= Idle;
+										else
+											state <= PendingBreak;
+										end if;
+									elsif RXF = '1' then
+										-- valid stop bit, byte received
+										case config.bits is
+											when 5 => RxD <= "000" & rx_data(8 downto 4);
+											when 6 => RxD <= "00" & rx_data(8 downto 3);
+											when 7 => RxD <= "0" & rx_data(8 downto 2);
+											when 8 => RxD <= rx_data(8 downto 1);
+											when 9 => RxD <= rx_data(7 downto 0);
+										end case;
+										RxValid <= '1';
+										RxErr <= '0';
+										state <= Idle;
+									elsif rx_data = "000000000" then
+										-- start bit was the beginning of a break
+										RxValid <= '0';
+										RxErr <= '0';
+										state <= Break;
+									else
+										-- at least one '1' bit received, missing stop bit
+										RxD <= uart_err_frame;
+										RxValid <= '0';
+										RxErr <= '1';
+										bit_cnt := 0;
+										timer := 0;
+										state <= PendingBreak;
+									end if;
+								end if;
+							end if;
+						when PendingBreak =>
+							if RXF = '1' then
+								state <= Idle;
+							elsif sampler = '1' then
+								if timer < baud_period then
+									timer := timer + 1;
+								elsif bit_cnt < bit_cnt_t'high then
+									bit_cnt := bit_cnt + 1;
+									timer := 0;
+								else
+									state <= Break;
+								end if;
+							end if;
 						when Break =>
-							null;
+							if RXF = '0' then
+								RxBreak <= '1';
+							else
+								state <= Idle;
+							end if;
 					end case;
 				end if;
 			end if;
