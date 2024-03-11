@@ -1,9 +1,3 @@
-*.flock
-*.bsf
-*.cmp
-*.inc
-*.map
-*.pof
 *.qws
 *.rpt
 db/
