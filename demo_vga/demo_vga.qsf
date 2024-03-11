@@ -42,7 +42,7 @@ set_global_assignment -name DEVICE EP4CE6E22C8
 set_global_assignment -name TOP_LEVEL_ENTITY demo_vga
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 23.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:47:55  MARCH 11, 2024"
-set_global_assignment -name LAST_QUARTUS_VERSION "23.1std.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "22.1std.2 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
@@ -65,3 +65,5 @@ set_global_assignment -name VHDL_FILE ../lib/io/button.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/crystal.vhd -library lib_io
 set_global_assignment -name VHDL_FILE demo_vga.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/vga.vhd
+
+set_global_assignment -name QIP_FILE ../lib/io/vga_pixel_clk_pll.qip
