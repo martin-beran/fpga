@@ -82,6 +82,10 @@ packages:
 
 A demo of a serial port controller
 
+## demo_vga
+
+A demo of VGA controller
+
 ## full_adder
 
 A 1-bit full adder
