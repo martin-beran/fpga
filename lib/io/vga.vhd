@@ -112,22 +112,52 @@ architecture main of vga is
 	signal v: natural range 0 to 524 := 0; -- vertical position
 begin
 	process (PxClk) is
+		variable bcolor: boolean := false;
+		variable bstart, boff, bcnt: natural := 0;
 	begin
 		if rising_edge(PxClk) then
 			Addr <= (others=>'0');
 			-- generate RGB signal
 			if h < h_vis and v < v_vis then
-				if
-					h = 0 or h = 1 or h = 4 or h = 5 or h = 639 or h = 638 or h = 635 or h = 634 or
-					v = 0 or v = 1 or v = 4 or v = 5 or v = 479 or v = 478 or v = 475 or v = 474
+				if h < h_border or h >= h_vis - h_border or v < v_border or v >= v_vis - v_border then
+					if h = 0 then
+						if v = 0 then
+							if bstart < 4 then
+								bstart := bstart + 1;
+							else
+								bstart := 0;
+								if boff < 11 then
+									boff := boff + 1;
+								else
+									boff := 0;
+									bcolor := not bcolor;
+								end if;
+							end if;
+							bcnt := boff;
+						end if;
+						if bcnt < 11 then
+							bcnt := bcnt + 1;
+						else
+							bcnt := 0;
+							bcolor := not bcolor;
+						end if;
+					end if;
+					if bcolor then
+						R <= '1';
+						G <= '0';
+						B <= '0';
+					else
+						R <= '0';
+						G <= '1';
+						B <= '1';
+					end if;
+				elsif
+					h = h_border + 0 or h = h_border + 1 or h = h_vis - h_border - 2 or h = h_vis - h_border - 1 or
+					v = v_border + 0 or v = v_border + 1 or v = v_vis - v_border - 2 or v = v_vis - v_border - 1
 				then
 					R <= '1';
 					G <= '1';
 					B <= '1';
-				elsif h = 2 or h = 3 or h = 637 or h = 636 or v = 3 or v = 3 or v = 477 or v = 476 then
-					R <= '0';
-					G <= '0';
-					B <= '0';
 				else
 					R <= to_unsigned(h, 4)(1);
 					G <= to_unsigned(h, 4)(2);
