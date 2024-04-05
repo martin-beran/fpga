@@ -74,18 +74,21 @@ BEGIN
 		clock_enable_output_a => "BYPASS",
 		clock_enable_output_b => "BYPASS",
 		indata_reg_b => "CLOCK1",
+		init_file => "img1.mif",
 		intended_device_family => "Cyclone IV E",
 		lpm_type => "altsyncram",
-		numwords_a => 30000,
-		numwords_b => 30000,
+		maximum_depth => 4096,
+		numwords_a => 30720,
+		numwords_b => 30720,
 		operation_mode => "BIDIR_DUAL_PORT",
 		outdata_aclr_a => "NONE",
 		outdata_aclr_b => "NONE",
 		outdata_reg_a => "UNREGISTERED",
 		outdata_reg_b => "UNREGISTERED",
 		power_up_uninitialized => "FALSE",
-		read_during_write_mode_port_a => "NEW_DATA_WITH_NBE_READ",
-		read_during_write_mode_port_b => "NEW_DATA_WITH_NBE_READ",
+		ram_block_type => "M9K",
+		read_during_write_mode_port_a => "NEW_DATA_NO_NBE_READ",
+		read_during_write_mode_port_b => "NEW_DATA_NO_NBE_READ",
 		widthad_a => 15,
 		widthad_b => 15,
 		width_a => 8,
@@ -121,7 +124,7 @@ END SYN;
 -- Retrieval info: PRIVATE: BYTE_ENABLE_A NUMERIC "0"
 -- Retrieval info: PRIVATE: BYTE_ENABLE_B NUMERIC "0"
 -- Retrieval info: PRIVATE: BYTE_SIZE NUMERIC "8"
--- Retrieval info: PRIVATE: BlankMemory NUMERIC "1"
+-- Retrieval info: PRIVATE: BlankMemory NUMERIC "0"
 -- Retrieval info: PRIVATE: CLOCK_ENABLE_INPUT_A NUMERIC "0"
 -- Retrieval info: PRIVATE: CLOCK_ENABLE_INPUT_B NUMERIC "0"
 -- Retrieval info: PRIVATE: CLOCK_ENABLE_OUTPUT_A NUMERIC "0"
@@ -143,17 +146,17 @@ END SYN;
 -- Retrieval info: PRIVATE: INTENDED_DEVICE_FAMILY STRING "Cyclone IV E"
 -- Retrieval info: PRIVATE: JTAG_ENABLED NUMERIC "0"
 -- Retrieval info: PRIVATE: JTAG_ID STRING "NONE"
--- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
--- Retrieval info: PRIVATE: MEMSIZE NUMERIC "240000"
+-- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "4096"
+-- Retrieval info: PRIVATE: MEMSIZE NUMERIC "245760"
 -- Retrieval info: PRIVATE: MEM_IN_BITS NUMERIC "0"
--- Retrieval info: PRIVATE: MIFfilename STRING ""
+-- Retrieval info: PRIVATE: MIFfilename STRING "img1.mif"
 -- Retrieval info: PRIVATE: OPERATION_MODE NUMERIC "3"
 -- Retrieval info: PRIVATE: OUTDATA_ACLR_B NUMERIC "0"
 -- Retrieval info: PRIVATE: OUTDATA_REG_B NUMERIC "0"
--- Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "0"
+-- Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "2"
 -- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_MIXED_PORTS NUMERIC "2"
--- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "4"
--- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_B NUMERIC "4"
+-- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "3"
+-- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_B NUMERIC "3"
 -- Retrieval info: PRIVATE: REGdata NUMERIC "1"
 -- Retrieval info: PRIVATE: REGq NUMERIC "0"
 -- Retrieval info: PRIVATE: REGrdaddress NUMERIC "0"
@@ -180,18 +183,21 @@ END SYN;
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_B STRING "BYPASS"
 -- Retrieval info: CONSTANT: INDATA_REG_B STRING "CLOCK1"
+-- Retrieval info: CONSTANT: INIT_FILE STRING "img1.mif"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone IV E"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altsyncram"
--- Retrieval info: CONSTANT: NUMWORDS_A NUMERIC "30000"
--- Retrieval info: CONSTANT: NUMWORDS_B NUMERIC "30000"
+-- Retrieval info: CONSTANT: MAXIMUM_DEPTH NUMERIC "4096"
+-- Retrieval info: CONSTANT: NUMWORDS_A NUMERIC "30720"
+-- Retrieval info: CONSTANT: NUMWORDS_B NUMERIC "30720"
 -- Retrieval info: CONSTANT: OPERATION_MODE STRING "BIDIR_DUAL_PORT"
 -- Retrieval info: CONSTANT: OUTDATA_ACLR_A STRING "NONE"
 -- Retrieval info: CONSTANT: OUTDATA_ACLR_B STRING "NONE"
 -- Retrieval info: CONSTANT: OUTDATA_REG_A STRING "UNREGISTERED"
 -- Retrieval info: CONSTANT: OUTDATA_REG_B STRING "UNREGISTERED"
 -- Retrieval info: CONSTANT: POWER_UP_UNINITIALIZED STRING "FALSE"
--- Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_A STRING "NEW_DATA_WITH_NBE_READ"
--- Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_B STRING "NEW_DATA_WITH_NBE_READ"
+-- Retrieval info: CONSTANT: RAM_BLOCK_TYPE STRING "M9K"
+-- Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_A STRING "NEW_DATA_NO_NBE_READ"
+-- Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_B STRING "NEW_DATA_NO_NBE_READ"
 -- Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "15"
 -- Retrieval info: CONSTANT: WIDTHAD_B NUMERIC "15"
 -- Retrieval info: CONSTANT: WIDTH_A NUMERIC "8"

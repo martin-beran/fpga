@@ -22,10 +22,11 @@
 --     Whole frame      525     16.683217477656
 --
 -- Video RAM is organized similarly to ZX Spectrum:
--- Bitmap of WxH = 256x192 pixels = 32x192 B
+-- Bitmap of WxH = 256x192 (logical) pixels = 32x192 B
+-- Each logical pixel is 2x2 VGA pixels
 -- Bytes in a line are left-to-right
 -- Lines are top-to-bottom (different ordering than ZX Spectrum)
--- 8 pixels represented by a byte: LSB=left, MSB=right
+-- 8 pixels represented by a byte: LSB=left, MSB=right, 0=background, 1=foreground
 -- Attribute array 32x24 B for blocks of 8x8 pixels
 -- MSB           LSB
 -- |0|R|G|B|0|R|G|B|
@@ -33,6 +34,15 @@
 -- One byte for border color
 -- MSB           LSB
 -- |0|0|0|0|0|R|G|B|
+--
+-- Each read from video RAM needs 3 clock periods:
+-- 0 = set address to Addr
+-- 1 = memory starts reading
+-- 2 = data available on Data
+-- Each group of 8 logical pixels (16 VGA) pixels in a row needs 2 bytes:
+-- bitmap = one byte selecting background/foreground colors of each logical pixel
+-- attributes = one byte defining background/foreground colors, common for all 8 pixels
+-- Reading of data for each group of 8 logical pixels starts when displaying the first pixel of the previous group.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -52,9 +62,9 @@ package pkg_vga is
 			-- Start address of image bitmap
 			AddrPx: addr_t := (others=>'0');
 			-- Start address of attribute array
-			AddrAttr: addr_t := to_unsigned(32 * 192, addr_bits);
+			AddrAttr: addr_t := to_unsigned(32 * 192, addr_bits); -- 6144 0x1800
 			-- Address of border color
-			AddrBorder: addr_t := to_unsigned(32 * 192 + 32 * 24, addr_bits)
+			AddrBorder: addr_t := to_unsigned(32 * 192 + 32 * 24, addr_bits) -- 6144+768=6912 0x1800+0x300=0x1b00
 		);
 		port (
 			-- pixel clock, must have the correct frequency
@@ -98,6 +108,8 @@ entity vga is
 end entity;
 
 architecture main of vga is
+	-- line: h_vis + h_fp + h_sync + h_bp = 800
+	-- frame: v_vis + v_fp + v_sync + v_bp = 525
 	constant h_vis: natural := 640; -- visible pixels in line
 	constant h_border: natural := 64; -- horizontal border width (pixels)
 	constant h_fp: natural := 16; -- horizontal front porch (pixels)
@@ -108,62 +120,80 @@ architecture main of vga is
 	constant v_fp: natural := 10; -- vertical front porch (lines)
 	constant v_sync: natural := 2; -- vertical sync pulse (lines)
 	constant v_bp: natural := 33; -- vertical back porch (lines)
-	signal h: natural range 0 to 799 := 0; -- horizontal position
-	signal v: natural range 0 to 524 := 0; -- vertical position
+	constant prefetch: natural := 16; -- read this many pixels in advance	
 begin
 	process (PxClk) is
-		variable bcolor: boolean := false;
-		variable bstart, boff, bcnt: natural := 0;
+		variable h: natural range 0 to 799 := 0; -- horizontal position
+		variable v: natural range 0 to 524 := 0; -- vertical position
+		variable px, px1, attr: data_t; -- the current and next pixels, the current attributes
+		variable px_addr0, px_addr: addr_t; -- first and current pixel address
+		variable attr_addr0, attr_addr: addr_t; -- first and current attribute address
+		variable x2, y2: boolean := false; -- counting 2x2 VGA pixels in a logical pixel
+		variable px8: natural range 0 to 7 := 0; -- counting pixels in a group of 8
 	begin
 		if rising_edge(PxClk) then
-			Addr <= (others=>'0');
+			-- read image data from memory
+			if v < v_border or v >= v_vis - v_border or
+				h < h_border - prefetch or h >= h_vis - h_border - prefetch
+			then
+				-- fetch border color
+				Addr <= AddrBorder;
+			else
+				-- fetch pixel data
+				if h = h_border - prefetch then
+					if v = v_border then
+						px_addr0 := AddrPx;
+						px_addr := px_addr0;
+						attr_addr0 := AddrAttr;
+						attr_addr := attr_addr0;
+					elsif y2 then
+						px_addr := px_addr0;
+						attr_addr := attr_addr0;
+					else
+						px_addr := px_addr + 1;
+						px_addr0 := px_addr;
+						attr_addr := attr_addr + 1;
+						attr_addr0 := attr_addr;
+					end if;
+				end if;
+				if px8 < 4 then
+					Addr <= px_addr;
+				else
+					Addr <= attr_addr;
+				end if;
+			end if;
+			if not x2 then
+				case px8 is
+					when 0 =>
+						px := px1;
+						attr := Data;
+					when 3 =>
+						px1 := Data;
+					when others =>
+						null;
+				end case;
+			end if;
 			-- generate RGB signal
 			if h < h_vis and v < v_vis then
-				if h < h_border or h >= h_vis - h_border or v < v_border or v >= v_vis - v_border then
-					if h = 0 then
-						if v = 0 then
-							if bstart < 4 then
-								bstart := bstart + 1;
-							else
-								bstart := 0;
-								if boff < 11 then
-									boff := boff + 1;
-								else
-									boff := 0;
-									bcolor := not bcolor;
-								end if;
-							end if;
-							bcnt := boff;
-						end if;
-						if bcnt < 11 then
-							bcnt := bcnt + 1;
-						else
-							bcnt := 0;
-							bcolor := not bcolor;
-						end if;
-					end if;
-					if bcolor then
-						R <= '1';
-						G <= '0';
-						B <= '0';
+				if h >= h_border and h < h_vis - h_border and v >= v_border and v < v_vis - v_border then
+					-- image
+					if px(px8) = '1' then
+						R <= attr(6);
+						G <= attr(5);
+						B <= attr(4);
 					else
-						R <= '0';
-						G <= '1';
-						B <= '1';
+						R <= attr(2);
+						G <= attr(1);
+						B <= attr(0);
 					end if;
-				elsif
-					h = h_border + 0 or h = h_border + 1 or h = h_vis - h_border - 2 or h = h_vis - h_border - 1 or
-					v = v_border + 0 or v = v_border + 1 or v = v_vis - v_border - 2 or v = v_vis - v_border - 1
-				then
-					R <= '1';
-					G <= '1';
-					B <= '1';
 				else
-					R <= to_unsigned(h, 4)(1);
-					G <= to_unsigned(h, 4)(2);
-					B <= to_unsigned(h, 4)(3);
+					-- border
+					R <= attr(2);
+					G <= attr(1);
+					B <= attr(0);
 				end if;
 			else
+				-- sync
 				R <= '0';
 				G <= '0';
 				B <= '0';
@@ -179,15 +209,26 @@ begin
 			else
 				VSync <= '1';
 			end if;
-			if h < h_vis + h_fp + h_sync + h_bp - 1 then
-				h <= h + 1;
-			else
-				h <= 0;
-				if v < v_vis + v_fp + v_sync + v_bp - 1 then
-					v <= v + 1;
+			if h = h_vis + h_fp + h_sync + h_bp - 1 then
+				h := 0;
+				if v = v_vis + v_fp + v_sync + v_bp - 1 then
+					v := 0;
 				else
-					v <= 0;
+					v := v + 1;
 				end if;
+			else
+				h := h + 1;
+			end if;
+			if x2 then
+				if px8 = 7 then
+					px8 := 0;
+				else
+					px8 := px8 + 1;
+				end if;
+			end if;
+			x2 := not x2;
+			if h = 0 then
+				y2 := not y2;
 			end if;
 		end if;
 	end process;
