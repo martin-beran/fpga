@@ -222,13 +222,19 @@ begin
 			if x2 then
 				if px8 = 7 then
 					px8 := 0;
+					px_addr := px_addr + 1;
+					attr_addr := attr_addr + 1;
 				else
 					px8 := px8 + 1;
 				end if;
 			end if;
 			x2 := not x2;
 			if h = 0 then
-				y2 := not y2;
+				if v = 0 then
+					y2 := false;
+				else
+					y2 := not y2;
+				end if;
 			end if;
 		end if;
 	end process;
