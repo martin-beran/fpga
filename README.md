@@ -86,6 +86,11 @@ A demo of a serial port controller
 
 A demo of VGA controller
 
+- Buttons:
+    - Button1: start blinking
+    - Button2: stop blinking
+    - Button3: clear image
+
 ## full_adder
 
 A 1-bit full adder

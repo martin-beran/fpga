@@ -59,16 +59,25 @@ package pkg_vga is
 	subtype addr_t is unsigned(addr_bits - 1 downto 0);
 	-- Data type
 	subtype data_t is unsigned(data_bits - 1 downto 0);
+	-- Default start address of image bitmap (0 0x0000)
+	constant AddrPxDefault: addr_t := (others=>'0');
+	-- Default start address of attribute array (6144 0x1800)
+	constant AddrAttrDefault: addr_t := to_unsigned(to_integer(AddrPxDefault) + 32*192, addr_bits);
+	-- Default address of border color (6144+768=6912 0x1800+0x300=0x1b00)
+	constant AddrBorderDefault: addr_t := to_unsigned(to_integer(AddrAttrDefault) + 32*24, addr_bits);
+	-- Default address of blinking period (6144+768+1=6913 0x1800+0x300+0x01=0x1b01)
+	constant AddrBlinkDefault: addr_t := to_unsigned(to_integer(AddrBorderDefault) + 1, addr_bits);
+	
 	component vga is
 		generic (
 			-- Start address of image bitmap
-			AddrPx: addr_t := (others=>'0');
+			AddrPx: addr_t := AddrPxDefault;
 			-- Start address of attribute array
-			AddrAttr: addr_t := to_unsigned(32*192, addr_bits); -- 6144 0x1800
+			AddrAttr: addr_t := AddrAttrDefault;
 			-- Address of border color
-			AddrBorder: addr_t := to_unsigned(32*192 + 32*24, addr_bits); -- 6144+768=6912 0x1800+0x300=0x1b00
+			AddrBorder: addr_t := AddrBorderDefault;
 			-- Address of blinking period
-			AddrBlink: addr_t := to_unsigned(32*192 + 32*24 + 1, addr_bits) -- 6144+768+1=6913 0x1800+0x300+0x01=0x1b01
+			AddrBlink: addr_t := AddrBlinkDefault
 		);
 		port (
 			-- pixel clock, must have the correct frequency
