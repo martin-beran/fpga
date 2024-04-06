@@ -23,25 +23,27 @@
 --
 -- Video RAM is organized similarly to ZX Spectrum:
 -- Bitmap of WxH = 256x192 (logical) pixels = 32x192 B
--- Each logical pixel is 2x2 VGA pixels
--- Bytes in a line are left-to-right
--- Lines are top-to-bottom (different ordering than ZX Spectrum)
--- 8 pixels represented by a byte: LSB=left, MSB=right, 0=background, 1=foreground
+--     Each logical pixel is 2x2 VGA pixels
+--     Bytes in a line are left-to-right
+--     Lines are top-to-bottom (different ordering than ZX Spectrum)
+--     8 pixels represented by a byte: LSB=left, MSB=right, 0=background, 1=foreground
 -- Attribute array 32x24 B for blocks of 8x8 pixels
--- MSB           LSB
--- |0|R|G|B|0|R|G|B|
--- fg color|bg color
+--     MSB           LSB
+--     |  b  |  R  |  G  |  B  |  0  |  R  |  G  |  B  |
+--      blink|    fg color     |    bg color
 -- One byte for border color
--- MSB           LSB
--- |0|0|0|0|0|R|G|B|
---
+--     MSB           LSB
+--     |0|0|0|0|0|R|G|B|
+-- One byte containing blinking half-period (number of frames)
+--     0 = no blinking
+--     1..255 = exchange bg/fg colors after this number of frames
 -- Each read from video RAM needs 3 clock periods:
 -- 0 = set address to Addr
 -- 1 = memory starts reading
 -- 2 = data available on Data
 -- Each group of 8 logical pixels (16 VGA) pixels in a row needs 2 bytes:
 -- bitmap = one byte selecting background/foreground colors of each logical pixel
--- attributes = one byte defining background/foreground colors, common for all 8 pixels
+-- attributes = one byte defining background/foreground colors and blinking, common for all 8 pixels
 -- Reading of data for each group of 8 logical pixels starts when displaying the first pixel of the previous group.
 
 library ieee;
@@ -62,9 +64,11 @@ package pkg_vga is
 			-- Start address of image bitmap
 			AddrPx: addr_t := (others=>'0');
 			-- Start address of attribute array
-			AddrAttr: addr_t := to_unsigned(32 * 192, addr_bits); -- 6144 0x1800
+			AddrAttr: addr_t := to_unsigned(32*192, addr_bits); -- 6144 0x1800
 			-- Address of border color
-			AddrBorder: addr_t := to_unsigned(32 * 192 + 32 * 24, addr_bits) -- 6144+768=6912 0x1800+0x300=0x1b00
+			AddrBorder: addr_t := to_unsigned(32*192 + 32*24, addr_bits); -- 6144+768=6912 0x1800+0x300=0x1b00
+			-- Address of blinking period
+			AddrBlink: addr_t := to_unsigned(32*192 + 32*24 + 1, addr_bits) -- 6144+768+1=6913 0x1800+0x300+0x01=0x1b01
 		);
 		port (
 			-- pixel clock, must have the correct frequency
@@ -97,7 +101,8 @@ entity vga is
 	generic (
 		AddrPx: addr_t;
 		AddrAttr: addr_t;
-		AddrBorder: addr_t
+		AddrBorder: addr_t;
+		AddrBlink: addr_t
 	);
 	port (
 		PxClk: in std_logic;
@@ -125,19 +130,26 @@ begin
 	process (PxClk) is
 		variable h: natural range 0 to 799 := 0; -- horizontal position
 		variable v: natural range 0 to 524 := 0; -- vertical position
-		variable px, px1, attr: data_t; -- the current and next pixels, the current attributes
+		variable px, px1, attr: data_t; -- the current and next pixels, current attributes
+		variable blink, frame: data_t := (others=>'0'); -- period and frame counter for blinking
+		variable reverse: std_logic := '0'; -- current blinking state
 		variable px_addr0, px_addr: addr_t; -- first and current pixel address
 		variable attr_addr0, attr_addr: addr_t; -- first and current attribute address
 		variable x2, y2: boolean := false; -- counting 2x2 VGA pixels in a logical pixel
-		variable px8: natural range 0 to 7 := 0; -- counting pixels in a group of 8
+		variable px8, py8: natural range 0 to 7 := 0; -- counting pixels in a group of 8
 	begin
 		if rising_edge(PxClk) then
 			-- read image data from memory
 			if v < v_border or v >= v_vis - v_border or
 				h < h_border - prefetch or h >= h_vis - h_border - prefetch
 			then
-				-- fetch border color
-				Addr <= AddrBorder;
+				if v = v_vis then
+					-- fetch blinking period
+					Addr <= AddrBlink;
+				else
+					-- fetch border color
+					Addr <= AddrBorder;
+				end if;
 			else
 				-- fetch pixel data
 				if h = h_border - prefetch then
@@ -146,14 +158,17 @@ begin
 						px_addr := px_addr0;
 						attr_addr0 := AddrAttr;
 						attr_addr := attr_addr0;
-					elsif y2 then
-						px_addr := px_addr0;
-						attr_addr := attr_addr0;
 					else
-						px_addr := px_addr + 1;
-						px_addr0 := px_addr;
-						attr_addr := attr_addr + 1;
-						attr_addr0 := attr_addr;
+						if y2 then
+							px_addr := px_addr0;
+						else
+							px_addr0 := px_addr;
+						end if;
+						if y2 or py8 /= 0 then
+							attr_addr := attr_addr0;
+						else
+							attr_addr0 := attr_addr;
+						end if;
 					end if;
 				end if;
 				if px8 < 4 then
@@ -173,11 +188,14 @@ begin
 						null;
 				end case;
 			end if;
+			if v = v_vis then
+				blink := Data;
+			end if;
 			-- generate RGB signal
 			if h < h_vis and v < v_vis then
 				if h >= h_border and h < h_vis - h_border and v >= v_border and v < v_vis - v_border then
 					-- image
-					if px(px8) = '1' then
+					if (px(px8) xor (reverse and attr(7))) = '1' then
 						R <= attr(6);
 						G <= attr(5);
 						B <= attr(4);
@@ -213,6 +231,17 @@ begin
 				h := 0;
 				if v = v_vis + v_fp + v_sync + v_bp - 1 then
 					v := 0;
+					-- blinking
+					if frame < blink then
+						frame := frame + 1;
+					else
+						frame := (others=>'0');
+						if unsigned(blink) = 0 then
+							reverse := '0';
+						else
+							reverse := not reverse;
+						end if;
+					end if;
 				else
 					v := v + 1;
 				end if;
@@ -222,8 +251,10 @@ begin
 			if x2 then
 				if px8 = 7 then
 					px8 := 0;
-					px_addr := px_addr + 1;
-					attr_addr := attr_addr + 1;
+					if h > h_border - prefetch and h <= h_vis - h_border - prefetch then
+						px_addr := px_addr + 1;
+						attr_addr := attr_addr + 1;
+					end if;
 				else
 					px8 := px8 + 1;
 				end if;
@@ -232,8 +263,16 @@ begin
 			if h = 0 then
 				if v = 0 then
 					y2 := false;
+					py8 := 0;
 				else
 					y2 := not y2;
+					if y2 then
+						if py8 = 7 then
+							py8 := 0;
+						else
+							py8 := py8 + 1;
+						end if;
+					end if;
 				end if;
 			end if;
 		end if;
