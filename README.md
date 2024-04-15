@@ -78,6 +78,16 @@ packages:
 - lib_io.pkg_seg7
 - lib_io.pkg_speaker
 
+## demo_ps2
+
+A demo of a PS/2 keyboard controller. It displays received scan codes on
+7-segment display.
+
+- Buttons:
+    - Button1: toggle NumLock LED
+    - Button2: toggle CapsLock LED
+    - Button3: toggle ScrollLock LED
+
 ## demo_uart
 
 A demo of a serial port controller
@@ -314,6 +324,8 @@ implementing the transition table and not in a called procedure or function.
    Settings_
 1. The default logic for pins is 2.5 V. Change to 3.3 V LVTTL in _Device
    / Device and Pin Options_.
+1. Optional: Select _VHDL 2008_ in _Settings / Compiler Settings / VHDL Input_
+   (default is VHDL 1993)
 
 # Glossary
 
