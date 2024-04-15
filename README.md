@@ -84,9 +84,9 @@ A demo of a PS/2 keyboard controller. It displays received scan codes on
 7-segment display.
 
 - Buttons:
-    - Button1: toggle NumLock LED
-    - Button2: toggle CapsLock LED
-    - Button3: toggle ScrollLock LED
+    - Button1: toggle NumLock LED and LED1
+    - Button2: toggle CapsLock LED and LED2
+    - Button3: toggle ScrollLock LED and LED3
 
 ## demo_uart
 
