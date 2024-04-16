@@ -295,10 +295,78 @@ Button codes:
 
 ## VHDL
 
+## Syntax
+
 Comments start with `--` (like in SQL)
 
 Identifiers case-insensitive, letters, digits (not on the beginning),
 underscores (not on the beginning or end, not two adjacent)
+
+### Finite State Machine (FSM)
+
+Implemented by an enumerated type defining states and one or two processes. It
+is not possible to define types and signals in a process, but the FSM
+implementation can be enclosed in a block, in order to keep FSM states and
+processes separated from the rest of the architecture.
+
+One implementation style consists of one sequential process (synchronized by
+the clock and keeping the current state in a register) and one combinatorial
+process (asynchronous, implemeting the transition function. An example is in
+[alarm_clock/control.vhd](alarm_clock/control.vhd).
+
+    SOME_fsm: block is
+        type state is (STATE0, STATE1, ...);
+        signal current_state, next_state: state := STATE0;
+    begin
+        step: process (Clk) is
+        begin
+            if rising_edge(Clk) then
+                current_state <= next_state;
+            end if;
+        end process;
+        transition: process (current_state) is
+        begin
+            next_state <= current_state;
+            case current_state is
+                when STATE0 =>
+                    ...
+                    next_state <= ...;
+                when STATE1 =>
+                    ...
+                    next_state <= ...;
+                when ...
+                when others =>
+                    null;
+            end case;
+        end process;
+    end block;
+
+The second implementation style combines both processes into one sequential
+process. An example is in [lib/io/uart.vhd](lib/io/uart.vhd).
+
+    SOME_fsm: block is
+        type state_t is (STATE0, STATE1, ...);
+        signal state: state_t := STATE0:
+    begin
+        step: process (Clk, Rst) is
+        begin
+            if Rst = '1' then
+                state <= STATE0;
+            elsif rising_edge(Clk) then
+                case state is
+                    when STATE0 =>
+                        ...
+                        state <= ...;
+                    when STATE1 =>
+                        ...
+                        state <= ...;
+                    when ...
+                    when others =>
+                        null;
+                end case;
+            end if;
+        end process;
+    end block;
 
 ## Quartus
 
