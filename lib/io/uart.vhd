@@ -168,8 +168,8 @@ architecture main of uart is
 	signal tx_w: std_logic; -- write data to transmitter
 	signal tx_shift: std_logic; -- transmit one bit
 	signal tx_bit: std_logic; -- a single bit to be transmitted
-	signal tx_0: std_logic; -- transmit bit '0' (used for break, start, and parity bit)
-	signal tx_1: std_logic; -- transmit bit '1' (used for idle, parity, and stop bit)
+	signal tx_0: std_logic := '0'; -- transmit bit '0' (used for break, start, and parity bit)
+	signal tx_1: std_logic := '1'; -- transmit bit '1' (used for idle, parity, and stop bit)
 	signal rx_zero: std_logic := '0'; -- set receiving shift register to all zeros
 	signal rx_shift: std_logic := '0'; -- shift one received bit
 	signal rx_data: std_logic_vector(8 downto 0); -- received bits (5 to 9)
@@ -238,6 +238,8 @@ begin
 		begin
 			if Rst = '1' then
 				state <= Idle;
+				tx_0 <= '0';
+				tx_1 <= '1';
 			elsif rising_edge(Clk) then
 				tx_shift <= '0';
 				TxReady <= '0';
