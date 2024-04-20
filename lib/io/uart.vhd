@@ -139,7 +139,7 @@ architecture main of uart is
 	end record;
 	pure function config_reset return config_t is
 	begin
-		return (baud=>uart_baud_9600, bits=>8, parity=>uart_parity_n, stop=>uart_stop_1);
+		return (baud=>uart_baud_default, bits=>8, parity=>uart_parity_n, stop=>uart_stop_1);
 	end function;
 	signal config: config_t := config_reset; -- current configuration
 	signal reconfigured: boolean := false; -- notify transmitter and receiver
@@ -187,10 +187,12 @@ begin
 		if Rst = '1' then
 			state := (others=>'1');
 			RXF <= '1';
-		elsif rising_edge(Clk) and sampler = '1' then
-			state := state(state'high - 1 downto 0) & RX;
-			if state = state0 or state = state1 then
-				RXF <= state(0);
+		elsif rising_edge(Clk) then
+			if sampler = '1' then
+				state := state(state'high - 1 downto 0) & RX;
+				if state = state0 or state = state1 then
+					RXF <= state(0);
+				end if;
 			end if;
 		end if;
 	end process;

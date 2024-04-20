@@ -40,11 +40,16 @@ architecture main of demo_ps2 is
 	signal tx_data, rx_data: std_logic_vector(7 downto 0);
 	signal tx_start, tx_ready, rx_valid, rx_ack, rx_err: std_logic;
 	signal send_lock_state: boolean := false;
+	type rcv_bytes_t is array (1 downto 0) of std_logic_vector(7 downto 0);
+	signal rcv_bytes: rcv_bytes_t := (others=>(others=>'0'));
+	signal seg7_decoded: seg7_t(3 downto 0);
+	signal dbg: std_logic := '0';
 begin
-	-- handle reset button
+	-- reset button
 	reset: reset_button generic map (initial_rst=>true) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
-	
-	-- handle buttons
+	LED(3) <= not dbg;
+
+	-- buttons
 	buttons: button_group port map (Clk=>Clk, Rst=>rst, Button=>Btn, O(2 downto 0)=>btn_state);
 	
 	-- serial port, will be replaced by PS/2 later
@@ -62,60 +67,100 @@ begin
 			constant byte0: std_logic_vector(7 downto 0) := X"ed";
 			variable byte1: std_logic_vector(7 downto 0) := X"00";
 			variable restart: boolean := false;
+			variable busy: boolean := false; -- wait for tx_ready change
 		begin
 			if rst = '1' then
+				state <= Init;
 				tx_data <= (others=>'0');
 				tx_start <= '0';
+				restart := false;
 			elsif rising_edge(Clk) then
 				if send_lock_state then
 					byte1 := "00000" & lock_state(1) & lock_state(0) & lock_state(2);
 				end if;
-				case state is
-					when Init =>
-						if send_lock_state then
-							state <= Start;
-						end if;
-					when Start =>
-						if tx_ready = '1' then
-							state <= Send1;
-							tx_data <= byte0;
-							tx_start <= '1';
-						end if;
-					when Send1 =>
-						tx_start <= '0';
-						if tx_ready = '1' then
-							state <= Send2;
-							tx_data <= byte1;
-							tx_start <= '1';
-						end if;
-					when Send2 =>
-						if tx_ready = '1' then
-							if restart or send_lock_state then
+				if not (busy and tx_ready = '1') then
+					busy := false;
+					tx_start <= '0';
+					case state is
+						when Init =>
+							if send_lock_state then
 								state <= Start;
-								restart := false;
-							else
-								state <= Init;
 							end if;
-						elsif send_lock_state then
-							restart := true;
-						end if;
-					when others =>
-						null;
-				end case;
+						when Start =>
+							if tx_ready = '1' then
+								state <= Send1;
+								busy := true;
+								tx_data <= byte0;
+								tx_start <= '1';
+							end if;
+						when Send1 =>
+							if tx_ready = '1' then
+								state <= Send2;
+								busy := true;
+								tx_data <= byte1;
+								tx_start <= '1';
+							end if;
+						when Send2 =>
+							if tx_ready = '1' then
+								if restart or send_lock_state then
+									state <= Start;
+									restart := false;
+								else
+									state <= Init;
+								end if;
+							elsif send_lock_state then
+								restart := true;
+							end if;
+						when others =>
+							null;
+					end case;
+				end if;
 			end if;
 		end process;
 	end block;
 	
 	kbd_recv: process (Clk, rst) is
+		variable busy: boolean := false; -- wait for rx_ack propagation
 	begin
 		if rst = '1' then
 			rx_ack <= '0';
+			rcv_bytes <= (others=>(others=>'0'));
 		elsif rising_edge(Clk) then
+			rx_ack <= '0';
+			if busy then
+				busy := false;
+			else
+				if rx_err = '1' then
+					rx_ack <= '1';
+					busy := true;
+				elsif rx_valid = '1' then
+					rx_ack <= '1';
+					rcv_bytes(1) <= rcv_bytes(0);
+					rcv_bytes(0) <= rx_data;
+					busy := true;
+				end if;
+			end if;
 		end if;
 	end process;
 	
-	-- handle lock indication LEDs
-	led_ctl: led_group port map (Clk=>Clk, Rst=>rst, I=>'0'&lock_state, LED=>LED);
+	-- display scan codes
+	seg7_display: seg7_raw port map (
+		Clk=>Clk, Rst=>rst,
+		Seg7=>seg7_decoded, DP=>"0100", EnaSeg7=>"1111", EnaDP=>"1111", WSeg7=>"1111", WDP=>"1111",
+		DIG=>DIG, SEG=>SEG
+	);
+
+	decoder: for d in seg7_decoded'range generate
+	begin
+		decoder: seg7_decoder port map (
+			I=>unsigned(rcv_bytes(d / 2)(4 * (d mod 2) + 3 downto 4 * (d mod 2))),
+			CP=>'0',
+			O=>seg7_decoded(d)
+		);
+	end generate;
+
+	-- lock indication LEDs
+	led_ctl: led_group port map (Clk=>Clk, Rst=>rst, I=>dbg&lock_state, LED(2 downto 0)=>LED(2 downto 0));
 	
 	lock_leds: process (Clk, rst) is
 	begin
@@ -125,15 +170,14 @@ begin
 			lock_old <= (others=>'1');
 		elsif rising_edge(Clk) then
 			lock_old <= lock_state;
+			send_lock_state <= false;
 			if lock_state /= lock_old then
-				-- TODO: send new state to the keyboard
+				send_lock_state <= true;
 			end if;
 			btn_old <= btn_state;
-			send_lock_state <= false;
 			for i in btn_state'range loop
 				if btn_state(i) = '1' and btn_old(i) = '0' then
 					lock_state(i) <= not lock_state(i);
-					send_lock_state <= true;
 				end if;
 			end loop;
 		end if;
