@@ -36,7 +36,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library lib_util;
 use lib_util.pkg_clock.all;
-use lib_util.pkg_shift_register.all;
+use lib_util.pkg_shift_register;
 library lib_io;
 use lib_io.pkg_crystal.crystal_hz;
 use lib_io.pkg_ps2.all;
@@ -55,20 +55,39 @@ entity ps2 is
 end entity;
 
 architecture main of ps2 is
+	constant inactive_timeout: positive := crystal_hz / 1_000_000 * 55; -- receive clock inactive timeout
+	signal ps2clk_sync, ps2data_sync: std_logic;
+	signal rx_shift: std_logic := '0'; -- shift one received bit
 begin
+	-- synchronizing with keyboard clock
+	clk_sync: synchronizer port map (Clk=>Clk, I=>Ps2Clk, O=>ps2clk_sync);
+	data_sync: synchronizer port map (Clk=>Clk, I=>Ps2Data, O=>ps2data_sync);
+
 	-- transmitter and receiver (one process, because PS/2 is half-duplex)
+	reg: pkg_shift_register.shift_register_1dir
+		generic map (bits=>8, shift_dir=>pkg_shift_register.right)
+		port map(Clk=>Clk, Rst=>Rst, ShiftW=>rx_shift, SIn=>ps2data_sync, POut=>RxD);
+
 	tx_fsm: block
-		type state_t is (Idle);
+		type state_t is (Idle, RcvStart);
 		signal state: state_t := Idle;
+		signal clk_prev: std_logic := '1';
 	begin
 		step: process (Clk, Rst) is
+			variable rx_parity: std_logic;
 		begin
 			if Rst = '1' then
+				state <= Idle;
+				clk_prev <= '1';
 			elsif rising_edge(Clk) then
 				case state is
+					clk_prev <= ps2clk_sync;
 					when Idle =>
-						
-						null;
+						if clk_prev = '1' and ps2clk_sync = '0'  and ps2clk_data = '0' then
+							state <= RcvBits;
+							rx_parity := '1';
+						end if;
+					when RcvBits =>
 					when others =>
 						null;
 				end case;
