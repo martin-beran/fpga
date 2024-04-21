@@ -88,8 +88,6 @@ set_location_assignment PIN_87 -to LED[0]
 set_location_assignment PIN_119 -to PsClock
 set_location_assignment PIN_120 -to PsData
 set_location_assignment PIN_25 -to RstBtn
-set_location_assignment PIN_115 -to RX
-set_location_assignment PIN_114 -to TX
 set_location_assignment PIN_127 -to SEG[7]
 set_location_assignment PIN_124 -to SEG[6]
 set_location_assignment PIN_126 -to SEG[5]

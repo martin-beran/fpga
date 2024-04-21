@@ -15,17 +15,14 @@ use ieee.numeric_std.all;
 library lib_io;
 use lib_io.pkg_button.all;
 use lib_io.pkg_led.all;
--- use lib_io.pkg_ps2.all;
+use lib_io.pkg_ps2.all;
 use lib_io.pkg_reset.all;
 use lib_io.pkg_seg7.all;
-use lib_io.pkg_uart.all;
 
 entity demo_ps2 is
 	port (
 		Clk, RstBtn: in std_logic;
 		PsData, PsClock: inout std_logic;
-		TX: out std_logic;
-		RX: in std_logic;
 		Btn: in std_logic_vector(3 downto 0);
 		LED: out std_logic_vector(3 downto 0);
 		DIG: out std_logic_vector(3 downto 0);
@@ -38,7 +35,7 @@ architecture main of demo_ps2 is
 	signal lock_state, lock_old: std_logic_vector(2 downto 0); -- 0=Num, 1=Caps, 2=Scroll Lock
 	signal btn_state, btn_old: std_logic_vector(2 downto 0);
 	signal tx_data, rx_data: std_logic_vector(7 downto 0);
-	signal tx_start, tx_ready, rx_valid, rx_ack, rx_err: std_logic;
+	signal tx_start, tx_ready, rx_valid, rx_ack: std_logic;
 	signal send_lock_state: boolean := false;
 	type rcv_bytes_t is array (1 downto 0) of std_logic_vector(7 downto 0);
 	signal rcv_bytes: rcv_bytes_t := (others=>(others=>'0'));
@@ -52,11 +49,11 @@ begin
 	-- buttons
 	buttons: button_group port map (Clk=>Clk, Rst=>rst, Button=>Btn, O(2 downto 0)=>btn_state);
 	
-	-- serial port, will be replaced by PS/2 later
-	serial_port: uart port map (
-		Clk=>Clk, Rst=>rst, TX=>TX, RX=>RX,
+	-- PS/2 port
+	ps2_port: ps2 port map (
+		Clk=>Clk, Rst=>rst, Ps2Clk=>PsClock, Ps2Data=>PsData,
 		TxD=>tx_data, TxStart=>tx_start, TxReady=>tx_ready,
-		RxD=>rx_data, RxValid=>rx_valid, RxAck=>rx_ack, RxErr=>rx_err
+		RxD=>rx_data, RxValid=>rx_valid, RxAck=>rx_ack
 	);
 	
 	kbd_send_fsm: block
@@ -130,10 +127,7 @@ begin
 			if busy then
 				busy := false;
 			else
-				if rx_err = '1' then
-					rx_ack <= '1';
-					busy := true;
-				elsif rx_valid = '1' then
+				if rx_valid = '1' then
 					rx_ack <= '1';
 					rcv_bytes(1) <= rcv_bytes(0);
 					rcv_bytes(0) <= rx_data;
@@ -160,7 +154,7 @@ begin
 	end generate;
 
 	-- lock indication LEDs
-	led_ctl: led_group port map (Clk=>Clk, Rst=>rst, I=>dbg&lock_state, LED(2 downto 0)=>LED(2 downto 0));
+	led_ctl: led_group port map (Clk=>Clk, Rst=>rst, I=>'0'&lock_state, LED(2 downto 0)=>LED(2 downto 0));
 	
 	lock_leds: process (Clk, rst) is
 	begin
