@@ -40,11 +40,9 @@ architecture main of demo_ps2 is
 	type rcv_bytes_t is array (1 downto 0) of std_logic_vector(7 downto 0);
 	signal rcv_bytes: rcv_bytes_t := (others=>(others=>'0'));
 	signal seg7_decoded: seg7_t(3 downto 0);
-	signal dbg: std_logic := '0';
 begin
 	-- reset button
 	reset: reset_button generic map (initial_rst=>true) port map (Clk=>Clk, RstBtn=>RstBtn, Rst=>rst);
-	LED(3) <= not dbg;
 
 	-- buttons
 	buttons: button_group port map (Clk=>Clk, Rst=>rst, Button=>Btn, O(2 downto 0)=>btn_state);
@@ -57,7 +55,7 @@ begin
 	);
 	
 	kbd_send_fsm: block
-		type state_t is (Init, Start, Send1, Send2);
+		type state_t is (Init, Start, Send1, WaitAck, Send2);
 		signal state: state_t := Init;
 	begin
 		process (Clk, rst) is
@@ -92,10 +90,20 @@ begin
 							end if;
 						when Send1 =>
 							if tx_ready = '1' then
-								state <= Send2;
-								busy := true;
-								tx_data <= byte1;
-								tx_start <= '1';
+								state <= WaitAck;
+							end if;
+						when WaitAck =>
+							if rx_valid = '1' then
+								if rx_data = X"fa" then
+									-- good ACK
+									state <= Send2;
+									busy := true;
+									tx_data <= byte1;
+									tx_start <= '1';
+								else
+									-- bad ACK, try again
+									state <= Start;
+								end if;
 							end if;
 						when Send2 =>
 							if tx_ready = '1' then
