@@ -128,6 +128,11 @@ changing) bits indicated by LEDs. Defined by a block diagram.
 Alternatively blinking LEDs controlled by a counter driven by the on-board 50
 MHz crystal.
 
+## mb50
+
+A complete 16bit computer MB50. More information is in its
+[documentation](mb50/README.md).
+
 # Knowledge base
 
 ## FPGA
@@ -432,3 +437,11 @@ Universal Asynchronous Receiver-Transmitter
 ## UUT
 
 Unit Under Test
+
+# Author
+
+Martin Beran
+
+<martin@mber.cz>
+
+This project was started in January 2024.

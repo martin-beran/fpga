@@ -1,6 +1,6 @@
 *.qws
 *.rpt
-/README.html
+*.md.html
 db/
 greybox_tmp/
 incremental_db/
