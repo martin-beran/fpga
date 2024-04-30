@@ -270,8 +270,8 @@ Groups of instructions:
   `ca`.
 - _Optional_: There can be additional instructions for doing calls and returns
   that would otherwise require several instructions. For example:
-    - A call to an address stored in memory = "load (to `ca`) and exchange
-      (with `pc`)"
+    - A call to an address stored in memory = "load (to `ca`), increment source
+      (if source is `pc`), and exchange (`ca` with `pc`)"
     - A call using stack = "exchange (`ca`, `pc`), store (`sp`, `ca`), and
       decrement destination (`sp`)"
     - A combination of the previous two
