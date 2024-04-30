@@ -167,6 +167,14 @@ Meaning of bits of register `f`:
 
 - Values of individual flags are unchanged unless it is explicitly specified
   that an instruction modifies some flags.
+- User-defined flags `f0`...`f3` are never used to signal a result of an
+  instruction. They are changed only by instructions having `f` as the
+  destination register.
+- If `f` is a destination register, any modification of flags done by the
+  executed instruction is overridden by the stored value. Hence, it is possible
+  to set the flags to a particular value by an arithmetic instruction that
+  would otherwise set the flags to some other values depending on a calculation
+  result.
 - The Carry flag is also used in shifts and rotations to store the highest bit
   (in left shift or rotation) or lowest bit (in right shift or rotation).
 
