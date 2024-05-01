@@ -524,7 +524,7 @@ The common format of all instructions is:
     +---------+---------+-----------------+
 
 - `OPCODE` - The instruction code
-- `DSTR` - The index of the source register `r0`...`r15` or of the source
+- `DSTR` - The index of the destination register `r0`...`r15` or of the source
   register `csr0`...`csr15`.
 - `SRCR` - The index of the source register `r0`...`r15` or of the source
   register `csr0`...`csr15`.
@@ -650,8 +650,9 @@ equal to `srcr`, `s` to 1 if `dstr` is less than `srcr`; `o` to 0.
 
 Opcode: 0x03
 
-Reads the CSR register `src_csr` and stores its value into register `dstr`. If
-the CSR is not readable, stores 0 into `dstr`. It does not modify flags.
+Reads the CSR register `src_csr` and stores its value into register `dstr`.
+Bits of the CSR that are not readable are returned as 0. It does not modify
+flags.
 
 #### CSRW (Control and Status Register Write)
 
@@ -659,8 +660,8 @@ the CSR is not readable, stores 0 into `dstr`. It does not modify flags.
 
 Opcode: 0x04
 
-Writes the value from register `srcr` to the CSR register `dst_csr`. If the CSR
-is not writable, its value is unchanged. It does not modify flags.
+Writes the value from register `srcr` to the CSR register `dst_csr`. Bits of
+the CSR that are not writable are unchanged. It does not modify flags.
 
 #### DDSTO (Decrement Destination and Store)
 
@@ -988,10 +989,10 @@ The following table summarizes values of various parameters and constants.
 | :----: | ----: | :----------- |
 | `CPU_HZ` | `50000000` | CPU clock frequency in Hz |
 | `HZ` | `100` | System clock frequency in Hz |
-| `CLK_ADDR` | `???` | Address of the system clock counter register |
-| `KBD_ADDR` | `???` | Address of the first keyboard controller register |
-| `MEM_SZ` | `30000` | Memory size in bytes |
-| `VIDEO_ADDR` | `???` | Video RAM start address |
+| `CLK_ADDR` | `65520`, `0xfff0` | Address of the system clock counter register |
+| `KBD_ADDR` | `65504`, `0xffe0` | Address of the first keyboard controller register |
+| `MEM_SZ` | `30000`, `0x7530` | Memory size in bytes |
+| `VIDEO_ADDR` | `23040`, `0x5a00` | Video RAM start address |
 
 **TODO**: Specify all parameters
 
