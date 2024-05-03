@@ -600,7 +600,7 @@ _Rationale_:
      - `F` is any flag name: `f0`, `f1`, `f2`, `f3`, `z`, `c`, `s`, `o`
      - Examples of full instruction names: `ldz`, `exchnc`
 - Computational (arithmetic, logic, comparison): `add`, `and`, `cmps`, `cmpu`,
-  `dec1`, `dec2`, `inc1`, `inc2`, `neg`_(5)_, `not`, `or`, `shl`, `shr`,
+  `dec1`, `dec2`, `inc1`, `inc2`, `neg`_(5)_, `not`, `or`, `rev`, `shl`, `shr`,
   `shra`, `sub`, `xor`
 - Illegal instruction (zero opcode): `ill`
 - Interrupts and exceptions: `reti`
@@ -921,6 +921,17 @@ from register `ia` to register `pc`, and reads the value from `csr1` to `ia`.
 This instruction is intended to perform return from the interrupt/exception
 handler, therefore it ignores its arguments and always operates on registers
 `ia`, `pc`, and `csr1`. It does not modify flags except bit `ie`.
+
+#### REV (Reverse)
+
+    rev dstr, srcr
+
+Opcode: 0x1d
+
+Reverses the order of bits of the value in register `srcr` and stores the
+result into register `dstr`. It sets flags: `z` to 1 if the result is zero; `c`
+to 0; `s` to 1 if the result is negative (copies the highest bit of the
+result); `o` to 0.
 
 #### SHL (Shift Left)
 
