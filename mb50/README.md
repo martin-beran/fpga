@@ -1299,7 +1299,7 @@ integers. Components of an expression:
     - `|` (bitwise OR)
 - A label, replaced by the corresponding address
 - A name of a register or CSR; such expression cannot consist of anything else
-- A name of a register alias, evalueated to the canonical register name
+- A name of a register alias, evaluated to the canonical register name
 - A name of a constant, evaluated to the constant value. A constant can be
   defined by directive `$const`.
 - Parentheses
@@ -1414,11 +1414,18 @@ denoted by the starting character `;` (semicolon).
 
 ## Debugger reference
 
-**TODO**
+The debugger connects to a MB50 system's serial control interface via an RS-232
+serial interface. It optionally reads and executes commands from an
+initialization file. Then it reads commands from the standard input and
+executes them interactively.
 
 ### Invocation
 
-**TODO**
+    mb50dbg /dev/ttyX [init_file]
+
+It starts the debugger and uses the selected serial device for communication
+with the target system. If the optional `init_file` is specified, commands from
+it will be executed before entering the interactive mode.
 
 ### Commands
 
