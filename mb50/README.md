@@ -1280,8 +1280,10 @@ argument of a macro can be a register name expression or an arithmetic
 expression. All arithmetic in expressions is done using 16-bit unsigned
 integers. Components of an expression:
 
-- An unsigned 16-bit integer, written as a decimal number without a sign or as
-  a hexadecimal constant (started by `0x`)
+- An unsigned 16-bit integer, written as a decimal number without a sign, or as
+  a hexadecimal constant (started by `0x`), or as a binary constant (started by
+  `0b`). Groups of digits may be separated by an underscore to improve
+  readability.
 - Unary operator `-` that computes two's complement
 - A single character string constant, converted to a number with the higher
   byte containing zero and the lower byte containing the character code
