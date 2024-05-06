@@ -1429,9 +1429,167 @@ It starts the debugger and uses the selected serial device for communication
 with the target system. If the optional `init_file` is specified, commands from
 it will be executed before entering the interactive mode.
 
-### Commands
+### Groups of commands
 
-**TODO**
+- Debugger control: `do`, `help`, `quit`
+- Command history and session recording: `history`, `script`
+- Running a program: `execute`, `interrupt`, `step`
+- Breakpoints and tracepoints: `break`, `trace`
+- View and modify CPU state: `csr`, `register`
+- Read and write memory: `dump`, `load`, `memset`, `save`
+
+Numeric parameters of commands can use any format recognized by the assembler:
+decimal, hexadecimal, or binary, with digit grouping by `_`. A number can use
+the minus sign to compute a negative value (two's complement).
+
+### Alphabetical list of commands
+
+#### Break
+
+    break [-] [ADDR]
+    b
+
+If a breakpoint is set on an address, the program execution is stopped before
+executing the instruction at that address. If called without arguments, list
+all breakpoints. If called with `ADDR`, set a breakpoint at this address. If
+`-` is used before an address, delete a breakpoint at this address. If called
+with `-` only, delete all breakpoints.
+
+#### CSR
+
+    csr [NAME] [VALUE]
+
+Like `register`, but operates on `csr0`...`csr15`.
+
+#### Do
+
+    do FILE
+
+Reads and executes commands from `FILE`.
+
+#### Dump
+
+    dump [ADDR [SZ]]
+    dumpd [ADDR [SZ]]
+    dumpw [ADDR [SZ]]
+    dumpwd [ADDR [SZ]]
+    d
+    dd
+    dw
+    dwd
+
+Dump data from memory in a readable format. It dumps `SZ` bytes, or just
+a single byte or word if `SZ` is no specified, starting at address `ADDR`. If
+an address is not specified, it uses `ADDR` and `SZ` from the previous
+`dump[w][d]` command. With suffix `d`, decimal values are dumped, otherwise,
+hexadecimal format is used. With suffix `w`, 16-bit words are dumped,
+otherwise it dumps individual bytes and shows also ASCII characters when
+dumping in hexadecimal.
+
+#### Execute
+
+    execute
+    exe
+    x
+
+Run the program.
+
+#### Help
+
+    help
+    h
+
+Show the list of commands.
+
+#### History
+
+    history [FILE]
+    hist
+
+If called with a `FILE` name, start appending all executed commands to the end
+of the file. If called without a file name, stop recording commands.
+
+#### Interrupt
+
+    interrupt
+    intr
+    i
+
+Interrupt a running program and stop the CPU.
+
+#### Load
+
+    load FILE [ADDR]
+
+Load content of a binary `FILE` from address `ADDR`. If `ADDR` is not
+specified, use the starting address from `FILE`. It expects the binary format
+produced by the assembler, that is, there is a single line containing start
+address in hexadecimal before binary data.
+
+#### Memset
+
+    memset ADDR VAL [VAL...]
+    m
+
+Store values in memory. Each value can be a number or a string constant. Size
+of a binary or hexadecimal constant is determined by the number of digits (up
+to 8 binary or 2 hexadecimal digits yield a byte, more digits store a word).
+Size of a decimal constant is set by mandatory appending `b` for a byte or `w`
+for a word. All values are stored sequentially starting at address `ADDR`.
+
+#### Quit
+
+    quit
+    q
+
+Terminate the debugger.
+
+#### Register
+
+    register [NAME] [VALUE]
+    reg
+    r
+
+Display or set values of registers. Without arguments, it shows values of all
+registers `r0`...`r15`. With `NAME`, only a single register is shown, where
+`NAME` is a register name or a standard register alias (`r0`...`r15`, `pc`,
+`f`, `ia`, `ca`, `sp`). With also `VALUE`, the value is stored in the register.
+
+#### Save
+
+    save FILE [ADDR SIZE]
+
+Save binary content of memory starting at `ADDR` and `SIZE` bytes long. If an
+address and size is not specified, save the whole memory.
+
+#### Script
+
+    script [FILE]
+    scr
+
+If called with a `FILE` name, start appending all user input and debugger
+output to the end of the file. If called without a file name, stop recording.
+
+#### Step
+
+    step
+    s
+
+Execute a single instruction.
+
+#### Trace
+
+    trace [r|w|-] [ADDR]
+    t
+
+If a tracepoint is set on an address, the program execution is stopped after
+executing an instruction that reads or writes that address. Executing an
+instruction is considered as reading. If called without arguments, list all
+tracepoints. If called with `ADDR`, set a tracepoint at this address that will
+be triggered by both reading and writing. If `r` or `w` is used before an
+address, the tracepoint is triggered only by reading or writing, respectively.
+If `-` is used before an address, delete a tracepoint at this address. If
+called with `-` only, delete all tracepoints.
 
 -------------------------------------------------------------------------------
 
@@ -1461,10 +1619,10 @@ running `make` in directory `mb50/mb50dev/`.
 - [x] Project structure
     - [x] Structure of documentation
     - [x] Directory structure
-- [ ] Building instructions
+- [x] Building instructions
     - [x] MB50 system
     - [x] MB50DEV development environment
-- [ ] Design
+- [x] Design
     - [x] Specify overall system design including rationale
     - [x] Specify CPU ISA
         - [x] Define the register set
@@ -1479,9 +1637,9 @@ running `make` in directory `mb50/mb50dev/`.
         - [x] Arithmetic-Logic Unit (ALU)
         - [x] Registers (architectural and microarchitectural)
         - [x] Internal interconnection of CPU parts and external interfaces
-    - [ ] Design the development environment
+    - [x] Design the development environment
         - [x] Assembler
-        - [ ] Debugger
+        - [x] Debugger
 - [ ] Implementation
     - [ ] On FPGA
         - [ ] CPU
