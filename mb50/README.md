@@ -1163,14 +1163,18 @@ The following table summarizes values of various parameters and constants.
 
 | Name | Value | Description |
 | :----: | ----: | :----------- |
+| `ADDR_MAX` | `65535`, `0xffff` | Maximum address in the address space |
+| `CLK_ADDR` | `65520`, `0xfff0` | Address of the system clock counter register |
 | `CPU_HZ` | `50000000` | CPU clock frequency in Hz |
 | `HZ` | `100` | System clock frequency in Hz |
-| `CLK_ADDR` | `65520`, `0xfff0` | Address of the system clock counter register |
 | `KBD_ADDR` | `65504`, `0xffe0` | Address of the first keyboard controller register |
-| `MEM_SZ` | `30000`, `0x7530` | Memory size in bytes |
+| `MEM_MAX` | `29999`, `0x752f` | Address of the last byte of memory |
 | `VIDEO_ADDR` | `23040`, `0x5a00` | Video RAM start address |
 
-**TODO**: Specify all parameters
+_Rationale_: Address of the last byte is used instead of a memory size, because
+if the memory size was the same as the address space, the memory size (equal to
+an address after the end of the address space) would not be representable as an
+address value.
 
 -------------------------------------------------------------------------------
 

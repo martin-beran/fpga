@@ -15,6 +15,11 @@ Unless stated otherwise, for all projects:
 - Implementation is intended for a development kit containing Altera Cyclone IV
   EP4CE6E22C8N
 
+Projects often share libraries. Changes in a library needed by a project could
+break other projects. Therefore, for each project `PROJ` there is tag
+`stable_PROJ` that marks the latest version of the project known not to be
+negatively affected by changes in other projects.
+
 ## lib
 
 Libraries intended to be used in multiple other projects. Individual libraries
