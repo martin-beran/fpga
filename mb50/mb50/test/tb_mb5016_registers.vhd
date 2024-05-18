@@ -10,13 +10,13 @@ end entity;
 
 architecture main of tb_mb5016_registers is
 	constant period: delay_length := 20 ns; -- 50 MHz
-	signal Clk, Rst: std_logic;
-	signal RdIdxA, RdIdxB, WrIdxA, WrIdxB: reg_idx_t;
-	signal RdDataA, RdDataB, WrDataA, WrDataB: word_t;
-	signal WrA, WrB: std_logic;
+	signal Clk, Rst: std_logic := '0';
+	signal RdIdxA, RdIdxB, WrIdxA, WrIdxB: reg_idx_t := to_reg_idx(0);
+	signal RdDataA, RdDataB, WrDataA, WrDataB: word_t := X"0000";
+	signal WrA, WrB: std_logic := '0';
 begin
 	clock: process is
-		variable state: std_logic;
+		variable state: std_logic := '0';
 	begin
 		state := not state;
 		Clk <= state;
@@ -26,18 +26,13 @@ begin
 	test: process is
 	begin
 		-- test initial zeros in registers
-		Rst <= '0';
-		WrA <= '0';
-		WrB <= '0';
-		
 		RdIdxA <= to_reg_idx(0);
 		RdIdxB <= to_reg_idx(3);
 		wait for period;
 		
-		--assert RdDataA = to_word(16#0000#) severity failure;
+		-- test write by interface A
 		assert RdDataA = X"0000" severity failure;
 		assert RdDataB = X"0000" severity failure;
-		-- test write by interface A
 		WrIdxA <= to_reg_idx(1);
 		WrIdxB <= to_reg_idx(2);
 		WrDataA <= X"a0b1";
@@ -48,18 +43,18 @@ begin
 		RdIdxB <= to_reg_idx(1);
 		wait for period;
 		
+		-- test write by interface B
 		assert RdDataA = X"0000" severity failure;
 		assert RdDataB = X"a0b1" severity failure;
-		-- test write by interface B
 		WrDataA <= X"a1b1";
 		WrDataB <= X"b1c1";
 		WrA <= '0';
 		WrB <= '1';
 		wait for period;
 		
+		-- test write by both interfaces
 		assert RdDataA = X"b1c1" severity failure;
 		assert RdDataB = X"a0b1" severity failure;
-		-- test write by both interfaces
 		WrDataA <= X"a2b2";
 		WrDataB <= X"b2c2";
 		WrA <= '1';
@@ -70,9 +65,9 @@ begin
 		RdIdxB <= to_reg_idx(2);
 		wait for period;
 		
-		assert RdDataA = X"a1b1" severity failure;
-		assert RdDataB = X"b1c1" severity failure;
 		-- test no write, keep previous values
+		assert RdDataA = X"a0b1" severity failure;
+		assert RdDataB = X"b1c1" severity failure;
 		WrDataA <= X"a3b3";
 		WrDataB <= X"b3c3";
 		WrA <= '0';
@@ -101,12 +96,21 @@ begin
 		WrB <= '1';
 		WrIdxA <= to_reg_idx(0);
 		WrIdxB <= to_reg_idx(0);
-		RdDataA <= to_reg_idx(0);
-		RdDataB <= to_reg_idx(1);
+		RdIdxA <= to_reg_idx(0);
+		RdIdxB <= to_reg_idx(1);
 		wait for period;
 		
 		assert RdDataA = X"1234" severity failure;
-		assert RdDataB = X"abcd" severity failure;
+		assert RdDataB = X"0000" severity failure;
+		WrA <= '0';
+		WrB <= '0';
+		wait for period;
+
+		-- end of test
+		Rst <= '1';
+		wait for 2 * period;
+		report "Testbench finished";
+		wait;
 	end process;
 	
 	dut: entity work.mb5016_registers port map (

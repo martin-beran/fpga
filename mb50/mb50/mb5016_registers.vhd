@@ -40,15 +40,15 @@ end entity;
 
 architecture main of mb5016_registers is
 	type r_t is array(0 to reg_idx_max) of word_t;
-	signal r: r_t;
+	signal r: r_t := (others=>(others=>'0'));
 begin
+	RdDataA <= r(to_integer(RdIdxA));
+	RdDataB <= r(to_integer(RdIdxB));
 	process (Clk, Rst) is
 	begin
 		if Rst = '1' then
 			r <= (others=>(others=>'0'));
 		elsif rising_edge(Clk) then
-			RdDataA <= r(to_integer(RdIdxA));
-			RdDataB <= r(to_integer(RdIdxB));
 			if WrA = '1' then
 				r(to_integer(WrIdxA)) <= WrDataA;
 			end if;
