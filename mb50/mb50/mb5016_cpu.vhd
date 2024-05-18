@@ -32,20 +32,22 @@ entity mb5016_cpu is
 		-- Memory write (valid address on AddrBus, valid data on DataBus)
 		Wr: out std_logic;
 		-- Access to registers: register index
-		RegIdx: in reg_idx_t;
+		RegIdx: in reg_idx_t := (others=>'0');
 		-- Access to registers: register value
 		Reg: inout word_t;
 		-- Register read (valid index on RegIdx, expects value in the next Clk cycle on Reg)
-		RegRd: in std_logic;
+		RegRd: in std_logic := '0';
 		-- Register write (valid index on RegIdx, valid value on Reg)
-		RegWr: in std_logic;
+		RegWr: in std_logic := '0';
 		-- Select normal or CSR registers for read/write
 		-- 0 = normal registers (r0...r15)
 		-- 1 = CSRs (csr0...csr15)
-		RegCSR: in std_logic
+		RegCSR: in std_logic := '0'
 	);
 end entity;
 
 architecture main of mb5016_cpu is
 begin
+	registers: entity work.mb5016_registers port map (Clk=>Clk, Rst=>Rst);
+	csr: entity work.mb5016_csr port map (Clk=>Clk, Rst=>Rst);
 end architecture;

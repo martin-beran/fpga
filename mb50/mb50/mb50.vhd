@@ -1,7 +1,8 @@
 -- MB50 main entity, it composes all components of computer MB50
 
-library ieee;
+library ieee, lib_io;
 use ieee.std_logic_1164.all;
+use lib_io.pkg_reset.all;
 
 -- The top level entity that defines computer MB50
 entity mb50 is
@@ -26,5 +27,11 @@ entity mb50 is
 end entity;
 
 architecture main of mb50 is
+	signal Rst: std_logic;
 begin
+	reset_hnd: reset_button generic map (initial_rst=>true) port map (Clk=>FPGA_CLK, RstBtn=>RESET, Rst=>Rst);
+	cpu: entity work.mb5016_cpu port map (
+		Clk=>FPGA_CLK, Rst=>Rst,
+		Run=>'0'
+	);
 end architecture;
