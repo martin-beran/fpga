@@ -44,12 +44,12 @@ engineering.
 
 ### MB50 system architecture overview
 
-The MB50 system consists of:
+The _MB50_ system consists of:
 
-- The MB5016 CPU
+- The _MB5016 CPU_
 - A single-level system memory (no instruction nor data caches)
-- A serial control interface connected to the MB50DEV development environment
-  running on a host computer
+- A serial _control and debugging interface (CDI)_ connected to the MB50DEV
+  development environment running on a host computer
 - A basic set of I/O devices (PS/2 keyboard, VGA display, system clock)
 
 Important design criteria are clean architecture, easy implementation, and
@@ -63,10 +63,10 @@ interface. Common 8-bit CPUs from 1970's (e.g., MOS Technology 6502, Intel
 to create an equivalent of an FPGA logic element, hence the available FPGA
 should be sufficient for this task.
 
-The MB5016 is a 16-bit, single-core, single-thread, non-pipelined, in-order (no
-instruction reordering, no speculation), scalar CPU. It contains a set of
-registers, a 16-bit arithmetic-logic unit (ALU), and a hardwired control unit
-(CU).
+The _MB5016_ is a 16-bit, single-core, single-thread, non-pipelined, in-order
+(no instruction reordering, no speculation), scalar CPU. It contains a set of
+registers, a 16-bit _arithmetic-logic unit (ALU)_, and a hardwired _control
+unit (CU)_.
 
 The CPU does not use microcode, because its main advantage of replacing hard
 circuit design by easier (micro)programming does not apply to FPGA
@@ -86,11 +86,11 @@ easy to use, but there are only 30 KiB (30720 B) available. As a possible
 future improvement, a larger DRAM available on the FPGA board could be used,
 maybe with using on-chip SRAM as a cache.
 
-The serial control interface and I/O device controllers are implemented in the
-same FPGA as the CPU and memory. All connections (signals, buses) among these
-components of the system are defined as logical signals (soft-wires) between
-functional units inside the FPGA, not as physical wires among integrated
-circuits.
+The serial control and debugging interface and I/O device controllers are
+implemented in the same FPGA as the CPU and memory. All connections (signals,
+buses) among these components of the system are defined as logical signals
+(soft-wires) between functional units inside the FPGA, not as physical wires
+among integrated circuits.
 
 ### CPU MB5016
 
@@ -340,7 +340,7 @@ Groups of instructions:
 - When interrupts are disabled, an exception halts the CPU, because an
   exception must be handled immediately (synchronously) and there is no way how
   to do it. A reset or clearing the exception flag (bit 9 of register `f`) via
-  the control interface must be done in order to make the CPU running again.
+  the CDI must be done in order to make the CPU running again.
 - Return from the interrupt handler is performed by a special instruction that
   atomically sets `ie` to 1, moves `ia` to `pc`, and reads `csr1` to `ia`.
 - The interrupt handler must clear bits corresponding to handled exceptions and
@@ -361,12 +361,12 @@ Block schema of the system:
      ||     ||      |  |
       +==+==+       |  |
          |          |  |
-         +-------+  |  |     +===========+
-         |       |  |  +----+| (Serial)  ||
-     +===+===+   |  +-------+|  Control  ||
-    ||  I/O  ||  +----------+| interface ||
-    ||devices||              +===========+
-     +=======+
+         +-------+  |  |     +=============+
+         |       |  |  +----+|  (Serial)   ||
+     +===+===+   |  +-------+| Control and ||
+    ||  I/O  ||  +----------+|  debugging  ||
+    ||devices||             ||  interface  ||
+     +=======+               +=============+
 
 Details of interconnections among system components can be changed or refined
 during implementation. See also the VHDL source code and especially comments in
@@ -375,10 +375,9 @@ each interface definition (in VHDL package interface declaration).
 Between CPU and memory, there is a 16-bit address bus and an 8-bit data bus.
 There are additional signals controlling reading and writing memory. There can
 be either a single bidirectional data bus, or separate buses for reading and
-writing (will be decided during implementation). The control interface is
-connected directly to the same address and data buses as the CPU, therefore it
-is possible to read and write memory by the control interface without help from
-the CPU.
+writing (will be decided during implementation). The CDI is connected directly
+to the same address and data buses as the CPU, therefore it is possible to read
+and write memory by the CDI without help from the CPU.
 
 The VGA controller is not directly connected to the CPU. It uses a completely
 separated interface to the memory, not shared with any other system component.
@@ -388,11 +387,11 @@ independently on the rest of the system.
 Control registers of I/O device controllers are mapped into memory address
 space. In addition, a device controller can generate interrupts and set its
 assigned bit in the high byte of register `f`. Registers and signals of I/O
-device controllers are also connected directly to the control interface, so
-they can be observed from the debugger independently on the CPU.
+device controllers are also connected directly to the CDI, so they can be
+observed from the debugger independently on the CPU.
 
 There is a set of control signals used to observe and control the internal
-state of the CPU. They are used by the control interface to:
+state of the CPU. They are used by the CDI to:
 - Read values in registers
 - Set values of registers
 - Stop the CPU
@@ -404,29 +403,29 @@ state of the CPU. They are used by the control interface to:
 
 The CPU consists of several functional units:
 
-- Control Unit (CU) – A sequential logic circuit that implements a finite state
-  machine. It reads instructions from memory, decodes, and executes them.
-- Arithmetic-Logic Unit (ALU) – A combinatorial logic circuit that implements
+- _Control Unit (CU)_ – A sequential logic circuit that implements a finite
+  state machine. It reads instructions from memory, decodes, and executes them.
+- _Arithmetic-Logic Unit (ALU)_ – A combinatorial logic circuit that implements
   computations peformed by instructions. It is used also for operations like
   moving and exchanging data between registers or address computation. It also
-  handles communication between the CPU and the serial control interface. If
-  needed, ALU may contain some internal registers and sequential logic for
-  operations that need multiple clock cycles for completion.
-- Register array — The array of 16 registers `r0`...`r15`. It is connected by
+  handles communication between the CPU and the CDI. If needed, ALU may contain
+  some internal registers and sequential logic for operations that need
+  multiple clock cycles for completion.
+- _Register array_ — The array of 16 registers `r0`...`r15`. It is connected by
   multiplexers to the inputs and outputs of the ALU in order to use registers
   for operands and result of operations performed by the ALU. Special-purpose
   registers (`ia`, `f`, `pc`) can be also connected directly to the CU.
-- Array of CSRs – The array of 16 control and status registers
+- _Array of CSRs_ – The array of 16 control and status registers
   `csr0`...`csr15`. It is connected by multiplexers to the inputs and outputs
   of the ALU in order to move data between normal registers and CSRs. Some bits
   or whole CSR0 are connected to the CU, because they are used to indicate or
   control the CPU state.
 
-When the CPU is stopped, the CU waits until the control interface requests
-starting the CPU in single-step or continuous program execution. During normal
-execution, the CU continuously reads instructions from the memory and executes
-them. The single-stepping mode is similar, but the CPU is stopped after
-executing one instruction. Instruction processing:
+When the CPU is stopped, the CU waits until the CDI requests starting the CPU
+in single-step or continuous program execution. During normal execution, the CU
+continuously reads instructions from the memory and executes them. The
+single-stepping mode is similar, but the CPU is stopped after executing one
+instruction. Instruction processing:
 
 1. The first byte (opcode) of an instruction is read from the memory.
 1. The second byte (destination and source registers) of an instruction is read
@@ -463,20 +462,20 @@ Memory is implemented by FPGA on-chip SRAM memory blocks. The memory has 16-bit
 address bus and 8-bit data bus. The memory is dual-port, that is, it uses two
 independent address and data buses and control signals. Both ports can be
 accessed simultaneously. One port is read/write and is used by the CPU and the
-control interface. The second port is read only and is used by the display
-controller to obtain framebuffer data.
+CDI. The second port is read only and is used by the display controller to
+obtain framebuffer data.
 
 It is possible to configure the system so that writing by the CPU to an
 interval of addresses is prohibited, effectively making it a ROM.
 
-### Serial control interface
+### Control and Debugging Interface (CDI)
 
-The serial control interface is connected to a host computer via the RS-232
-serial port with fixed settings: 115200 baud, 8-N-1 (8 data bits, no parity,
-one stop bit). It converts control commands received from the serial port to
-signals controlling system operation. In the opposite direction, it sends
-information about an internal system state (e.g., contents of registers and
-memory) to the serial port.
+The serial control and debugging interface is connected to a host computer via
+the RS-232 serial port with fixed settings: 115200 baud, 8-N-1 (8 data bits, no
+parity, one stop bit). It converts control commands received from the serial
+port to signals controlling system operation. In the opposite direction, it
+sends information about an internal system state (e.g., contents of registers
+and memory) to the serial port.
 
 The list of control commands and format of responses are defined in section
 Debugger reference.
@@ -1420,9 +1419,9 @@ denoted by the starting character `;` (semicolon).
 
 ## Debugger reference
 
-The debugger connects to a MB50 system's serial control interface via an RS-232
-serial interface. It optionally reads and executes commands from an
-initialization file. Then it reads commands from the standard input and
+The debugger connects to a MB50 system's serial control and debugging interface
+via an RS-232 serial interface. It optionally reads and executes commands from
+an initialization file. Then it reads commands from the standard input and
 executes them interactively.
 
 ### Invocation
@@ -1648,7 +1647,7 @@ running `make` in directory `mb50/mb50dev/`.
     - [ ] On FPGA
         - [ ] CPU
         - [ ] Memory
-        - [ ] Serial control interface
+        - [ ] Serial CDI
         - [ ] VGA display
         - [ ] PS/2 keyboard
         - [ ] System clock
