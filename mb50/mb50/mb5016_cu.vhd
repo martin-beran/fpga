@@ -5,7 +5,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use work.types.all;
-use work.pkg_mb2016_alu;
+use work.pkg_mb5016_alu;
 
 entity mb5016_cu is
 	port (
@@ -40,7 +40,7 @@ entity mb5016_cu is
 		-- Current value of register PC (r15)
 		RegRdPc: in word_t;
 		-- Select ALU operation
-		AluOp: out pkg_mb2016_alu.op_t
+		AluOp: out pkg_mb5016_alu.op_t
 	);
 end entity;
 

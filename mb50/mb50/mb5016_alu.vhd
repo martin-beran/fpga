@@ -3,11 +3,6 @@
 -- is implemented in cooperation with the CU (Control Unit), which controls temporary registers and
 -- multiple passes through the ALU.
 
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-use work.types.all;
-
 package pkg_mb5016_alu is
 	-- Operations implemented by the ALU
 	type op_t is (
@@ -15,6 +10,12 @@ package pkg_mb5016_alu is
 		OpExch
 	);
 end package;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.types.all;
+use work.pkg_mb5016_alu.all;
 
 entity mb5016_alu is
 	port (
@@ -42,9 +43,20 @@ end entity;
 use work.pkg_mb5016_alu.all;
 
 architecture main of mb5016_alu is
+	type output_t is record
+		OutA, OutB: word_t;
+		FZ, FC, FS, FO: std_logic;
+	end record;
+	signal output: output_t;
 begin
-	with Op select (OutA, OutB, FZ, FC, FS, FO) <=
-		(InA, InB, '0', '0', '0', '0') when OpMv;
-		(InB, InA, '0', '0', '0', '0') when OpExch;
+	OutA <= output.OutA;
+	OutB <= output.OutB;
+	FZ <= output.FZ;
+	FC <= output.FC;
+	FS <= output.FS;
+	FO <= output.FO;
+	with Op select output <=
+		(InA, InB, '0', '0', '0', '0') when OpMv,
+		(InB, InA, '0', '0', '0', '0') when OpExch,
 		((others=>'0'), (others=>'0'), '0', '0', '0', '0') when others;
 end architecture;

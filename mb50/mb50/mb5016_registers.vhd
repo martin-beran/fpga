@@ -46,7 +46,7 @@ entity mb5016_registers is
 		-- Set flags: mask of bits changed by WrFlags
 		WrFlags: in flags_t := (others=>'0');
 		-- Set exception and interrupt bits
-		WrIrq: in irq_t := (others=>'0')
+		WrIrq: in irq_t := (others=>'0');
 		-- Value of register F (r14)
 		RdF: out word_t;
 		-- Value of register PC (r15)
@@ -67,7 +67,7 @@ begin
 		if Rst = '1' then
 			r <= (others=>(others=>'0'));
 		elsif rising_edge(Clk) then
-			r(reg_idx_f)(flags_t'range) <= (r(reg_idx_f)(flags_t'range) and not WrFlags) or (WrDataFlags and WrFlags);
+			r(reg_idx_f)(flags_t'range) <= unsigned((std_logic_vector(r(reg_idx_f)(flags_t'range)) and not WrFlags) or (WrDataFlags and WrFlags));
 			if WrA = '1' then
 				r(to_integer(WrIdxA)) <= WrDataA;
 			end if;
@@ -77,7 +77,7 @@ begin
 			-- old value is visible in r (not value written by WrA or WrB), so we cannot simply do
 			-- r(15 downto 9) <= r(15 downto 9) or IRQ;
 			for i in irq_t'range loop
-				if IRQ(i) = '1' then
+				if WrIrq(i) = '1' then
 					r(reg_idx_f)(i) <= '1';
 				end if;
 			end loop;

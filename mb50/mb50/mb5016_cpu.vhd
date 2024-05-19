@@ -3,7 +3,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use work.types.all;
-use work.mb5016_alu;
+use work.pkg_mb5016_alu;
 
 -- Access to registers (RegIdx, RegRd, RegWr) and takeover of the memory bus is
 -- allowed only if the CPU is stopped (Run=0, Busy=0).
@@ -59,7 +59,7 @@ begin
 	-- External out/inout signals
 	Busy <= cpu_running;
 	RegData <=
-		'Z' when cpu_running = '1' or RegRd /= '1' or RegWr /= '0' else
+		(others=>'Z') when cpu_running = '1' or RegRd /= '1' or RegWr /= '0' else
 		reg_rd_data_a when RegCsr = '0' else
 		csr_rd_data;
 	
@@ -89,7 +89,7 @@ begin
 		Clk=>Clk, Rst=>Rst,
 		Busy=>cpu_running, Exception=>cu_exception,
 		RegIdxA=>cu_reg_idx_a, RegIdxB=>reg_idx_b,
-		RegWrA=>reg_wr_a, RegWrB=>cu_reg_wr_b,
+		RegWrA=>cu_reg_wr_a, RegWrB=>reg_wr_b,
 		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h, Csr1Data=>csr1_data,
 		RegWrFlags=>reg_wr_flags, RegRdF=>reg_rd_f, RegRdPc=>reg_rd_pc,
 		AluOp=>alu_op
