@@ -26,8 +26,8 @@ entity mb5016_csr is
 		WrData: in word_t;
 		-- Write interface: enable write
 		Wr: in std_logic;
-		-- Permit write of csr0 bit H
-		WrCsr0H: in std_logic;
+		-- Enable write of csr0 bit H
+		EnaCsr0H: in std_logic;
 		-- Value of csr1
 		Csr1Data: out word_t
 	);
@@ -51,7 +51,7 @@ begin
 			if Wr = '1' then
 				case WrIdx is
 					when to_reg_idx(0) =>
-						csr0 <= (WrData(8) and WrCsr0H) & WrData(7 downto 0);
+						csr0 <= (WrData(8) and EnaCsr0H) & WrData(7 downto 0);
 					when to_reg_idx(1) =>
 						csr1 <= WrData;
 					when others=>

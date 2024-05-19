@@ -1,4 +1,4 @@
--- Basic common types used throughout the MB50 computer
+-- Basic common types (and some related constants and functions) used throughout the MB50 computer
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -18,6 +18,19 @@ package types is
 	subtype reg_idx_t is unsigned(3 downto 0);
 	pure function reg_idx_max return natural;
 	pure function to_reg_idx(i: natural) return reg_idx_t;
+	-- Index of register F (r14)
+	constant reg_idx_f: natural := 14;
+	-- Index of register PC (r15)
+	constant reg_idx_pc: natural := 15;
+	-- Type of flag bits allocated in register F
+	subtype flags_t is std_logic_vector(7 downto 4);
+	-- Indices of flags
+	constant flags_idx_z: natural := 4;
+	constant flags_idx_c: natural := 5;
+	constant flags_idx_s: natural := 6;
+	constant flags_idx_o: natural := 7;
+	-- Type of exception/interrupt bits in register F
+	subtype irq_t is std_logic_vector(15 downto 9);
 end package;
 
 package body types is

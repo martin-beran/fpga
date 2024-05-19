@@ -27,11 +27,15 @@ entity mb50 is
 end entity;
 
 architecture main of mb50 is
-	signal Rst: std_logic;
+	signal Rst, run: std_logic;
 begin
 	reset_hnd: reset_button generic map (initial_rst=>true) port map (Clk=>FPGA_CLK, RstBtn=>RESET, Rst=>Rst);
 	cpu: entity work.mb5016_cpu port map (
 		Clk=>FPGA_CLK, Rst=>Rst,
-		Run=>'0'
+		Run=>run
+	);
+	ctl_dbg_if: entity work.cdi port map (
+		Clk=>FPGA_CLK, Rst=>Rst,
+		RunCpu=>run
 	);
 end architecture;
