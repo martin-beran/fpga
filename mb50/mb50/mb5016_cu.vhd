@@ -13,6 +13,8 @@ entity mb5016_cu is
 		Clk: in std_logic;
 		-- Reset (stops the CPU)
 		Rst: in std_logic;
+		-- Execute the next instruction
+		Run: in std_logic;
 		-- Executing an instruction
 		Busy: out std_logic;
 		-- Generate an exception
@@ -46,4 +48,10 @@ end entity;
 
 architecture main of mb5016_cu is
 begin
+	process (Clk, Rst) is
+	begin
+		if Rst = '1' then
+		elsif rising_edge(Clk) then
+		end if;
+	end process;
 end architecture;

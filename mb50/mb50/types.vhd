@@ -5,6 +5,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 package types is
+	-- Conversion from BOOLEAN to STD_LOGIC
+	pure function to_std_logic(b: boolean) return std_logic;
 	-- Type of a byte (8 bits)
 	subtype byte_t is unsigned(7 downto 0);
 	pure function to_byte(i: natural) return byte_t;
@@ -34,21 +36,35 @@ package types is
 end package;
 
 package body types is
+
+	pure function to_std_logic(b: boolean) return std_logic is
+	begin
+		if b then
+			return '1';
+		else
+			return '0';
+		end if;
+	end;
+
 	pure function reg_idx_max return natural is
 		constant last_reg_idx: reg_idx_t := (others=>'1');
 	begin
 		return to_integer(last_reg_idx);
 	end;
+
 	pure function to_byte(i: natural) return byte_t is
 	begin
 		return to_unsigned(i, byte_t'length);
 	end;
-	pure function to_word(i: natural) return byte_t is
+
+	pure function to_word(i: natural) return word_t is
 	begin
 		return to_unsigned(i, word_t'length);
 	end;
+
 	pure function to_reg_idx(i: natural) return reg_idx_t is
 	begin
 		return to_unsigned(i, reg_idx_t'length);
 	end;
+
 end package body;

@@ -13,12 +13,12 @@ entity mb5016_cpu is
 		Clk: in std_logic;
 		-- Reset
 		Rst: in std_logic;
-		-- Indicates that the CPU is executing an instruction (1=running, 0=halted)
-		Busy: out std_logic;
 		-- Starts the CPU. It is sampled when the CPU is ready to execute an instruction.
 		-- 1 sustained = run continuously
 		-- 1 for 1 clock cycle = step (execute a single instruction)
 		Run: in std_logic;
+		-- Indicates that the CPU is executing an instruction (1=running, 0=halted)
+		Busy: out std_logic;
 		-- Interrupt request lines, mapped to corresponding bits of register f
 		-- 10 = iclk (system clock)
 		-- 11 = ikbd (keyboard)
@@ -86,7 +86,7 @@ begin
 		FS=>reg_wr_data_flags(flags_idx_s), FO=>reg_wr_data_flags(flags_idx_o)
 	);
 	cu: entity work.mb5016_cu port map (
-		Clk=>Clk, Rst=>Rst,
+		Clk=>Clk, Rst=>Rst, Run=>Run,
 		Busy=>cpu_running, Exception=>cu_exception,
 		RegIdxA=>cu_reg_idx_a, RegIdxB=>reg_idx_b,
 		RegWrA=>cu_reg_wr_a, RegWrB=>reg_wr_b,
