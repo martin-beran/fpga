@@ -50,7 +50,9 @@ entity mb5016_registers is
 		-- Value of register F (r14)
 		RdF: out word_t;
 		-- Value of register PC (r15)
-		RdPc: out word_t
+		RdPc: out word_t;
+		-- Increment the value of register PC (r15) by 2, ignored if PC is written by WrA or WrB
+		Inc2Pc: in std_logic := '0';
 	);
 end entity;
 
@@ -68,6 +70,10 @@ begin
 			r <= (others=>(others=>'0'));
 		elsif rising_edge(Clk) then
 			r(reg_idx_f)(flags_t'range) <= unsigned((std_logic_vector(r(reg_idx_f)(flags_t'range)) and not WrFlags) or (WrDataFlags and WrFlags));
+			-- Placing this condition here allows the increment to be overwritten by setting a new value to PC by WrA or WrB
+			if IncPc = '1' then
+				r(reg_idx_pc) <= r(reg_idx_pc) + 2;
+			end if;
 			if WrA = '1' then
 				r(to_integer(WrIdxA)) <= WrDataA;
 			end if;

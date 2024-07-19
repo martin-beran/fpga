@@ -48,10 +48,21 @@ end entity;
 
 architecture main of mb5016_cu is
 begin
-	process (Clk, Rst) is
+	-- The main FSM that controls the CPU
+	cu_fsm: block is
+		enum state_t is (Init);
+		signal state: state_t := Init;
 	begin
-		if Rst = '1' then
-		elsif rising_edge(Clk) then
-		end if;
-	end process;
+		process (Clk, Rst) is
+		begin
+			if Rst = '1' then
+				state := Init;
+			elsif rising_edge(Clk) then
+				case state is
+					when Init =>
+						null;
+				end case;
+			end if;
+		end process;
+	end block;
 end architecture;
