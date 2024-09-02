@@ -10,6 +10,10 @@ table, td, th {
 
 [TOC]
 
+Conversion of this Markdown document to HTML:
+
+    markdown_py -x tables -x toc README.md > README.html
+
 ## Introduction
 
 This project is an FPGA implementation of a complete computer _MB50_. It

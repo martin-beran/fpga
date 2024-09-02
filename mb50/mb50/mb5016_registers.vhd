@@ -21,22 +21,18 @@ entity mb5016_registers is
 		Clk: in std_logic;
 		-- Reset (sets registers to all zeros)
 		Rst: in std_logic;
-		-- Read interface A: register index
-		RdIdxA: in reg_idx_t;
+		-- Read/write interface A: register index
+		IdxA: in reg_idx_t;
 		-- Read interface A: value
 		RdDataA: out word_t;
-		-- Read interface B: register index
-		RdIdxB: in reg_idx_t;
-		-- Read interface B: value
-		RdDataB: out word_t;
-		-- Write interface A: register index
-		WrIdxA: in reg_idx_t;
 		-- Write interface A: value
 		WrDataA: in word_t;
 		-- Write interface A: enable write
 		WrA: in std_logic;
-		-- Write interface B: register index
-		WrIdxB: in reg_idx_t;
+		-- Read/write interface B: register index
+		IdxB: in reg_idx_t;
+		-- Read interface B: value
+		RdDataB: out word_t;
 		-- Write interface B: value
 		WrDataB: in word_t;
 		-- Write interface B: enable write
@@ -50,9 +46,7 @@ entity mb5016_registers is
 		-- Value of register F (r14)
 		RdF: out word_t;
 		-- Value of register PC (r15)
-		RdPc: out word_t;
-		-- Increment the value of register PC (r15) by 2, ignored if PC is written by WrA or WrB
-		Inc2Pc: in std_logic := '0';
+		RdPc: out word_t
 	);
 end entity;
 
@@ -60,8 +54,8 @@ architecture main of mb5016_registers is
 	type r_t is array(0 to reg_idx_max) of word_t;
 	signal r: r_t := (others=>(others=>'0'));
 begin
-	RdDataA <= r(to_integer(RdIdxA));
-	RdDataB <= r(to_integer(RdIdxB));
+	RdDataA <= r(to_integer(IdxA));
+	RdDataB <= r(to_integer(IdxB));
 	RdF <= r(reg_idx_f);
 	RdPc <= r(reg_idx_pc);
 	process (Clk, Rst) is
@@ -70,15 +64,11 @@ begin
 			r <= (others=>(others=>'0'));
 		elsif rising_edge(Clk) then
 			r(reg_idx_f)(flags_t'range) <= unsigned((std_logic_vector(r(reg_idx_f)(flags_t'range)) and not WrFlags) or (WrDataFlags and WrFlags));
-			-- Placing this condition here allows the increment to be overwritten by setting a new value to PC by WrA or WrB
-			if IncPc = '1' then
-				r(reg_idx_pc) <= r(reg_idx_pc) + 2;
-			end if;
 			if WrA = '1' then
-				r(to_integer(WrIdxA)) <= WrDataA;
+				r(to_integer(IdxA)) <= WrDataA;
 			end if;
-			if WrB = '1' and not (WrA = '1' and WrIdxA = WrIdxB) then
-				r(to_integer(WrIdxB)) <=  WrDataB;
+			if WrB = '1' and not (WrA = '1' and IdxA = IdxB) then
+				r(to_integer(IdxB)) <=  WrDataB;
 			end if;
 			-- old value is visible in r (not value written by WrA or WrB), so we cannot simply do
 			-- r(15 downto 9) <= r(15 downto 9) or IRQ;

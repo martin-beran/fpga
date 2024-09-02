@@ -19,9 +19,9 @@ entity mb5016_cu is
 		Busy: out std_logic;
 		-- Generate an exception
 		Exception: out std_logic;
-		-- Select the first register argument of an instruction
+		-- Select the first (destination) register argument of an instruction
 		RegIdxA: out reg_idx_t;
-		-- Select the second register argument of an instruction
+		-- Select the second (source) register argument of an instruction
 		RegIdxB: out reg_idx_t;
 		-- Write to the first register argument of an instruction
 		RegWrA: out std_logic;
@@ -50,13 +50,13 @@ architecture main of mb5016_cu is
 begin
 	-- The main FSM that controls the CPU
 	cu_fsm: block is
-		enum state_t is (Init);
+		type state_t is (Init);
 		signal state: state_t := Init;
 	begin
 		process (Clk, Rst) is
 		begin
 			if Rst = '1' then
-				state := Init;
+				state <= Init;
 			elsif rising_edge(Clk) then
 				case state is
 					when Init =>

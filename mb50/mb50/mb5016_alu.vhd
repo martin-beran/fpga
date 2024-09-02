@@ -8,18 +8,24 @@ package pkg_mb5016_alu is
 	-- may be arbitrary. Values of flags are defined by specifications of related instructions.
 	-- If a flag value is not specified for an instruction, its value may be arbitrary. Unspecified
 	-- output and flags values are ignored by the CU, because the ALU always generates a value.
+	-- InA, OutA are connected to the first (destination) register of an instruction
+	-- InB, OutB are connected to the second (source) register of an instruction
 	type op_t is (
-		-- Instruction AND: dst=OutA = InA AND InB(src)
+		-- Instruction AND: OutA := InA AND InB
 		OpAnd,
-		-- Instructions MV, EXCH: Exchange data from InA to OutB, from InB to OutA
+		-- Instructions MV, EXCH: OutA := InB; OutB := InA
 		OpExch,
-		-- Pass data from InA to OutA, from InB to OutB
+		-- Increment by 1: OutA := InB + 1
+		OpInc1,
+		-- Increment by 2: OutA := InB + 2
+		OpInc2,
+		-- Pass data from InA to OutA, from InB to OutB: OutA := InA; OutB := InB
 		OpMv,
-		-- Instruction NOT: dst=OutA = NOT InB(src)
+		-- Instruction NOT: OutA := NOT InB
 		OpNot,
-		-- Instruction OR: dst=OutA = InA OR InB(src)
+		-- Instruction OR: OutA := InA OR InB
 		OpOr,
-		-- Instruction XOR: dst=OutA = InA XOR InB(src)
+		-- Instruction XOR: OutA := InA XOR InB
 		OpXor
 	);
 end package;
@@ -69,6 +75,22 @@ architecture main of mb5016_alu is
 		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
 	end;
 
+	pure function f_inc1(InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := InB + 1;
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>to_std_logic(InB = X"ffff"),
+			FS=>OutA(OutA'high), FO=>to_std_logic(InB = X"7fff"));
+	end;
+
+	pure function f_inc2(InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := InB + 2;
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>to_std_logic(InB = X"ffff" or InB = X"fffe"),
+			FS=>OutA(OutA'high), FO=>to_std_logic(InB = X"7fff" or InB = X"7ffe"));
+	end;
+
 	pure function f_not(InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -100,6 +122,8 @@ begin
 	with Op select output <=
 		f_and(InA, InB) when OpAnd,
 		(InB, InA, '0', '0', '0', '0') when OpExch,
+		f_inc1(InB) when OpInc1,
+		f_inc2(InB) when OpInc2,
 		(InA, InB, '0', '0', '0', '0') when OpMv,
 		f_not(InB) when OpNot,
 		f_or(InA, InB) when OpOr,

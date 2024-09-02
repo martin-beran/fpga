@@ -50,7 +50,7 @@ end entity;
 architecture main of mb5016_cpu is
 	signal cpu_running, cu_exception: std_logic;
 	signal reg_idx_a, reg_idx_b, cu_reg_idx_a: reg_idx_t;
-	signal reg_rd_data_a, alu_rd_data_a, reg_rd_data_b, reg_wr_data_a, reg_wr_data_b, alu_wr_data_a:word_t;
+	signal reg_rd_data_a, alu_rd_data_a, reg_rd_data_b, reg_wr_data_a, reg_wr_data_b, alu_wr_data_a: word_t;
 	signal reg_rd_f, reg_rd_pc, csr_rd_data, csr1_data: word_t;
 	signal reg_wr_a, reg_wr_b, csr_wr, cu_reg_wr_a, cu_csr_rd, cu_csr_wr, ena_csr0_h, cu_ena_csr0_h: std_logic;
 	signal reg_wr_data_flags, reg_wr_flags: flags_t;

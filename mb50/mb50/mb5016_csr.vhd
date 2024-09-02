@@ -16,12 +16,10 @@ entity mb5016_csr is
 		Clk: in std_logic;
 		-- Reset (sets registers to all zeros)
 		Rst: in std_logic;
-		-- Read interface: register index
-		RdIdx: in reg_idx_t;
+		-- Read/write interface: register index
+		Idx: in reg_idx_t;
 		-- Read interface: value
 		RdData: out word_t;
-		-- Write interface: register index
-		WrIdx: in reg_idx_t;
 		-- Write interface: value
 		WrData: in word_t;
 		-- Write interface: enable write
@@ -37,7 +35,7 @@ architecture main of mb5016_csr is
 	signal csr0: unsigned(8 downto 0) := (others=>'0');
 	signal csr1: word_t := (others=>'0');
 begin
-	with RdIdx select RdData <=
+	with Idx select RdData <=
 		unsigned("0000000" & std_logic_vector(csr0)) when to_reg_idx(0),
 		csr1 when to_reg_idx(1),
 		X"0000" when others;
@@ -49,7 +47,7 @@ begin
 			csr1 <= (others=>'0');
 		elsif rising_edge(Clk) then
 			if Wr = '1' then
-				case WrIdx is
+				case Idx is
 					when to_reg_idx(0) =>
 						csr0 <= (WrData(8) and EnaCsr0H) & WrData(7 downto 0);
 					when to_reg_idx(1) =>
