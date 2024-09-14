@@ -588,15 +588,20 @@ is 655.36 s (almost 11 minutes) with the default system clock frequency 100 Hz.
 
 ### Development environment MB50DEV
 
-**TODO**
+The development environment runs on a host computer. It consists of an
+assembler and a debugger. For details and instructions how to use them, see the
+respective assembler and debugger reference sections later in this document.
 
 #### Debugger
 
-**TODO**
+The debugger needs a target computer connected via a serial line. It provides
+functions for loading binary programs (produced by the assembler), running
+them, and examining their state.
 
 #### Assembler
 
-**TODO**
+The assembler generates binary files that can be loaded and executed on the
+target computer. It does not need a connected target computer.
 
 -------------------------------------------------------------------------------
 
