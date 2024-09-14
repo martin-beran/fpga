@@ -683,10 +683,9 @@ The common format of all instructions is:
     +---------+---------+-----------------+
 
 - `OPCODE` - The instruction code
-- `DSTR` - The index of the destination register `r0`...`r15` or of the source
-  register `csr0`...`csr15`.
-- `SRCR` - The index of the source register `r0`...`r15` or of the source
-  register `csr0`...`csr15`.
+- `DSTR` - The index of the destination register `r0`...`r15` or
+  `csr0`...`csr15`.
+- `SRCR` - The index of the source register `r0`...`r15` or `csr0`...`csr15`.
 
 Instruction mnemonics are written as:
 
@@ -825,7 +824,7 @@ the CSR that are not writable are unchanged. It does not modify flags.
 
 #### DDSTO (Decrement Destination and Store)
 
-    stodd dstr, srcr
+    ddsto dstr, srcr
 
 Opcode: 0x17 __(not implemented)__
 

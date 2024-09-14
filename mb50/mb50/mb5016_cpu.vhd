@@ -2,8 +2,10 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use work.types.all;
 use work.pkg_mb5016_alu;
+use work.pkg_mb5016_cu.all;
 
 -- Access to registers (RegIdx, RegRd, RegWr) and takeover of the memory bus is
 -- allowed only if the CPU is stopped (Run=0, Busy=0).
@@ -50,11 +52,14 @@ end entity;
 architecture main of mb5016_cpu is
 	signal cpu_running, cu_exception: std_logic;
 	signal reg_idx_a, reg_idx_b, cu_reg_idx_a: reg_idx_t;
-	signal reg_rd_data_a, alu_rd_data_a, reg_rd_data_b, reg_wr_data_a, reg_wr_data_b, alu_wr_data_a: word_t;
+	signal reg_rd_data_a, reg_rd_data_b, alu_rd_data_a, alu_rd_data_b: word_t;
+	signal reg_wr_data_a, reg_wr_data_b, alu_wr_data_a, alu_wr_data_b: word_t;
 	signal reg_rd_f, reg_rd_pc, csr_rd_data, csr1_data: word_t;
 	signal reg_wr_a, reg_wr_b, csr_wr, cu_reg_wr_a, cu_csr_rd, cu_csr_wr, ena_csr0_h, cu_ena_csr0_h: std_logic;
 	signal reg_wr_data_flags, reg_wr_flags: flags_t;
 	signal alu_op: pkg_mb5016_alu.op_t;
+	signal addr_bus_route: std_logic;
+	signal data_bus_route: data_bus_route_t;
 begin
 	-- External out/inout signals
 	Busy <= cpu_running;
@@ -66,22 +71,22 @@ begin
 	-- Functional units of the CPU: registers, CSRs, ALU, CU
 	reg: entity work.mb5016_registers port map (
 		Clk=>Clk, Rst=>Rst,
-		RdIdxA=>reg_idx_a, RdDataA=>reg_rd_data_a,
-		RdIdxB=>reg_idx_b, RdDataB=>reg_rd_data_b,
-		WrIdxA=>reg_idx_a, WrDataA=>reg_wr_data_a, WrA=>reg_wr_a,
-		WrIdxB=>reg_idx_b, WrDataB=>reg_wr_data_b, WrB=>reg_wr_b,
+		IdxA=>reg_idx_a, RdDataA=>reg_rd_data_a,
+		IdxB=>reg_idx_b, RdDataB=>reg_rd_data_b,
+		WrDataA=>reg_wr_data_a, WrA=>reg_wr_a,
+		WrDataB=>reg_wr_data_b, WrB=>reg_wr_b,
 		WrDataFlags=>reg_wr_data_flags, WrFlags=>reg_wr_flags,
 		WrIrq(9)=>cu_exception, WrIrq(15 downto 10)=>Irq,
 		RdF=>reg_rd_f, RdPc=>reg_rd_pc
 	);
 	csr: entity work.mb5016_csr port map (
 		Clk=>Clk, Rst=>Rst,
-		RdIdx=>reg_idx_a, RdData=>csr_rd_data, WrIdx=>reg_idx_a, WrData=>reg_wr_data_a, Wr=>csr_wr,
+		Idx=>reg_idx_b, RdData=>csr_rd_data, WrData=>reg_wr_data_a, Wr=>csr_wr,
 		EnaCsr0H=>ena_csr0_h, Csr1Data=>csr1_data
 	);
 	alu: entity work.mb5016_alu port map (
 		Op=>alu_op,
-		InA=>alu_rd_data_a, InB=>reg_rd_data_b, OutA=>alu_wr_data_a, OutB=>reg_wr_data_b,
+		InA=>alu_rd_data_a, InB=>alu_rd_data_b, OutA=>alu_wr_data_a, OutB=>alu_wr_data_b,
 		FZ=>reg_wr_data_flags(flags_idx_z), FC=>reg_wr_data_flags(flags_idx_c),
 		FS=>reg_wr_data_flags(flags_idx_s), FO=>reg_wr_data_flags(flags_idx_o)
 	);
@@ -92,16 +97,38 @@ begin
 		RegWrA=>cu_reg_wr_a, RegWrB=>reg_wr_b,
 		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h, Csr1Data=>csr1_data,
 		RegWrFlags=>reg_wr_flags, RegRdF=>reg_rd_f, RegRdPc=>reg_rd_pc,
-		AluOp=>alu_op
+		AluOp=>alu_op,
+		AddrBusRoute=>addr_bus_route, DataBusRoute=>data_bus_route, DataBus=>DataBus, MemRd=>Rd, MemWr=>Wr
 	);
 	
-	-- Registers are controlled by CU and are connected to ALU.
+	-- Registers are controlled by CU and are connected to ALU, address bus, and data bus.
 	-- CU or CDI selects between ordinary registers and CSRs
 	-- CDI can access registers via interface A while the CPU is stopped
-	alu_rd_data_a <= csr_rd_data when cu_csr_rd = '1' else reg_rd_data_a;
+	alu_rd_data_a <= reg_rd_data_a;
+	alu_rd_data_b <= csr_rd_data when cu_csr_rd = '1' else reg_rd_data_b;
 	reg_idx_a <= cu_reg_idx_a when cpu_running = '1' else RegIdx;
-	reg_wr_data_a <= alu_wr_data_a when cpu_running = '1' else RegData;
+	reg_wr_data_a <=
+		RegData when cpu_running /= '1' else
+		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_a)(7 downto 0))
+			when data_bus_route = ToRegAH else
+		unsigned(std_logic_vector(alu_wr_data_a)(15 downto 8) & std_logic_vector(DataBus))
+			when data_bus_route = ToRegAL else
+		alu_wr_data_a;
+	reg_wr_data_b <=
+		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_b)(7 downto 0))
+			when data_bus_route = ToRegBH else
+		unsigned(std_logic_vector(alu_wr_data_b)(15 downto 8) & std_logic_vector(DataBus))
+			when data_bus_route = ToRegBL else
+		alu_wr_data_b;
 	reg_wr_a <= cu_reg_wr_a when cpu_running = '1' else RegWr and not RegCsr;
+	AddrBus <= reg_rd_data_a when addr_bus_route = '0' else reg_rd_data_b;
+	with data_bus_route select
+		DataBus <=
+			reg_rd_data_a(15 downto 8) when FromRegAH,
+			reg_rd_data_a(7 downto 0) when FromRegAL,
+			reg_rd_data_b(15 downto 8) when FromRegBH,
+			reg_rd_data_b(7 downto 0) when FromRegBL,
+			(others=>'Z') when others;
 	csr_wr <= cu_csr_wr when cpu_running = '1' else RegWr and RegCsr;
 	ena_csr0_h <= cu_ena_csr0_h when cpu_running = '1' else '1';
 	

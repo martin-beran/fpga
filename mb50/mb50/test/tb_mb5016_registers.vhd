@@ -11,7 +11,7 @@ end entity;
 architecture main of tb_mb5016_registers is
 	constant period: delay_length := 20 ns; -- 50 MHz
 	signal Clk, Rst: std_logic := '0';
-	signal RdIdxA, RdIdxB, WrIdxA, WrIdxB: reg_idx_t := to_reg_idx(0);
+	signal IdxA, IdxB: reg_idx_t := to_reg_idx(0);
 	signal RdDataA, RdDataB, WrDataA, WrDataB: word_t := X"0000";
 	signal WrA, WrB: std_logic := '0';
 begin
@@ -26,21 +26,21 @@ begin
 	test: process is
 	begin
 		-- test initial zeros in registers
-		RdIdxA <= to_reg_idx(0);
-		RdIdxB <= to_reg_idx(3);
+		IdxA <= to_reg_idx(0);
+		IdxB <= to_reg_idx(3);
 		wait for period;
 		
 		-- test write by interface A
 		assert RdDataA = X"0000" severity failure;
 		assert RdDataB = X"0000" severity failure;
-		WrIdxA <= to_reg_idx(1);
-		WrIdxB <= to_reg_idx(2);
+		IdxA <= to_reg_idx(1);
+		IdxB <= to_reg_idx(2);
 		WrDataA <= X"a0b1";
 		WrDataB <= X"b0c1";
 		WrA <= '1';
 		WrB <= '0';
-		RdIdxA <= to_reg_idx(2);
-		RdIdxB <= to_reg_idx(1);
+		IdxA <= to_reg_idx(2);
+		IdxB <= to_reg_idx(1);
 		wait for period;
 		
 		-- test write by interface B
@@ -59,10 +59,10 @@ begin
 		WrDataB <= X"b2c2";
 		WrA <= '1';
 		WrB <= '1';
-		WrIdxA <= to_reg_idx(10);
-		WrIdxB <= to_reg_idx(15);
-		RdIdxA <= to_reg_idx(1);
-		RdIdxB <= to_reg_idx(2);
+		IdxA <= to_reg_idx(10);
+		IdxB <= to_reg_idx(15);
+		IdxA <= to_reg_idx(1);
+		IdxB <= to_reg_idx(2);
 		wait for period;
 		
 		-- test no write, keep previous values
@@ -72,8 +72,8 @@ begin
 		WrDataB <= X"b3c3";
 		WrA <= '0';
 		WrB <= '0';
-		RdIdxA <= to_reg_idx(10);
-		RdIdxB <= to_reg_idx(15);
+		IdxA <= to_reg_idx(10);
+		IdxB <= to_reg_idx(15);
 		wait for period;
 		
 		assert RdDataA = X"a2b2" severity failure;
@@ -94,10 +94,10 @@ begin
 		WrDataB <= X"abcd";
 		WrA <= '1';
 		WrB <= '1';
-		WrIdxA <= to_reg_idx(0);
-		WrIdxB <= to_reg_idx(0);
-		RdIdxA <= to_reg_idx(0);
-		RdIdxB <= to_reg_idx(1);
+		IdxA <= to_reg_idx(0);
+		IdxB <= to_reg_idx(0);
+		IdxA <= to_reg_idx(0);
+		IdxB <= to_reg_idx(1);
 		wait for period;
 		
 		assert RdDataA = X"1234" severity failure;
@@ -115,7 +115,7 @@ begin
 	
 	dut: entity work.mb5016_registers port map (
 		Clk=>Clk, Rst=>Rst,
-		RdIdxA=>RdIdxA, RdDataA=>RdDataA, RdIdxB=>RdIdxB, RdDataB=>RdDataB,
-		WrIdxA=>WrIdxA, WrDataA=>WrDataA, WrA=>WrA, WrIdxB=>WrIdxB, WrDataB=>WrDataB, WrB=>WrB
+		IdxA=>IdxA, RdDataA=>RdDataA, IdxB=>IdxB, RdDataB=>RdDataB,
+		WrDataA=>WrDataA, WrA=>WrA, WrDataB=>WrDataB, WrB=>WrB
 	);
 end architecture;
