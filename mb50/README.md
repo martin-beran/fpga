@@ -357,31 +357,42 @@ Groups of instructions:
 
 Block schema of the system:
 
-      +=====+               +========+
-     ||     ||             ||        ||         +=====+
-     ||     |+---------+---+| Memory |+--------+| VGA ||
-     || CPU ||         |   ||        ||         +=====+
-     ||     |+------+  |    +========+
-     ||     ||      |  |
-      +==+==+       |  |
-         |          |  |
-         +-------+  |  |     +=============+
-         |       |  |  +----+|  (Serial)   ||
-     +===+===+   |  +-------+| Control and ||
-    ||  I/O  ||  +----------+|  debugging  ||
-    ||devices||             ||  interface  ||
-     +=======+               +=============+
+
+                        +=======+   
+           interrupts  ||  I/O  ||  
+         +-------------+|devices||  
+         |              +===+===+   
+         |                  | memory mapped I/O
+         |                  |
+         |                  |
+      +==+==+               |              +========+
+     ||     ||           +==+==+          ||        ||         +=====+
+     ||     |+----------+| MMU |+---------+| Memory |+--------+| VGA ||
+     || CPU ||           +==+==+          ||        ||         +=====+
+     ||     ||              |              +========+
+     ||     ||              |
+      +==+==+               |
+         |                  |
+         |           +======+======+
+         |          ||     CDI     ||
+         |          ||  (Serial)   ||
+         +----------+| Control and ||
+                    ||  Debugging  ||
+                    ||  Interface  ||
+                     +=============+
 
 Details of interconnections among system components can be changed or refined
-during implementation. See also the VHDL source code and especially comments in
-each interface definition (in VHDL package interface declaration).
+during implementation. See also the VHDL source code.
 
-Between CPU and memory, there is a 16-bit address bus and an 8-bit data bus.
-There are additional signals controlling reading and writing memory. There can
-be either a single bidirectional data bus, or separate buses for reading and
-writing (will be decided during implementation). The CDI is connected directly
-to the same address and data buses as the CPU, therefore it is possible to read
-and write memory by the CDI without help from the CPU.
+Between CPU and memory, there is a 16-bit unidirectional address bus and an
+8-bit bidirectional data bus. There are additional signals controlling reading
+and writing memory.
+
+The memory management unit (MMU) does not provide functionalities known from
+current advanced processors, for example, paging or memory protection. It
+implements mapping of I/O device registers to the address space, that is,
+routing memory read/write requests to the memory or to the appropriate device.
+It also arbitrates access to the memory by the CPU and the CDI.
 
 The VGA controller is not directly connected to the CPU. It uses a completely
 separated interface to the memory, not shared with any other system component.
@@ -390,9 +401,7 @@ independently on the rest of the system.
 
 Control registers of I/O device controllers are mapped into memory address
 space. In addition, a device controller can generate interrupts and set its
-assigned bit in the high byte of register `f`. Registers and signals of I/O
-device controllers are also connected directly to the CDI, so they can be
-observed from the debugger independently on the CPU.
+assigned bit in the high byte of register `f`.
 
 There is a set of control signals used to observe and control the internal
 state of the CPU. They are used by the CDI to:
@@ -401,7 +410,6 @@ state of the CPU. They are used by the CDI to:
 - Stop the CPU
 - Run the CPU continuously
 - Command the CPU to execute a single instruction
-- Reset the CPU
 
 #### Microarchitecture
 
