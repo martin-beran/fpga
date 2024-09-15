@@ -1170,6 +1170,59 @@ the result into `dstr`. It sets flags: `z` to 1 if the result is zero; `c` to
 0; `s` to 1 if the result is negative (copies the highest bit of the result);
 `o` to 0.
 
+### Execution of instructions
+
+Execution of each instruction consists of one or more phases. The following
+table shows executed phases for each instruction.
+
+- _Condition_ – evaluation of flag values (for a conditional instruction)
+- _Load1_ – load one byte from memory or load the first of two bytes (of a word)
+  from memory
+- _ALU_ – move data in registers or CSRs, perform an operation by the ALU
+- _Flags_ – modify flags
+- _Load2_ – load the second of two bytes (of a word) from memory
+- _Store1_ – store one byte to memory or store the first of two bytes (of
+  a word) to memory
+- _Store2_ – store the second of two bytes (of a word) to memory
+
+| Instruction | Condition | Load1 | Load2 | ALU | Flags | Store1 | Store2 |
+| :---------: | :-------: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `add` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `and` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `cmps` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `cmpu` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `csrr` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `csrw` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `ddsto` | ✘ | ✘ | ✘ | ✔ | ✘ | ✔ | ✔ |
+| `dec1` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `dec2` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `exch` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `exchnf` | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `inc1` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `inc2` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `ill` | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
+| `ld` | ✘ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
+| `ldb` | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ |
+| `ldis` | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldisx` | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldnf` | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
+| `ldnfis` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldxnfis` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `mv` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `mvnf` | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `neg` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `not` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `or` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `reti` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `rev` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shl` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shr` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shra` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `sto` | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ |
+| `stob` | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ |
+| `sub` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `xor` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+
 -------------------------------------------------------------------------------
 
 ## System parameters
