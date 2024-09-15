@@ -59,7 +59,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.types.all;
 use work.pkg_mb5016_cu.all;
-use work.pkg_mb5016_alu;
+use work.pkg_mb5016_alu.all;
 
 entity mb5016_cu is
 	port (
@@ -96,9 +96,11 @@ entity mb5016_cu is
 		-- Current value of register PC (r15)
 		RegRdPc: in word_t;
 		-- Select ALU operation
-		AluOp: out pkg_mb5016_alu.op_t;
+		AluOp: out op_t;
 		-- Select routing (source register) for address bus value: 0=RegIdxA, 1=RegIdxB
 		AddrBusRoute: out std_logic;
+		-- Value added to address bus value (0=first, 1=second byte of a word)
+		AddrBusAdd: out std_logic;
 		-- Select routing of data to/from data bus
 		DataBusRoute: out data_bus_route_t;
 		-- Data bus, used only to read instructions
@@ -118,9 +120,10 @@ begin
 			Init, -- Initial state, CPU stopped
 			IGetOpcode, -- Reading opcode (1st byte of an instruction)
 			IGetRegisters, -- Reading source and destination registers (2nd byte of an instruction)
-			IExec -- Start executing an instruction
+			IDecode -- Decode an instruction
 		);
 		signal state: state_t := Init;
+
 		procedure init_signals is
 		begin
 			Exception <= '0';
@@ -133,12 +136,14 @@ begin
 			EnaCsr0H <= '0';
 			Csr1Data <= (others=>'0');
 			RegWrFlags <= (others=>'0');
-			AluOp <= pkg_mb5016_alu.OpMv;
+			AluOp <= OpMv;
 			AddrBusRoute <= '0';
+			AddrBusAdd <= '0';
 			DataBusRoute <= FromRegAH;
 			MemRd <= '0';
 			MemWr <= '0';
 		end procedure;
+
 		procedure read_instr_byte is
 		begin
 			RegIdxA <= to_reg_idx(reg_idx_pc);
@@ -146,14 +151,64 @@ begin
 			AddrBusRoute <= '1';
 			MemRd <= '1';
 			RegWrA <= '1';
-			AluOp <= pkg_mb5016_alu.OpInc1;
+			AluOp <= OpInc1;
 		end procedure;
+
+		type decoded_t is record
+			is_implemented: boolean; -- if true then all other elements are ignored
+			alu_op: op_t; -- ignored for instructions that do not use ALU
+			is_condition, is_load1, is_load2, is_alu, is_flags, is_store1, is_store2: boolean;
+		end record;
+
+		pure function decode(opcode: byte_t) return decoded_t is
+		begin
+			case opcode is
+				when OpcodeAdd     => return ( true,  OpAdd, false, false, false,  true,  true, false, false);
+				when OpcodeAnd     => return ( true,  OpAnd, false, false, false,  true,  true, false, false);
+				when OpcodeCmps    => return ( true, OpTODO, false, false, false,  true,  true, false, false);
+				when OpcodeCmpu    => return ( true, OpTODO, false, false, false,  true,  true, false, false);
+				when OpcodeCsrr    => return ( true, OpExch, false, false, false,  true, false, false, false);
+				when OpcodeCsrw    => return ( true, OpExch, false, false, false,  true, false, false, false);
+				when OpcodeDdsto   => return (false,   OpMv, false, false, false,  true, false,  true,  true);
+				when OpcodeDec1    => return ( true, OpDec1, false, false, false,  true,  true, false, false);
+				when OpcodeDec2    => return ( true, OpDec2, false, false, false,  true,  true, false, false);
+				when OpcodeExch    => return ( true, OpExch, false, false, false,  true, false, false, false);
+				when OpcodeExchnf  => return (false, OpExch,  true, false, false,  true, false, false, false);
+				when OpcodeInc1    => return ( true, OpInc1, false, false, false,  true,  true, false, false);
+				when OpcodeInc2    => return ( true, OpInc2, false, false, false,  true,  true, false, false);
+				when OpcodeIll     => return ( true,   OpMv, false, false, false, false, false, false, false);
+				when OpcodeLd      => return ( true,   OpMv, false,  true,  true, false, false, false, false);
+				when OpcodeLdb     => return ( true,   OpMv, false,  true, false, false, false, false, false);
+				when OpcodeLdis    => return ( true, OpInc2, false,  true,  true,  true, false, false, false);
+				when OpcodeLdisx   => return (false, OpInc2, false,  true,  true,  true, false, false, false);
+				when OpcodeLdnf    => return ( true,   OpMv,  true,  true,  true, false, false, false, false);
+				when OpcodeLdnfis  => return ( true, OpInc2,  true,  true,  true,  true, false, false, false);
+				when OpcodeLdxnfis => return (false, OpInc2,  true,  true,  true,  true, false, false, false);
+				when OpcodeMv      => return ( true,   OpMv, false, false, false,  true, false, false, false);
+				when OpcodeMvnf    => return ( true,   OpMv,  true, false, false,  true, false, false, false);
+				when OpcodeNeg     => return (false,  OpNot, false, false, false,  true,  true, false, false);
+				when OpcodeNot     => return ( true,  OpNot, false, false, false,  true,  true, false, false);
+				when OpcodeOr      => return ( true,   OpOr, false, false, false,  true,  true, false, false);
+				when OpcodeReti    => return ( true, OpTODO, false, false, false,  true, false, false, false);
+				when OpcodeRev     => return ( true,  OpRev, false, false, false,  true,  true, false, false);
+				when OpcodeShl     => return ( true,  OpShl, false, false, false,  true,  true, false, false);
+				when OpcodeShr     => return ( true,  OpShr, false, false, false,  true,  true, false, false);
+				when OpcodeShra    => return ( true, OpShra, false, false, false,  true,  true, false, false);
+				when OpcodeSto     => return ( true,   OpMv, false, false, false, false, false,  true,  true);
+				when OpcodeStob    => return ( true,   OpMv, false, false, false, false, false,  true, false);
+				when OpcodeSub     => return ( true,  OpSub, false, false, false,  true,  true, false, false);
+				when OpcodeXor     => return ( true,  OpXor, false, false, false,  true,  true, false, false);
+				when others        => return (false,   OpMv, false, false, false, false, false, false, false);
+			end case;
+		end;
+
 	begin
 		Busy <= '0' when state = Init else '1';
 
 		process (Clk, Rst) is
 			variable opcode: byte_t;
 			variable dst_reg, src_reg: reg_idx_t;
+			variable decoded: decoded_t;
 		begin
 			if Rst = '1' then
 				init_signals;
@@ -171,10 +226,11 @@ begin
 						state <= IGetRegisters;
 					when IGetRegisters =>
 						opcode := DataBus;
-						state <= IExec;
-					when IExec =>
+						state <= IDecode;
+					when IDecode =>
 						dst_reg := DataBus(7 downto 4);
 						src_reg := DataBus(3 downto 0);
+						decoded := decode(opcode);
 						-- TODO
 				end case;
 			end if;

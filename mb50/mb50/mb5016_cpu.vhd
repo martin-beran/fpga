@@ -58,7 +58,7 @@ architecture main of mb5016_cpu is
 	signal reg_wr_a, reg_wr_b, csr_wr, cu_reg_wr_a, cu_csr_rd, cu_csr_wr, ena_csr0_h, cu_ena_csr0_h: std_logic;
 	signal reg_wr_data_flags, reg_wr_flags: flags_t;
 	signal alu_op: pkg_mb5016_alu.op_t;
-	signal addr_bus_route: std_logic;
+	signal addr_bus_route, addr_bus_add: std_logic;
 	signal data_bus_route: data_bus_route_t;
 begin
 	-- External out/inout signals
@@ -98,7 +98,8 @@ begin
 		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h, Csr1Data=>csr1_data,
 		RegWrFlags=>reg_wr_flags, RegRdF=>reg_rd_f, RegRdPc=>reg_rd_pc,
 		AluOp=>alu_op,
-		AddrBusRoute=>addr_bus_route, DataBusRoute=>data_bus_route, DataBus=>DataBus, MemRd=>Rd, MemWr=>Wr
+		AddrBusRoute=>addr_bus_route, AddrBusAdd=>addr_bus_add,
+		DataBusRoute=>data_bus_route, DataBus=>DataBus, MemRd=>Rd, MemWr=>Wr
 	);
 	
 	-- Registers are controlled by CU and are connected to ALU, address bus, and data bus.
@@ -121,7 +122,11 @@ begin
 			when data_bus_route = ToRegBL else
 		alu_wr_data_b;
 	reg_wr_a <= cu_reg_wr_a when cpu_running = '1' else RegWr and not RegCsr;
-	AddrBus <= reg_rd_data_a when addr_bus_route = '0' else reg_rd_data_b;
+	AddrBus <=
+		reg_rd_data_a when addr_bus_route = '0' and addr_bus_add = '0' else
+		reg_rd_data_a + 1 when addr_bus_route = '0' and addr_bus_add = '1' else
+		reg_rd_data_b when addr_bus_route = '1' and addr_bus_add = '0' else
+		reg_rd_data_b + 1 when addr_bus_route = '1' and addr_bus_add = '1';
 	with data_bus_route select
 		DataBus <=
 			reg_rd_data_a(15 downto 8) when FromRegAH,

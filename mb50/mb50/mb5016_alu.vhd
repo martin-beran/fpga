@@ -11,8 +11,14 @@ package pkg_mb5016_alu is
 	-- InA, OutA are connected to the first (destination) register of an instruction
 	-- InB, OutB are connected to the second (source) register of an instruction
 	type op_t is (
+		-- TODO: opcodes for not yet implemented operations
+		OpTODO, OpAdd, OpRev, OpShl, OpShr, OpShra, OpSub,
 		-- Instruction AND: OutA := InA AND InB
 		OpAnd,
+		-- Decrement by 1: OutA := InB - 1
+		OpDec1,
+		-- Decrement by 2: OutA := InB - 2
+		OpDec2,
 		-- Instructions MV, EXCH: OutA := InB; OutB := InA
 		OpExch,
 		-- Increment by 1: OutA := InB + 1
@@ -75,6 +81,23 @@ architecture main of mb5016_alu is
 		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
 	end;
 
+	pure function f_dec1(InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := InB - 1;
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>to_std_logic(OutA = X"ffff"),
+			FS=>OutA(OutA'high), FO=>to_std_logic(OutA = X"7fff"));
+	end;
+
+	pure function f_dec2(InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := InB - 2;
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)),
+			FC=>to_std_logic(OutA = X"ffff" or OutA = X"fffe"),
+			FS=>OutA(OutA'high), FO=>to_std_logic(OutA = X"7fff" or OutA = X"7ffe"));
+	end;
+
 	pure function f_inc1(InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -87,7 +110,8 @@ architecture main of mb5016_alu is
 		variable OutA: word_t;
 	begin
 		OutA := InB + 2;
-		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>to_std_logic(InB = X"ffff" or InB = X"fffe"),
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)),
+			FC=>to_std_logic(InB = X"ffff" or InB = X"fffe"),
 			FS=>OutA(OutA'high), FO=>to_std_logic(InB = X"7fff" or InB = X"7ffe"));
 	end;
 

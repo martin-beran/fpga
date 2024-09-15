@@ -947,7 +947,7 @@ unchanged. It does not modify flags.
 Opcode: 0x0c
 
 Reads one word (two bytes) from memory at the address in register `srcr`,
-stores the value into register `dstr`, and increments `srcr`. It does not
+stores the value into register `dstr`, and increments `srcr` by 2. It does not
 modify flags.
 
 #### LDISX (Load, Increment Source, and Exchange)
@@ -957,8 +957,8 @@ modify flags.
 Opcode: 0x0d __(not implemented)__
 
 Reads one word (two bytes) from memory at the address in register `srcr`,
-stores the value into register `dstr`, increments `srcr` and exchanges values
-of registers `srcr` and `dstr`. It does not modify flags.
+stores the value into register `dstr`, increments `srcr` by 2 and exchanges
+values of registers `srcr` and `dstr`. It does not modify flags.
 
 #### LDnf (Load if / if Not Flag)
 
@@ -983,9 +983,9 @@ does not modify flags.
 Opcode: 0xa?
 
 If the test is true then it reads one word (two bytes) from memory at the
-address in register `srcr` into register `dstr` and increments `srcr`. If the
-test is false then it increments the value in register `srcr`. It does not
-modify flags.
+address in register `srcr` into register `dstr` and increments `srcr` by 2. If
+the test is false then it increments the value in register `srcr` by 2. It does
+not modify flags.
 
 #### LDXnfIS (Load and Exchange if / if Not Flag and Increment Source)
 
@@ -997,9 +997,9 @@ modify flags.
 Opcode: 0xb? __(not implemented)__
 
 If the test is true then it reads one word (two bytes) from memory at the
-address in register `srcr` into register `dstr`, increments `srcr`, and
+address in register `srcr` into register `dstr`, increments `srcr` by 2, and
 exchanges values in registers `srcr` and `dstr`. If the test is false then it
-increments the value in register `srcr`. It does not modify flags.
+increments the value in register `srcr` by 2. It does not modify flags.
 
 #### MV (Move)
 
