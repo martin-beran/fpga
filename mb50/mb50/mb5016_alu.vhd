@@ -11,8 +11,6 @@ package pkg_mb5016_alu is
 	-- InA, OutA are connected to the first (destination) register of an instruction
 	-- InB, OutB are connected to the second (source) register of an instruction
 	type op_t is (
-		-- TODO: opcodes for not yet implemented operations
-		OpTODO, OpShl, OpShr, OpShra, OpSub,
 		-- Constant: Exception reason "Unspecified" (OutA := OutB := const)
 		OpConstExcUnspec,
 		-- Constant: Exception reason "Illegal instruction with opcode zero" (OutA := OutB := const)
@@ -23,6 +21,10 @@ package pkg_mb5016_alu is
 		OpAdd,
 		-- Instruction AND: OutA := InA AND InB
 		OpAnd,
+		-- Instruction CMPS: InA <=> InB (signed)
+		OpCmps,
+		-- Instruction CMPU: InA <=> InB (unsigned)
+		OpCmpu,
 		-- Decrement by 1: OutA := InB - 1
 		OpDec1,
 		-- Decrement by 2: OutA := InB - 2
@@ -43,6 +45,14 @@ package pkg_mb5016_alu is
 		OpRetiIe,
 		-- Instruction REV: OutA(15 downto 0) := InB(0 to 15)
 		OpRev,
+		-- Instruction SHL: OutA := InA << InB
+		OpShl,
+		-- Instruction SHR: OutA := InA >> InB (logical)
+		OpShr,
+		-- Instruction SHRA: OutA := InA >> InB (arithmetic)
+		OpShra,
+		-- Instruction SUB: OutA := InA - InB
+		OpSub,
 		-- Instruction XOR: OutA := InA XOR InB
 		OpXor
 	);
@@ -103,6 +113,22 @@ architecture main of mb5016_alu is
 		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
 	end;
 
+	pure function f_cmps(InA, InB: word_t) return output_t is
+		variable eq, le: std_logic;
+	begin
+		eq := to_std_logic(InA = InB);
+		le := to_std_logic(signed(InA) < signed(InB));
+		return (outA=>InA, OutB=>InB, FZ=>eq, FC=>le or eq, FS=>le, FO=>'0');
+	end;
+	
+	pure function f_cmpu(InA, InB: word_t) return output_t is
+		variable eq, le: std_logic;
+	begin
+		eq := to_std_logic(InA = InB);
+		le := to_std_logic(InA < InB);
+		return (outA=>InA, OutB=>InB, FZ=>eq, FC=>le or eq, FS=>le, FO=>'0');
+	end;
+	
 	pure function f_dec1(InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -160,6 +186,40 @@ architecture main of mb5016_alu is
 		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
 	end;
 	
+	pure function f_shl(InA, InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := shift_left(InA, to_integer(InB(3 downto 0)));
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)),
+			FC=>InA(word_t'high), FS=>OutA(word_t'high), FO=>to_std_logic(OutA(word_t'high) /= InA(word_t'high)));
+	end;
+	
+	pure function f_shr(InA, InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := shift_right(InA, to_integer(InB(3 downto 0)));
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)),
+			FC=>InA(0), FS=>OutA(word_t'high), FO=>to_std_logic(OutA(word_t'high) /= InA(word_t'high)));
+	end;
+	
+	pure function f_shra(InA, InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		OutA := unsigned(shift_right(signed(InA), to_integer(InB(3 downto 0))));
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)),
+			FC=>InA(0), FS=>OutA(word_t'high), FO=>to_std_logic(InB(3 downto 0) /= X"0" and InA = X"ffff"));
+	end;
+	
+	pure function f_sub(InA, InB: word_t) return output_t is
+		variable OutA: unsigned(word_t'high + 1 downto word_t'low);
+	begin
+		OutA := ('1' & InA) - ('0' & InB);
+		return (OutA=>OutA(word_t'range), OutB=>InB,
+			FZ=>to_std_logic(OutA(word_t'range) = to_word(0)),
+			FC=>not OutA(OutA'high), FS=>OutA(word_t'high),
+			FO=>to_std_logic(OutA(word_t'high) /= InA(word_t'high) and OutA(word_t'high) = InB(word_t'high)));
+	end;
+
 	pure function f_xor(InA, InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -180,6 +240,8 @@ begin
 		(X"0102", X"0102", '0', '0', '0', '0') when OpConstExcIInstr,
 		f_add(InA, InB) when OpAdd,
 		f_and(InA, InB) when OpAnd,
+		f_cmps(InA, InB) when OpCmps,
+		f_cmpu(InA, InB) when OpCmpu,
 		(InB, InA, '0', '0', '0', '0') when OpExch,
 		f_inc1(InB) when OpInc1,
 		f_inc2(InB) when OpInc2,
@@ -188,6 +250,10 @@ begin
 		f_or(InA, InB) when OpOr,
 		(InA or to_word(1) sll flags_idx_ie, InB, '0', '0', '0', '0') when OpRetiIe,
 		f_rev(InB) when OpRev,
+		f_shl(InA, InB) when OpShl,
+		f_shr(InA, InB) when OpShr,
+		f_shra(InA, InB) when OpShra,
+		f_sub(InA, InB) when OpSub,
 		f_xor(InA, InB) when OpXor,
 		((others=>'0'), (others=>'0'), '0', '0', '0', '0') when others;
 end architecture;
