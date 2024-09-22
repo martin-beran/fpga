@@ -12,7 +12,15 @@ package pkg_mb5016_alu is
 	-- InB, OutB are connected to the second (source) register of an instruction
 	type op_t is (
 		-- TODO: opcodes for not yet implemented operations
-		OpTODO, OpAdd, OpRev, OpShl, OpShr, OpShra, OpSub,
+		OpTODO, OpShl, OpShr, OpShra, OpSub,
+		-- Constant: Exception reason "Unspecified" (OutA := OutB := const)
+		OpConstExcUnspec,
+		-- Constant: Exception reason "Illegal instruction with opcode zero" (OutA := OutB := const)
+		OpConstExcIZero,
+		-- Constant: Exception reason "Illegal (unknown) instruction with nonzero opcode" (OutA := OutB := const)
+		OpConstExcIInstr,
+		-- Instruction ADD: OutA := InA + InB
+		OpAdd,
 		-- Instruction AND: OutA := InA AND InB
 		OpAnd,
 		-- Decrement by 1: OutA := InB - 1
@@ -31,6 +39,10 @@ package pkg_mb5016_alu is
 		OpNot,
 		-- Instruction OR: OutA := InA OR InB
 		OpOr,
+		-- Instruction RETI: OutA := InA OR flags_idx_ie (set IE bit in register F)
+		OpRetiIe,
+		-- Instruction REV: OutA(15 downto 0) := InB(0 to 15)
+		OpRev,
 		-- Instruction XOR: OutA := InA XOR InB
 		OpXor
 	);
@@ -74,6 +86,16 @@ architecture main of mb5016_alu is
 	end record;
 	signal output: output_t;
 
+	pure function f_add(InA, InB: word_t) return output_t is
+		variable OutA: unsigned(word_t'high + 1 downto word_t'low);
+	begin
+		OutA := ('0' & InA) + ('0' & InB);
+		return (OutA=>OutA(word_t'range), OutB=>InB,
+			FZ=>to_std_logic(OutA(word_t'range) = to_word(0)),
+			FC=>OutA(OutA'high), FS=>OutA(word_t'high),
+			FO=>to_std_logic(OutA(word_t'high) /= InA(word_t'high) and OutA(word_t'high) /= InB(word_t'high)));
+	end;
+	
 	pure function f_and(InA, InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -129,6 +151,15 @@ architecture main of mb5016_alu is
 		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
 	end;
 
+	pure function f_rev(InB: word_t) return output_t is
+		variable OutA: word_t;
+	begin
+		rev: for i in word_t'range loop
+			OutA(i) := InB(word_t'high - i);
+		end loop;
+		return (OutA=>OutA, OutB=>InB, FZ=>to_std_logic(OutA = to_word(0)), FC=>'0', FS=>OutA(OutA'high), FO=>'0');
+	end;
+	
 	pure function f_xor(InA, InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -144,6 +175,10 @@ begin
 	FS <= output.FS;
 	FO <= output.FO;
 	with Op select output <=
+		(X"0100", X"0100", '0', '0', '0', '0') when OpConstExcUnspec,
+		(X"0101", X"0101", '0', '0', '0', '0') when OpConstExcIZero,
+		(X"0102", X"0102", '0', '0', '0', '0') when OpConstExcIInstr,
+		f_add(InA, InB) when OpAdd,
 		f_and(InA, InB) when OpAnd,
 		(InB, InA, '0', '0', '0', '0') when OpExch,
 		f_inc1(InB) when OpInc1,
@@ -151,6 +186,8 @@ begin
 		(InA, InB, '0', '0', '0', '0') when OpMv,
 		f_not(InB) when OpNot,
 		f_or(InA, InB) when OpOr,
+		(InA or to_word(1) sll flags_idx_ie, InB, '0', '0', '0', '0') when OpRetiIe,
+		f_rev(InB) when OpRev,
 		f_xor(InA, InB) when OpXor,
 		((others=>'0'), (others=>'0'), '0', '0', '0', '0') when others;
 end architecture;

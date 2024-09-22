@@ -20,17 +20,21 @@ package types is
 	subtype reg_idx_t is unsigned(3 downto 0);
 	pure function reg_idx_max return natural;
 	pure function to_reg_idx(i: natural) return reg_idx_t;
+	-- Index of register IA (r13)
+	constant reg_idx_ia: natural := 13;
 	-- Index of register F (r14)
 	constant reg_idx_f: natural := 14;
 	-- Index of register PC (r15)
 	constant reg_idx_pc: natural := 15;
 	-- Type of flag bits allocated in register F
 	subtype flags_t is std_logic_vector(7 downto 4);
-	-- Indices of flags
+	-- Indices of some bits in register F
 	constant flags_idx_z: natural := 4;
 	constant flags_idx_c: natural := 5;
 	constant flags_idx_s: natural := 6;
 	constant flags_idx_o: natural := 7;
+	constant flags_idx_ie: natural := 8;
+	constant flags_idx_exc: natural := 9;
 	-- Type of exception/interrupt bits in register F
 	subtype irq_t is std_logic_vector(15 downto 9);
 end package;

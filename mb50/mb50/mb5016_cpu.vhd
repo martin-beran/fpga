@@ -21,6 +21,9 @@ entity mb5016_cpu is
 		Run: in std_logic;
 		-- Indicates that the CPU is executing an instruction (1=running, 0=halted)
 		Busy: out std_logic;
+		-- Indicates that the CPU is halted, because an exception has occurred when interrupts are disabled.
+		-- The CPU must be reset or interrupts must be enabled by the CDI in order to leave the halted state
+		Halted: out std_logic;
 		-- Interrupt request lines, mapped to corresponding bits of register f
 		-- 10 = iclk (system clock)
 		-- 11 = ikbd (keyboard)
@@ -50,7 +53,7 @@ entity mb5016_cpu is
 end entity;
 
 architecture main of mb5016_cpu is
-	signal cpu_running, cu_exception: std_logic;
+	signal cpu_running, cu_exception, cu_disable_intr: std_logic;
 	signal reg_idx_a, reg_idx_b, cu_reg_idx_a: reg_idx_t;
 	signal reg_rd_data_a, reg_rd_data_b, alu_rd_data_a, alu_rd_data_b: word_t;
 	signal reg_wr_data_a, reg_wr_data_b, alu_wr_data_a, alu_wr_data_b: word_t;
@@ -58,7 +61,8 @@ architecture main of mb5016_cpu is
 	signal reg_wr_a, reg_wr_b, csr_wr, cu_reg_wr_a, cu_csr_rd, cu_csr_wr, ena_csr0_h, cu_ena_csr0_h: std_logic;
 	signal reg_wr_data_flags, reg_wr_flags: flags_t;
 	signal alu_op: pkg_mb5016_alu.op_t;
-	signal addr_bus_route, addr_bus_add: std_logic;
+	signal addr_bus_route: addr_bus_route_t;
+	signal addr_bus_add: std_logic;
 	signal data_bus_route: data_bus_route_t;
 begin
 	-- External out/inout signals
@@ -76,13 +80,13 @@ begin
 		WrDataA=>reg_wr_data_a, WrA=>reg_wr_a,
 		WrDataB=>reg_wr_data_b, WrB=>reg_wr_b,
 		WrDataFlags=>reg_wr_data_flags, WrFlags=>reg_wr_flags,
-		WrIrq(9)=>cu_exception, WrIrq(15 downto 10)=>Irq,
+		WrIrq(9)=>cu_exception, WrIrq(15 downto 10)=>Irq, ClrIE=>cu_disable_intr,
 		RdF=>reg_rd_f, RdPc=>reg_rd_pc
 	);
 	csr: entity work.mb5016_csr port map (
 		Clk=>Clk, Rst=>Rst,
 		Idx=>reg_idx_b, RdData=>csr_rd_data, WrData=>reg_wr_data_a, Wr=>csr_wr,
-		EnaCsr0H=>ena_csr0_h, Csr1Data=>csr1_data
+		EnaCsr0H=>ena_csr0_h
 	);
 	alu: entity work.mb5016_alu port map (
 		Op=>alu_op,
@@ -92,10 +96,10 @@ begin
 	);
 	cu: entity work.mb5016_cu port map (
 		Clk=>Clk, Rst=>Rst, Run=>Run,
-		Busy=>cpu_running, Exception=>cu_exception,
+		Busy=>cpu_running, Exception=>cu_exception, DisableIntr=>cu_disable_intr,
 		RegIdxA=>cu_reg_idx_a, RegIdxB=>reg_idx_b,
 		RegWrA=>cu_reg_wr_a, RegWrB=>reg_wr_b,
-		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h, Csr1Data=>csr1_data,
+		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h,
 		RegWrFlags=>reg_wr_flags, RegRdF=>reg_rd_f, RegRdPc=>reg_rd_pc,
 		AluOp=>alu_op,
 		AddrBusRoute=>addr_bus_route, AddrBusAdd=>addr_bus_add,
@@ -123,10 +127,10 @@ begin
 		alu_wr_data_b;
 	reg_wr_a <= cu_reg_wr_a when cpu_running = '1' else RegWr and not RegCsr;
 	AddrBus <=
-		reg_rd_data_a when addr_bus_route = '0' and addr_bus_add = '0' else
-		reg_rd_data_a + 1 when addr_bus_route = '0' and addr_bus_add = '1' else
-		reg_rd_data_b when addr_bus_route = '1' and addr_bus_add = '0' else
-		reg_rd_data_b + 1 when addr_bus_route = '1' and addr_bus_add = '1';
+		reg_rd_data_a when addr_bus_route = AddrRegA and addr_bus_add = '0' else
+		reg_rd_data_a + 1 when addr_bus_route = AddrRegA and addr_bus_add = '1' else
+		reg_rd_data_b when addr_bus_route = AddrRegB and addr_bus_add = '0' else
+		reg_rd_data_b + 1 when addr_bus_route = AddrRegB and addr_bus_add = '1';
 	with data_bus_route select
 		DataBus <=
 			reg_rd_data_a(15 downto 8) when FromRegAH,

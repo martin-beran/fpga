@@ -25,9 +25,7 @@ entity mb5016_csr is
 		-- Write interface: enable write
 		Wr: in std_logic;
 		-- Enable write of csr0 bit H
-		EnaCsr0H: in std_logic;
-		-- Value of csr1
-		Csr1Data: out word_t
+		EnaCsr0H: in std_logic
 	);
 end entity;
 
@@ -39,7 +37,6 @@ begin
 		unsigned("0000000" & std_logic_vector(csr0)) when to_reg_idx(0),
 		csr1 when to_reg_idx(1),
 		X"0000" when others;
-	Csr1Data <= csr1;
 	process (Clk, Rst) is
 	begin
 		if Rst = '1' then

@@ -334,8 +334,8 @@ Groups of instructions:
   setting a bit 10–15 of register `f` (a software interrupt).
 - An interrupt sets the appropriate bit 10–15 of register `f` according to the
   interrupt source.
-- After each instruction, if interrupts are enabled (bit `ie` of `f` is 1),
-  bits 10–15 of `f` are tested. If at least one bit is 1 then interrupts are
+- Before each instruction, if interrupts are enabled (bit `ie` of `f` is 1),
+  bits 9–15 of `f` are tested. If at least one bit is 1 then interrupts are
   disabled (`ie` is set to 0) and the interrupt handler is called by exchanging
   registers `ia` and `pc`.
 - When interrupts are disabled (bit `ie` is 0), e.g., during execution of an
@@ -1185,43 +1185,43 @@ table shows executed phases for each instruction.
   a word) to memory
 - _Store2_ – store the second of two bytes (of a word) to memory
 
-| Instruction | Condition | Load1 | Load2 | ALU | Flags | Store1 | Store2 |
-| :---------: | :-------: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `add` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `and` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `cmps` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `cmpu` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `csrr` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `csrw` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `ddsto` | ✘ | ✘ | ✘ | ✔ | ✘ | ✔ | ✔ |
-| `dec1` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `dec2` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `exch` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `exchnf` | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `inc1` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `inc2` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `ill` | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
-| `ld` | ✘ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
-| `ldb` | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ |
-| `ldis` | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
-| `ldisx` | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
-| `ldnf` | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
-| `ldnfis` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
-| `ldxnfis` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
-| `mv` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `mvnf` | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `neg` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `not` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `or` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `reti` | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
-| `rev` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `shl` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `shr` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `shra` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `sto` | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ |
-| `stob` | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ |
-| `sub` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
-| `xor` | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| Instruction | Implemented | Condition | Load1 | Load2 | ALU | Flags | Store1 | Store2 |
+| :---------: | :---------: | :-------: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `add` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `and` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `cmps` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `cmpu` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `csrr` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `csrw` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `ddsto` | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ | ✔ | ✔ |
+| `dec1` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `dec2` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `exch` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `exchnf` | ✘ | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `inc1` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `inc2` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `ill` | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
+| `ld` | ✔ | ✘ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
+| `ldb` | ✔ | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ |
+| `ldis` | ✔ | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldisx` | ✘ | ✘ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldnf` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
+| `ldnfis` | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `ldxnfis` | ✘ | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `mv` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `mvnf` | ✔ | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `neg` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `not` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `or` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `reti` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
+| `rev` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shl` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shr` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `shra` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `sto` | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ |
+| `stob` | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ |
+| `sub` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `xor` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
 
 -------------------------------------------------------------------------------
 

@@ -43,6 +43,8 @@ entity mb5016_registers is
 		WrFlags: in flags_t := (others=>'0');
 		-- Set exception and interrupt bits
 		WrIrq: in irq_t := (others=>'0');
+		-- Clear bit flags_idx_ie
+		ClrIE: in std_logic := '0';
 		-- Value of register F (r14)
 		RdF: out word_t;
 		-- Value of register PC (r15)
@@ -69,6 +71,9 @@ begin
 			end if;
 			if WrB = '1' and not (WrA = '1' and IdxA = IdxB) then
 				r(to_integer(IdxB)) <=  WrDataB;
+			end if;
+			if ClrIE = '1' then
+				r(reg_idx_f)(flags_idx_ie) <= '0';
 			end if;
 			-- old value is visible in r (not value written by WrA or WrB), so we cannot simply do
 			-- r(15 downto 9) <= r(15 downto 9) or IRQ;
