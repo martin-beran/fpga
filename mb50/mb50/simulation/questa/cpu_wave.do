@@ -6,7 +6,6 @@ add wave -noupdate /tb_mb5016_cpu/Busy
 add wave -noupdate /tb_mb5016_cpu/DataBus
 add wave -noupdate /tb_mb5016_cpu/Halted
 add wave -noupdate /tb_mb5016_cpu/Irq
-add wave -noupdate /tb_mb5016_cpu/period
 add wave -noupdate /tb_mb5016_cpu/Rd
 add wave -noupdate /tb_mb5016_cpu/RegCsr
 add wave -noupdate /tb_mb5016_cpu/RegData
@@ -18,7 +17,7 @@ add wave -noupdate /tb_mb5016_cpu/Wr
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {0 ns} 0} {{Cursor 2} {0 ns} 0}
 quietly wave cursor active 2
-configure wave -namecolwidth 150
+configure wave -namecolwidth 153
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
 configure wave -signalnamewidth 0
@@ -32,4 +31,4 @@ configure wave -griddelta 4
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {1 us}
+WaveRestoreZoom {0 ns} {997 ns}
