@@ -5,5 +5,9 @@ db/
 greybox_tmp/
 incremental_db/
 output_files/
-simulation/
+**/simulation/questa/*
+!**/simulation/questa/*.do
+**/simulation/questa/*_run_msim_gate_vhdl.do
+**/simulation/questa/*_run_msim_rtl_vhdl.do
+!*.mpf
 *.bak
