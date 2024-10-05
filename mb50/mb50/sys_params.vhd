@@ -1,5 +1,7 @@
 -- System parameters
 
+library ieee;
+use ieee.std_logic_1164.all;
 library lib_io;
 use lib_io.pkg_crystal;
 use work.types.all;
