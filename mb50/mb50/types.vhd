@@ -19,7 +19,7 @@ package types is
 	-- Type of a register index (4 bits for 16 registers)
 	subtype reg_idx_t is unsigned(3 downto 0);
 	pure function reg_idx_max return natural;
-	pure function to_reg_idx(i: natural) return reg_idx_t;
+	pure function to_reg_idx(constant i: natural) return reg_idx_t;
 	-- Index of register IA (r13)
 	constant reg_idx_ia: natural := 13;
 	-- Index of register F (r14)
@@ -66,7 +66,7 @@ package body types is
 		return to_unsigned(i, word_t'length);
 	end;
 
-	pure function to_reg_idx(i: natural) return reg_idx_t is
+	pure function to_reg_idx(constant i: natural) return reg_idx_t is
 	begin
 		return to_unsigned(i, reg_idx_t'length);
 	end;

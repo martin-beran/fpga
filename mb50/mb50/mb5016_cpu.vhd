@@ -115,15 +115,15 @@ begin
 	reg_idx_a <= cu_reg_idx_a when cpu_running = '1' else RegIdx;
 	reg_wr_data_a <=
 		RegData when cpu_running /= '1' else
-		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_a)(7 downto 0))
+		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_a(7 downto 0)))
 			when data_bus_route = ToRegAH else
-		unsigned(std_logic_vector(alu_wr_data_a)(15 downto 8) & std_logic_vector(DataBus))
+		unsigned(std_logic_vector(alu_wr_data_a(15 downto 8)) & std_logic_vector(DataBus))
 			when data_bus_route = ToRegAL else
 		alu_wr_data_a;
 	reg_wr_data_b <=
-		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_b)(7 downto 0))
+		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_b(7 downto 0)))
 			when data_bus_route = ToRegBH else
-		unsigned(std_logic_vector(alu_wr_data_b)(15 downto 8) & std_logic_vector(DataBus))
+		unsigned(std_logic_vector(alu_wr_data_b(15 downto 8)) & std_logic_vector(DataBus))
 			when data_bus_route = ToRegBL else
 		alu_wr_data_b;
 	reg_wr_a <= cu_reg_wr_a when cpu_running = '1' else RegWr and not RegCsr;

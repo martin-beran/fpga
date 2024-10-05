@@ -2,6 +2,8 @@
 -- The CU connects and controls other components of the CPU. It fetches and executes instructions,
 -- routes data, and communicates with the CDI (Control and Debugging Interface)
 
+library ieee;
+use ieee.std_logic_1164.all;
 use work.types.all;
 
 package pkg_mb5016_cu is
@@ -140,26 +142,6 @@ begin
 		);
 		signal state: state_t := Init;
 
-		procedure init_signals is
-		begin
-			Exception <= '0';
-			DisableIntr <= '0';
-			RegIdxA <= to_reg_idx(0);
-			RegIdxB <= to_reg_idx(0);
-			RegWrA <= '0';
-			RegWrB <= '0';
-			CsrRd <= '0';
-			CsrWr <= '0';
-			EnaCsr0H <= '0';
-			RegWrFlags <= (others=>'0');
-			AluOp <= OpMv;
-			AddrBusRoute <= AddrRegA;
-			AddrBusAdd <= '0';
-			DataBusRoute <= FromRegAH;
-			MemRd <= '0';
-			MemWr <= '0';
-		end procedure;
-
 		type decoded_t is record
 			is_implemented: boolean; -- if true then all other elements are ignored
 			alu_op: op_t; -- ignored for instructions that do not use ALU
@@ -217,6 +199,26 @@ begin
 			variable dst_reg, src_reg: reg_idx_t;
 			variable decoded: decoded_t;
 			variable cond: boolean;
+
+			procedure init_signals is
+			begin
+				Exception <= '0';
+				DisableIntr <= '0';
+				RegIdxA <= to_reg_idx(0);
+				RegIdxB <= to_reg_idx(0);
+				RegWrA <= '0';
+				RegWrB <= '0';
+				CsrRd <= '0';
+				CsrWr <= '0';
+				EnaCsr0H <= '0';
+				RegWrFlags <= (others=>'0');
+				AluOp <= OpMv;
+				AddrBusRoute <= AddrRegA;
+				AddrBusAdd <= '0';
+				DataBusRoute <= FromRegAH;
+				MemRd <= '0';
+				MemWr <= '0';
+			end procedure;
 
 			procedure read_instr_byte is
 			begin

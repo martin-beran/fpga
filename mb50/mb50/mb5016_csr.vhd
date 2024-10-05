@@ -34,8 +34,12 @@ architecture main of mb5016_csr is
 	signal csr1: word_t := (others=>'0');
 begin
 	with Idx select RdData <=
-		unsigned("0000000" & std_logic_vector(csr0)) when to_reg_idx(0),
-		csr1 when to_reg_idx(1),
+		-- With to_reg_idx(0), compilation in Questa reports:
+		-- Warning: (vcom-1563) Choice in ordinary selected signal assignment must be locally static.
+		-- unsigned("0000000" & std_logic_vector(csr0)) when to_reg_idx(0),
+		unsigned("0000000" & std_logic_vector(csr0)) when X"0",
+		-- csr1 when to_reg_idx(1),
+		csr1 when X"1",
 		X"0000" when others;
 	process (Clk, Rst) is
 	begin
@@ -45,9 +49,11 @@ begin
 		elsif rising_edge(Clk) then
 			if Wr = '1' then
 				case Idx is
-					when to_reg_idx(0) =>
+					-- when to_reg_idx(0) =>
+					when X"0" =>
 						csr0 <= (WrData(8) and EnaCsr0H) & WrData(7 downto 0);
-					when to_reg_idx(1) =>
+					-- when to_reg_idx(1) =>
+					when X"1" =>
 						csr1 <= WrData;
 					when others=>
 						null;
