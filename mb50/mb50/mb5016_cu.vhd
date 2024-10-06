@@ -14,6 +14,7 @@ package pkg_mb5016_cu is
 	);
 	-- Routing data to/from data bus
 	type data_bus_route_t is (
+		DataBusZ, -- No transfer on data bus
 		FromRegAH, -- High byte from register at interface A to memory
 		FromRegAL, -- Low byte from register at interface A to memory
 		FromRegBH, -- High byte from register at interface B to memory
@@ -77,17 +78,17 @@ entity mb5016_cu is
 		-- Execute the next instruction
 		Run: in std_logic;
 		-- Executing an instruction
-		Busy: out std_logic;
+		Busy: out std_logic := '0';
 		-- CPU is halted (by an exception when interrupts are disabled)
-		Halted: out std_logic;
+		Halted: out std_logic := '0';
 		-- Generate an exception
 		Exception: out std_logic;
 		-- Disable interrupts
 		DisableIntr: out std_logic;
 		-- Select the first (destination) register argument of an instruction
-		RegIdxA: out reg_idx_t;
+		RegIdxA: out reg_idx_t := (others=>'0');
 		-- Select the second (source) register argument of an instruction
-		RegIdxB: out reg_idx_t;
+		RegIdxB: out reg_idx_t := (others=>'0');
 		-- Write to the first register argument of an instruction
 		RegWrA: out std_logic;
 		-- Write to the second register argument of an instruction
@@ -132,6 +133,7 @@ begin
 			IGetOpcode, -- Reading opcode (1st byte of an instruction)
 			IGetRegisters, -- Reading source and destination registers (2nd byte of an instruction)
 			IDecode, -- Decode an instruction
+			Execute, -- Execute an instruction
 			Load2, -- Load of 2nd byte initiated, or waiting for a single byte load
 			Loaded1, -- 1st byte loaded
 			Loaded, -- Load finished
@@ -215,7 +217,7 @@ begin
 				AluOp <= OpMv;
 				AddrBusRoute <= AddrRegA;
 				AddrBusAdd <= '0';
-				DataBusRoute <= FromRegAH;
+				DataBusRoute <= DataBusZ;
 				MemRd <= '0';
 				MemWr <= '0';
 			end procedure;
@@ -244,7 +246,7 @@ begin
 				CsrWr <= '1';
 				EnaCsr0H <= '1';
 				AluOp <= reason;
-				state <= Init;
+				state <= Execute;
 			end;
 			
 			procedure store(addr_add: std_logic; data: data_bus_route_t) is
@@ -257,6 +259,14 @@ begin
 				MemWr <= '1';
 			end procedure;
 			
+			procedure inc_src_reg is
+			begin
+				RegIdxA <= src_reg;
+				RegIdxB <= src_reg;
+				RegWrA <= '1';
+				AluOp <= OpInc2;
+			end;
+
 		begin
 			if Rst = '1' then
 				init_signals;
@@ -310,6 +320,9 @@ begin
 							illegal_instruction(OpConstExcIInstr);
 						elsif opcode = OpcodeIll then
 							illegal_instruction(OpConstExcIZero);
+						elsif not cond and opcode = OpcodeLdnfis then
+							inc_src_reg;
+							state <= Execute;
 						elsif cond and decoded.is_load1 then
 							RegIdxB <= src_reg;
 							AddrBusRoute <= AddrRegA;
@@ -323,7 +336,7 @@ begin
 							RegWrB <= '1';
 							RegWrFlags <= (others=>'1');
 							AluOp <= decoded.alu_op;
-							state <= Init;
+							state <= Execute;
 							case opcode is
 								when OpcodeCsrr =>
 									RegWrB <= '0';
@@ -352,11 +365,13 @@ begin
 							if decoded.is_store2 then
 								state <= Store2;
 							else
-								state <= Init;
+								state <= Execute;
 							end if;
 						else
 							state <= Init; -- Conditional instruction that does nothing in the false branch
 						end if;
+					when Execute =>
+						state <= Init;
 					when Load2 =>
 						if decoded.is_load2 then
 							RegIdxB <= src_reg;
@@ -381,20 +396,17 @@ begin
 							DataBusRoute <= ToRegAL;
 						end if;
 						case opcode is
-							when OpcodeLdis | OpcodeLdnf =>
+							when OpcodeLdis =>
 								state <= IncSrcReg;
 							when others =>
-								state <= Init;
+								state <= Execute;
 						end case;
 					when IncSrcReg =>
-						RegIdxA <= src_reg;
-						RegIdxB <= src_reg;
-						RegWrA <= '1';
-						AluOp <= OpInc2;
-						state <= Init;
+						inc_src_reg;
+						state <= Execute;
 					when Store2 =>
 						store('1', FromRegBH);
-						state <= Init;
+						state <= Execute;
 					when RetiPc =>
 						RegIdxA <= to_reg_idx(reg_idx_pc);
 						RegIdxB <= to_reg_idx(reg_idx_ia);
@@ -407,7 +419,7 @@ begin
 						RegWrA <= '1';
 						CsrRd <= '1';
 						AluOp <= OpExch;
-						state <= Init;
+						state <= Execute;
 				end case;
 			end if;
 		end process;

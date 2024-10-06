@@ -983,9 +983,8 @@ does not modify flags.
 Opcode: 0xa?
 
 If the test is true then it reads one word (two bytes) from memory at the
-address in register `srcr` into register `dstr` and increments `srcr` by 2. If
-the test is false then it increments the value in register `srcr` by 2. It does
-not modify flags.
+address in register `srcr` into register `dstr`. If the test is false then it
+increments the value in register `srcr` by 2. It does not modify flags.
 
 #### LDXnfIS (Load and Exchange if / if Not Flag and Increment Source)
 
