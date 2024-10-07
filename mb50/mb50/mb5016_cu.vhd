@@ -136,7 +136,6 @@ begin
 			Execute, -- Execute an instruction
 			Load2, -- Load of 2nd byte initiated, or waiting for a single byte load
 			Loaded1, -- 1st byte loaded
-			Loaded, -- Load finished
 			IncSrcReg, -- Increment source register by 2 after a load
 			Store2, -- Store the second byte of a register to memory
 			RetiPc, -- Set register PC in instruction RETI
@@ -325,7 +324,7 @@ begin
 							state <= Execute;
 						elsif cond and decoded.is_load1 then
 							RegIdxB <= src_reg;
-							AddrBusRoute <= AddrRegA;
+							AddrBusRoute <= AddrRegB;
 							AddrBusAdd <= '0';
 							MemRd <= '1';
 							state <= Load2;
@@ -374,20 +373,18 @@ begin
 						state <= Init;
 					when Load2 =>
 						if decoded.is_load2 then
+							RegIdxA <= dst_reg;
+							RegWrA <= '1';
+							DataBusRoute <= ToRegAL;
 							RegIdxB <= src_reg;
-							AddrBusRoute <= AddrRegA;
+							AddrBusRoute <= AddrRegB;
 							AddrBusAdd <= '1';
 							MemRd <= '1';
 							state <= Loaded1;
 						else
-							state <= Loaded;
+							state <= Execute;
 						end if;
 					when Loaded1 =>
-						RegIdxA <= dst_reg;
-						RegWrA <= '1';
-						DataBusRoute <= ToRegAL;
-						state <= Loaded;
-					when Loaded =>
 						RegIdxA <= dst_reg;
 						RegWrA <= '1';
 						if decoded.is_load2 then

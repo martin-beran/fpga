@@ -159,6 +159,61 @@ begin
 		assert RegData = X"0002" severity failure;
 		CLK_NEXT;
 		
+		-- TEST: Execute instruction LD R2, R1
+		-- PC=0x0002, R1=0x1234
+		MARK(5);
+		Run <= '1';
+		CLK_NEXT;
+		-- Initiate read of 1st byte of instruction
+		Run <= '0';
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"0002" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Initiate read of 2nd byte of instruction; read 1st byte
+		DataBus <= X"0a";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"0003" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Read 2nd byte of instruction
+		DataBus <= X"21";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert Rd = '0' severity failure;
+		CLK_NEXT;
+		-- Initiate load of 1st (low) byte
+		DataBus <= X"ZZ";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"1234" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Initiate load of 2nd (high) byte; load 1st (low) byte
+		DataBus <= X"1a";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"1235" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Load 2nd (high) byte
+		DataBus <= X"2b";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert Rd = '0' severity failure;
+		CLK_NEXT;
+		-- Instruction done, check loaded value in R2
+		DataBus <= X"ZZ";
+		RegIdx <= to_reg_idx(2);
+		RegRd <= '1';
+		TIME_STEP;
+		assert Busy = '0' severity failure;
+		assert RegData = X"2b1a" severity failure;
+		CLK_NEXT;
+
+		-- TEST: Execute instruction STO R2, R0
 		-- END OF TEST
 		MARK(-1);
 		CLK_NEXT;
