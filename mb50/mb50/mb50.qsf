@@ -69,6 +69,10 @@ set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_SHOW_LMF_MAPPING_MESSAGES OFF
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VHDL_FILE ../../lib/util/clock.vhd -library lib_util
 set_global_assignment -name VHDL_FILE ../../lib/util/shift_register.vhd -library lib_util
 set_global_assignment -name VHDL_FILE ../../lib/util/synchronizer.vhd -library lib_util
@@ -85,12 +89,10 @@ set_global_assignment -name VHDL_FILE mb5016_cpu.vhd
 set_global_assignment -name VHDL_FILE mb5016_csr.vhd
 set_global_assignment -name VHDL_FILE mb5016_cu.vhd
 set_global_assignment -name VHDL_FILE mb5016_registers.vhd
+set_global_assignment -name VHDL_FILE memctl.vhd
 set_global_assignment -name VHDL_FILE ram.vhd
 set_global_assignment -name VHDL_FILE sys_params.vhd
+set_global_assignment -name VHDL_FILE system_clock.vhd
 set_global_assignment -name VHDL_FILE types.vhd
 set_global_assignment -name VHDL_FILE test/tb_mb5016_registers.vhd
 set_global_assignment -name VHDL_FILE test/tb_mb5016_cpu.vhd
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

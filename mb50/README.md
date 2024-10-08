@@ -96,6 +96,62 @@ buses) among these components of the system are defined as logical signals
 (soft-wires) between functional units inside the FPGA, not as physical wires
 among integrated circuits.
 
+### Block schema of the system
+
+
+                        +=======+   
+           interrupts  ||  I/O  ||  
+         +-------------+|devices||  
+         |              +===+===+   
+         |                  | memory mapped I/O
+         |                  |
+         |                  |
+      +==+==+               |                +========+
+     ||     ||          +===+====+          ||        ||         +=====+
+     ||     |+---------+| MEMCTL |+---------+| Memory |+--------+| VGA ||
+     || CPU ||          +===+====+          ||        ||         +=====+
+     ||     ||              |                +========+
+     ||     ||              |
+      +==+==+               |
+         |                  |
+         |           +======+======+
+         |          ||     CDI     ||
+         |          ||  (Serial)   ||
+         +----------+| Control and ||
+                    ||  Debugging  ||
+                    ||  Interface  ||
+                     +=============+
+
+Details of interconnections among system components can be changed or refined
+during implementation. See also the VHDL source code.
+
+Between CPU and memory, there is a 16-bit unidirectional address bus and an
+8-bit bidirectional data bus. There are additional signals controlling reading
+and writing memory.
+
+The memory controller (MEMCTL) implements mapping of I/O device registers to
+the address space, that is, routing memory read/write requests to the memory or
+to the appropriate device. It also arbitrates access to the memory by the CPU
+and the CDI.
+
+The VGA controller is not directly connected to the CPU. It uses a completely
+separated interface to the memory, not shared with any other system component.
+This allows to display the image from the video memory continuously and
+independently on the rest of the system.
+
+Control registers of I/O device controllers are mapped into memory address
+space. In addition, a device controller can generate interrupts and set its
+assigned bit in the high byte of register `f`.
+
+There is a set of control signals used to observe and control the internal
+state of the CPU. They are used by the CDI to:
+
+- Read values in registers
+- Set values of registers
+- Stop the CPU
+- Run the CPU continuously
+- Command the CPU to execute a single instruction
+
 ### CPU MB5016
 
 #### Instruction Set Architecture (ISA)
@@ -352,64 +408,6 @@ Groups of instructions:
 - If an exception or interrupt bit in `f` remains set when returning from the
   handler, the handler is called immediately again, without executing any
   instructions of the interrupted program.
-
-#### External signals and buses
-
-Block schema of the system:
-
-
-                        +=======+   
-           interrupts  ||  I/O  ||  
-         +-------------+|devices||  
-         |              +===+===+   
-         |                  | memory mapped I/O
-         |                  |
-         |                  |
-      +==+==+               |              +========+
-     ||     ||           +==+==+          ||        ||         +=====+
-     ||     |+----------+| MMU |+---------+| Memory |+--------+| VGA ||
-     || CPU ||           +==+==+          ||        ||         +=====+
-     ||     ||              |              +========+
-     ||     ||              |
-      +==+==+               |
-         |                  |
-         |           +======+======+
-         |          ||     CDI     ||
-         |          ||  (Serial)   ||
-         +----------+| Control and ||
-                    ||  Debugging  ||
-                    ||  Interface  ||
-                     +=============+
-
-Details of interconnections among system components can be changed or refined
-during implementation. See also the VHDL source code.
-
-Between CPU and memory, there is a 16-bit unidirectional address bus and an
-8-bit bidirectional data bus. There are additional signals controlling reading
-and writing memory.
-
-The memory management unit (MMU) does not provide functionalities known from
-current advanced processors, for example, paging or memory protection. It
-implements mapping of I/O device registers to the address space, that is,
-routing memory read/write requests to the memory or to the appropriate device.
-It also arbitrates access to the memory by the CPU and the CDI.
-
-The VGA controller is not directly connected to the CPU. It uses a completely
-separated interface to the memory, not shared with any other system component.
-This allows to display the image from the video memory continuously and
-independently on the rest of the system.
-
-Control registers of I/O device controllers are mapped into memory address
-space. In addition, a device controller can generate interrupts and set its
-assigned bit in the high byte of register `f`.
-
-There is a set of control signals used to observe and control the internal
-state of the CPU. They are used by the CDI to:
-- Read values in registers
-- Set values of registers
-- Stop the CPU
-- Run the CPU continuously
-- Command the CPU to execute a single instruction
 
 #### Microarchitecture
 
