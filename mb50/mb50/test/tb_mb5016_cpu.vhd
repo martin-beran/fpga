@@ -10,7 +10,7 @@ end entity;
 
 architecture main of tb_mb5016_cpu is
 	constant step: delay_length := 1 ns; -- This should be set to simulation resolution
-	constant period: delay_length := 20 ns; -- System clock period, 50 MHz
+	constant period: delay_length := 20 ns; -- CPU clock period, 50 MHz
 	signal M_A_R_K: integer := 0; -- User-defined mark in simulation waveform
 	signal S_T_E_P: std_logic := '0'; -- Each edge is an indicator of a WAIT in simulation waveform
 	signal Clk: std_logic := '0';
@@ -214,6 +214,52 @@ begin
 		CLK_NEXT;
 
 		-- TEST: Execute instruction STO R2, R0
+		-- PC=0x0004, R0=0x1235, R2=0x2b1a
+		MARK(6);
+		Run <= '1';
+		CLK_NEXT;
+		-- Initiate read of 1st byte of instruction
+		Run <= '0';
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"0004" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Initiate read of 2nd byte of instruction; read 1st byte
+		DataBus <= X"15";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"0005" severity failure;
+		assert Rd = '1' severity failure;
+		CLK_NEXT;
+		-- Read 2nd byte of instruction
+		DataBus <= X"20";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert Rd = '0' severity failure;
+		CLK_NEXT;
+		-- Store of 1st byte of a register
+		DataBus <= X"ZZ";
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"2b1a" severity failure;
+		assert DataBus = X"35" severity failure;
+		assert Rd = '0' severity failure;
+		assert Wr = '1' severity failure;
+		CLK_NEXT;
+		-- Store of 2nd byte of a register
+		TIME_STEP;
+		assert Busy = '1' severity failure;
+		assert AddrBus = X"2b1b" severity failure;
+		assert DataBus = X"12" severity failure;
+		assert Rd = '0' severity failure;
+		assert Wr = '1' severity failure;
+		CLK_NEXT;
+		-- Instruction done
+		TIME_STEP;
+		assert Busy = '0' severity failure;
+		CLK_NEXT;
+
 		-- END OF TEST
 		MARK(-1);
 		CLK_NEXT;
