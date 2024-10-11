@@ -998,6 +998,63 @@ address in register `srcr` into register `dstr`, increments `srcr` by 2, and
 exchanges values in registers `srcr` and `dstr`. If the test is false then it
 increments the value in register `srcr` by 2. It does not modify flags.
 
+#### MULSS (Multiply Signed and Signed)
+
+    mulss dstr, srcr
+
+Opcode: 0x1e __(not implemented)__
+
+Multiplies signed values in registers `srcr` and `dstr` and yields a 32-bit
+signed result. The lower 16 bits of the result are stored into `dstr`, the upper
+16 bits are stored into `srcr`. It sets flags: `z` to 1 if the result is zero;
+`c` to 1 if the upper 16 bits are not all zeros for a nonnegative result or all
+ones for a negative result; `s` if the result is negative (copies the highest
+bit of a result from `srcr`); `o` if a signed overflow occurs (the result does
+not fit in the range of signed 16 bit numbers).
+
+#### MULSU (Multiply Signed and Unsigned)
+
+    mulsu dstr, srcr
+
+Opcode: 0x1f __(not implemented)__
+
+Multiplies a signed value in register `dstr` and an unsigned value in `srcr`
+and yields a 32-bit signed result. The lower 16 bits of the result are stored
+into `dstr`, the upper 16 bits are stored into `srcr`. It sets flags: `z` to
+1 if the result is zero; `c` to 1 if the upper 16 bits are not all zeros for
+a nonnegative result or all ones for a negative result; `s` if the result is
+negative (copies the highest bit of a result from `srcr`); `o` if a signed
+overflow occurs (the result does not fit in the range of signed 16 bit
+numbers).
+
+#### MULUS (Multiply Unsigned and Unsigned)
+
+    mulus dstr, srcr
+
+Opcode: 0x20 __(not implemented)__
+
+Multiplies an unsigned value in register `dstr` and a signed value in `srcr`
+and yields a 32-bit signed result. The lower 16 bits of the result are stored
+into `dstr`, the upper 16 bits are stored into `srcr`. It sets flags: `z` to
+1 if the result is zero; `c` to 1 if the upper 16 bits are not all zeros for
+a nonnegative result or all ones for a negative result; `s` if the result is
+negative (copies the highest bit of a result from `srcr`); `o` if a signed
+overflow occurs (the result does not fit in the range of signed 16 bit
+numbers).
+
+#### MULUU (Multiply Unsigned and unsigned)
+
+    muluu dstr, srcr
+
+Opcode: 0x21 __(not implemented)__
+
+Multiplies unsigned values in registers `srcr` and `dstr` and yields a 32-bit
+unsigned result. The lower 16 bits of the result are stored into `dstr`, the
+upper 16 bits are stored into `srcr`. It sets flags: `z` to 1 if the result is
+zero; `c` to 1 if the upper 16 bits are not all zeros (the result does not fit
+in the range of unsigned 16 bit numbers); `s` to 0; `o` if a signed overflow
+occurs (the result does not fit in the range of signed 16 bit numbers).
+
 #### MV (Move)
 
     mv dstr, srcr
@@ -1205,6 +1262,10 @@ table shows executed phases for each instruction.
 | `ldnf` | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
 | `ldnfis` | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
 | `ldxnfis` | ✘ | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ |
+| `mulss` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `mulsu` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `mulus` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `muluu` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
 | `mv` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
 | `mvnf` | ✔ | ✔ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |
 | `neg` | ✘ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
