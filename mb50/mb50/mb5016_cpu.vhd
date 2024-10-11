@@ -12,6 +12,7 @@ use work.pkg_mb5016_cu.all;
 -- Quartus User Guide Design Recommendations allow using tri-state values only at the top level
 -- of a design hierarchy for driving output or bidirectional pins. Therefore unidirectional data
 -- bus signals DataBusRd and DataBusWr are used instead of a single inout DataBus.
+-- Similarly, RegDataRd and RegDataWr are used instead of a single inout RegData.
 entity mb5016_cpu is
 	port (
 		-- CPU clock input
@@ -44,8 +45,10 @@ entity mb5016_cpu is
 		Wr: out std_logic;
 		-- Access to registers: register index
 		RegIdx: in reg_idx_t := (others=>'0');
-		-- Access to registers: register value
-		RegData: inout word_t;
+		-- Access to registers: reading register value
+		RegDataRd: out word_t;
+		-- Access to registers: writing register value
+		RegDataWr: in word_t := (others=>'0');
 		-- Register read (valid index on RegIdx, expects value in the next Clk cycle on Reg)
 		RegRd: in std_logic := '0';
 		-- Register write (valid index on RegIdx, valid value on Reg)
@@ -73,8 +76,8 @@ begin
 	-- External out/inout signals
 	Busy <= cpu_running;
 	Halted <= cu_halted;
-	RegData <=
-		(others=>'Z') when cpu_running = '1' or RegRd /= '1' or RegWr /= '0' else
+	RegDataRd <=
+		(others=>'0') when cpu_running = '1' or RegRd /= '1' or RegWr /= '0' else
 		reg_rd_data_a when RegCsr = '0' else
 		csr_rd_data;
 	
@@ -119,7 +122,7 @@ begin
 	alu_rd_data_b <= csr_rd_data when cu_csr_rd = '1' else reg_rd_data_b;
 	reg_idx_a <= cu_reg_idx_a when cpu_running = '1' else RegIdx;
 	reg_wr_data_a <=
-		RegData when cpu_running /= '1' else
+		RegDataWr when cpu_running /= '1' else
 		unsigned(std_logic_vector(DataBusRd) & std_logic_vector(alu_wr_data_a(7 downto 0)))
 			when data_bus_route = ToRegAH else
 		unsigned(std_logic_vector(alu_wr_data_a(15 downto 8)) & std_logic_vector(DataBusRd))

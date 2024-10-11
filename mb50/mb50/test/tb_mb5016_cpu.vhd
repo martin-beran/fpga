@@ -23,7 +23,8 @@ architecture main of tb_mb5016_cpu is
 	signal DataBusWr: byte_t;
 	signal Rd, Wr: std_logic;
 	signal RegIdx: reg_idx_t := (others=>'0');
-	signal RegData: word_t := (others=>'Z');
+	signal RegDataRd: word_t;
+	signal RegDataWr: word_t := (others=>'0');
 	signal RegRd, RegWr, RegCsr: std_logic := '0';
 begin
 	clock: process is
@@ -70,17 +71,16 @@ begin
 		-- TEST: Set a register value
 		MARK(2);
 		RegIdx <= to_reg_idx(1);
-		RegData <= X"1234";
+		RegDataWr <= X"1234";
 		RegWr <= '1';
 		CLK_NEXT;
 		RegIdx <= to_reg_idx(10);
-		RegData <= X"abcd";
+		RegDataWr <= X"abcd";
 		RegWr <= '1';
 		CLK_NEXT;
-		RegData <= X"ZZZZ";
+		RegDataWr <= X"0000";
 		RegWr <= '0';
 		CLK_NEXT;
-		assert is_word_z(RegData) severity failure;
 		CLK_NEXT;
 		
 		-- TEST: Get a register value
@@ -88,21 +88,20 @@ begin
 		RegIdx <= to_reg_idx(0);
 		RegRd <= '1';
 		TIME_STEP;
-		assert RegData = X"0000" severity failure;
+		assert RegDataRd = X"0000" severity failure;
 		CLK_NEXT;
 		RegIdx <= to_reg_idx(1);
 		RegRd <= '1';
 		TIME_STEP;
-		assert RegData = X"1234" severity failure;
+		assert RegDataRd = X"1234" severity failure;
 		CLK_NEXT;
 		RegIdx <= to_reg_idx(10);
 		RegRd <= '1';
 		TIME_STEP;
-		assert RegData = X"abcd" severity failure;
+		assert RegDataRd = X"abcd" severity failure;
 		CLK_NEXT;
 		RegRd <= '0';
 		TIME_STEP;
-		assert is_word_z(RegData) severity failure;
 		
 		-- TEST: Execute instruction INC1 R0, R1
 		-- R1=0x1234 => R0=0x1235
@@ -142,20 +141,20 @@ begin
 		RegRd <= '1';
 		TIME_STEP;
 		assert Busy = '0' severity failure;
-		assert RegData = X"1235" severity failure;
+		assert RegDataRd = X"1235" severity failure;
 		CLK_NEXT;
 		-- Check unchanged source R1
 		RegIdx <= to_reg_idx(1);
 		RegRd <= '1';
 		TIME_STEP;
 		assert Busy = '0' severity failure;
-		assert RegData = X"1234" severity failure;
+		assert RegDataRd = X"1234" severity failure;
 		CLK_NEXT;
 		-- Check address of next instruction in PC
 		RegIdx <= to_reg_idx(reg_idx_pc);
 		RegRd <= '1';
 		TIME_STEP;
-		assert RegData = X"0002" severity failure;
+		assert RegDataRd = X"0002" severity failure;
 		CLK_NEXT;
 		
 		-- TEST: Execute instruction LD R2, R1
@@ -209,7 +208,7 @@ begin
 		RegRd <= '1';
 		TIME_STEP;
 		assert Busy = '0' severity failure;
-		assert RegData = X"2b1a" severity failure;
+		assert RegDataRd = X"2b1a" severity failure;
 		CLK_NEXT;
 
 		-- TEST: Execute instruction STO R2, R0
@@ -275,6 +274,6 @@ begin
 		Run=>Run, Busy=>Busy, Halted=>Halted,
 		Irq=>Irq,
 		AddrBus=>AddrBus, DataBusRd=>DataBusRd, DataBusWr=>DataBusWr, Rd=>Rd, Wr=>Wr,
-		RegIdx=>RegIdx, RegData=>RegData, RegRd=>RegRd, RegWr=>RegWr, RegCsr=>RegCsr
+		RegIdx=>RegIdx, RegDataRd=>RegDataRd, RegDataWr=>RegDataWr, RegRd=>RegRd, RegWr=>RegWr, RegCsr=>RegCsr
 	);
 end architecture;
