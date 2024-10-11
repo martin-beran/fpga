@@ -9,6 +9,9 @@ use work.pkg_mb5016_cu.all;
 
 -- Access to registers (RegIdx, RegRd, RegWr) and takeover of the memory bus is
 -- allowed only if the CPU is stopped (Run=0, Busy=0).
+-- Quartus User Guide Design Recommendations allow using tri-state values only at the top level
+-- of a design hierarchy for driving output or bidirectional pins. Therefore unidirectional data
+-- bus signals DataBusRd and DataBusWr are used instead of a single inout DataBus.
 entity mb5016_cpu is
 	port (
 		-- CPU clock input
@@ -31,11 +34,13 @@ entity mb5016_cpu is
 		Irq: in std_logic_vector(15 downto 10) := (others=>'0');
 		-- 16-bit address bus
 		AddrBus: out addr_t;
-		-- 8-bit data bus
-		DataBus: inout byte_t;
-		-- Memory read (valid address on AddrBus, expects data in the next Clk cycle on DataBus)
+		-- 8-bit data bus for reading (from memory)
+		DataBusRd: in byte_t := (others=>'0');
+		-- 8-bit data bus for writing (to memory)
+		DataBusWr: out byte_t;
+		-- Memory read (valid address on AddrBus, expects data in the next Clk cycle on DataBusRd)
 		Rd: out std_logic;
-		-- Memory write (valid address on AddrBus, valid data on DataBus)
+		-- Memory write (valid address on AddrBus, valid data on DataBusWr)
 		Wr: out std_logic;
 		-- Access to registers: register index
 		RegIdx: in reg_idx_t := (others=>'0');
@@ -104,7 +109,7 @@ begin
 		RegWrFlags=>reg_wr_flags, RegRdF=>reg_rd_f, RegRdPc=>reg_rd_pc,
 		AluOp=>alu_op,
 		AddrBusRoute=>addr_bus_route, AddrBusAdd=>addr_bus_add,
-		DataBusRoute=>data_bus_route, DataBus=>DataBus, MemRd=>Rd, MemWr=>Wr
+		DataBusRoute=>data_bus_route, DataBus=>DataBusRd, MemRd=>Rd, MemWr=>Wr
 	);
 	
 	-- Registers are controlled by CU and are connected to ALU, address bus, and data bus.
@@ -115,15 +120,15 @@ begin
 	reg_idx_a <= cu_reg_idx_a when cpu_running = '1' else RegIdx;
 	reg_wr_data_a <=
 		RegData when cpu_running /= '1' else
-		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_a(7 downto 0)))
+		unsigned(std_logic_vector(DataBusRd) & std_logic_vector(alu_wr_data_a(7 downto 0)))
 			when data_bus_route = ToRegAH else
-		unsigned(std_logic_vector(alu_wr_data_a(15 downto 8)) & std_logic_vector(DataBus))
+		unsigned(std_logic_vector(alu_wr_data_a(15 downto 8)) & std_logic_vector(DataBusRd))
 			when data_bus_route = ToRegAL else
 		alu_wr_data_a;
 	reg_wr_data_b <=
-		unsigned(std_logic_vector(DataBus) & std_logic_vector(alu_wr_data_b(7 downto 0)))
+		unsigned(std_logic_vector(DataBusRd) & std_logic_vector(alu_wr_data_b(7 downto 0)))
 			when data_bus_route = ToRegBH else
-		unsigned(std_logic_vector(alu_wr_data_b(15 downto 8)) & std_logic_vector(DataBus))
+		unsigned(std_logic_vector(alu_wr_data_b(15 downto 8)) & std_logic_vector(DataBusRd))
 			when data_bus_route = ToRegBL else
 		alu_wr_data_b;
 	reg_wr_a <= cu_reg_wr_a when cpu_running = '1' else RegWr and not RegCsr;
@@ -134,12 +139,12 @@ begin
 		reg_rd_data_b + 1 when addr_bus_route = AddrRegB and addr_bus_add = '1' else
 		(others=>'0');
 	with data_bus_route select
-		DataBus <=
+		DataBusWr <=
 			reg_rd_data_a(15 downto 8) when FromRegAH,
 			reg_rd_data_a(7 downto 0) when FromRegAL,
 			reg_rd_data_b(15 downto 8) when FromRegBH,
 			reg_rd_data_b(7 downto 0) when FromRegBL,
-			(others=>'Z') when others;
+			(others=>'0') when others;
 	csr_wr <= cu_csr_wr when cpu_running = '1' else RegWr and RegCsr;
 	ena_csr0_h <= cu_ena_csr0_h when cpu_running = '1' else '1';
 	

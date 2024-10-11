@@ -19,7 +19,8 @@ architecture main of tb_mb5016_cpu is
 	signal Busy, Halted: std_logic;
 	signal Irq: std_logic_vector(15 downto 10) := (others=>'0');
 	signal AddrBus: word_t;
-	signal DataBus: byte_t := (others=>'Z');
+	signal DataBusRd: byte_t := (others=>'0');
+	signal DataBusWr: byte_t;
 	signal Rd, Wr: std_logic;
 	signal RegIdx: reg_idx_t := (others=>'0');
 	signal RegData: word_t := (others=>'Z');
@@ -65,7 +66,6 @@ begin
 		assert Busy = '0' severity failure;
 		assert Halted = '0' severity failure;
 		assert AddrBus = to_word(0) severity failure;
-		assert is_byte_z(DataBus) severity failure;
 		
 		-- TEST: Set a register value
 		MARK(2);
@@ -114,12 +114,11 @@ begin
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"0000" severity failure;
-		assert is_byte_z(DataBus) severity failure;
 		assert Rd = '1' severity failure;
 		assert Wr = '0' severity failure;
 		CLK_NEXT;
 		-- Initiate read of 2nd byte of instruction; read 1st byte
-		DataBus <= X"08";
+		DataBusRd <= X"08";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"0001" severity failure;
@@ -127,14 +126,14 @@ begin
 		assert Wr = '0' severity failure;
 		CLK_NEXT;
 		-- Read 2nd byte of instruction
-		DataBus <= X"01";
+		DataBusRd <= X"01";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert Rd = '0' severity failure;
 		assert Wr = '0' severity failure;
 		CLK_NEXT;
 		-- Execute instruction
-		DataBus <= X"ZZ";
+		DataBusRd <= X"00";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		CLK_NEXT;
@@ -172,40 +171,40 @@ begin
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Initiate read of 2nd byte of instruction; read 1st byte
-		DataBus <= X"0a";
+		DataBusRd <= X"0a";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"0003" severity failure;
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Read 2nd byte of instruction
-		DataBus <= X"21";
+		DataBusRd <= X"21";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert Rd = '0' severity failure;
 		CLK_NEXT;
 		-- Initiate load of 1st (low) byte
-		DataBus <= X"ZZ";
+		DataBusRd <= X"00";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"1234" severity failure;
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Initiate load of 2nd (high) byte; load 1st (low) byte
-		DataBus <= X"1a";
+		DataBusRd <= X"1a";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"1235" severity failure;
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Load 2nd (high) byte
-		DataBus <= X"2b";
+		DataBusRd <= X"2b";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert Rd = '0' severity failure;
 		CLK_NEXT;
 		-- Instruction done, check loaded value in R2
-		DataBus <= X"ZZ";
+		DataBusRd <= X"00";
 		RegIdx <= to_reg_idx(2);
 		RegRd <= '1';
 		TIME_STEP;
@@ -226,24 +225,24 @@ begin
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Initiate read of 2nd byte of instruction; read 1st byte
-		DataBus <= X"15";
+		DataBusRd <= X"15";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"0005" severity failure;
 		assert Rd = '1' severity failure;
 		CLK_NEXT;
 		-- Read 2nd byte of instruction
-		DataBus <= X"20";
+		DataBusRd <= X"20";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert Rd = '0' severity failure;
 		CLK_NEXT;
 		-- Store of 1st byte of a register
-		DataBus <= X"ZZ";
+		DataBusRd <= X"00";
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"2b1a" severity failure;
-		assert DataBus = X"35" severity failure;
+		assert DataBusWr = X"35" severity failure;
 		assert Rd = '0' severity failure;
 		assert Wr = '1' severity failure;
 		CLK_NEXT;
@@ -251,7 +250,7 @@ begin
 		TIME_STEP;
 		assert Busy = '1' severity failure;
 		assert AddrBus = X"2b1b" severity failure;
-		assert DataBus = X"12" severity failure;
+		assert DataBusWr = X"12" severity failure;
 		assert Rd = '0' severity failure;
 		assert Wr = '1' severity failure;
 		CLK_NEXT;
@@ -275,7 +274,7 @@ begin
 		Clk=>Clk, Rst=>Rst,
 		Run=>Run, Busy=>Busy, Halted=>Halted,
 		Irq=>Irq,
-		AddrBus=>AddrBus, DataBus=>DataBus, Rd=>Rd, Wr=>Wr,
+		AddrBus=>AddrBus, DataBusRd=>DataBusRd, DataBusWr=>DataBusWr, Rd=>Rd, Wr=>Wr,
 		RegIdx=>RegIdx, RegData=>RegData, RegRd=>RegRd, RegWr=>RegWr, RegCsr=>RegCsr
 	);
 end architecture;

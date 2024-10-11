@@ -9,7 +9,8 @@ add wave -noupdate /tb_mb5016_cpu/Busy
 add wave -noupdate /tb_mb5016_cpu/Halted
 add wave -noupdate /tb_mb5016_cpu/Irq
 add wave -noupdate /tb_mb5016_cpu/AddrBus
-add wave -noupdate /tb_mb5016_cpu/DataBus
+add wave -noupdate /tb_mb5016_cpu/DataBusRd
+add wave -noupdate /tb_mb5016_cpu/DataBusWr
 add wave -noupdate /tb_mb5016_cpu/Rd
 add wave -noupdate /tb_mb5016_cpu/Wr
 add wave -noupdate /tb_mb5016_cpu/RegIdx
