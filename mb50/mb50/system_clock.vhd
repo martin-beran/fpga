@@ -25,11 +25,11 @@ begin
 		variable counter: natural := 0;
 		variable v: word_t := to_word(0);
 	begin
-		Intr <= '0';
 		if Rst = '1' then
 			counter := 0;
 			v := to_word(0);
 		elsif rising_edge(Clk) then
+			Intr <= '0';
 			counter := counter + 1;
 			if counter = HZ / CPU_HZ then
 				counter := 0;

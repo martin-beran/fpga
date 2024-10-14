@@ -39,7 +39,7 @@ entity mb5016_cpu is
 		DataBusRd: in byte_t := (others=>'0');
 		-- 8-bit data bus for writing (to memory)
 		DataBusWr: out byte_t;
-		-- Memory read (valid address on AddrBus, expects data in the next Clk cycle on DataBusRd)
+		-- Memory read (valid address on AddrBus, expects data in a later Clk cycle on DataBusRd)
 		Rd: out std_logic;
 		-- Memory write (valid address on AddrBus, valid data on DataBusWr)
 		Wr: out std_logic;

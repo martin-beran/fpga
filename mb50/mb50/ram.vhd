@@ -74,7 +74,7 @@ BEGIN
 		clock_enable_output_a => "BYPASS",
 		clock_enable_output_b => "BYPASS",
 		indata_reg_b => "CLOCK1",
-		init_file => "img1.mif",
+		init_file => "mb50.mif",
 		intended_device_family => "Cyclone IV E",
 		lpm_type => "altsyncram",
 		maximum_depth => 4096,

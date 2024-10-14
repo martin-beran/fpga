@@ -210,7 +210,8 @@ All pins are inverted (active level '0')
     - 119 PS_CLOCK
 - VGA
     - 103 VGA_VSYNC
-    - 101 VGA_HSYNC
+    - 101 VGA_HSYNC (to be used, set "Assignments / Device / Device and Pin
+      Options / Dual-Purpose Pins / nCEO" to "Use as regular I/O")
     - 106 VGA_R
     - 105 VGA_G
     - 104 VGA_B
