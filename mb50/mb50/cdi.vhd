@@ -69,14 +69,14 @@ begin
 	uart_tx_break <= '0';
 	uart_rx_ack <= '0';
 	
-	CpuRun <= uart_rxd(0);
-	CpuRegIdx <= unsigned(uart_rxd(3 downto 0));
-	CpuRegDataWr <= word_t(uart_rxd & uart_rxd);
-	CpuRegRd <= uart_rxd(1) xor uart_tx_ready;
-	CpuRegWr <= uart_rxd(2) xor uart_rx_valid;
-	CpuRegCsr <= uart_rxd(3) xor uart_rx_err;
-	AddrBus <= addr_t(uart_rxd & uart_rxd);
-	DataBusWr <= byte_t(uart_rxd);
-	Rd <= uart_rxd(4) xor uart_rx_break;
-	Wr <= uart_rxd(5);
+	CpuRun <= '1';
+	CpuRegIdx <= (others=>'0');
+	CpuRegDataWr <= (others=>'0');
+	CpuRegRd <= '0';
+	CpuRegWr <= '0';
+	CpuRegCsr <= '0';
+	AddrBus <= (others=>'0');
+	DataBusWr <= (others=>'0');
+	Rd <= '0';
+	Wr <= '0';
 end architecture;

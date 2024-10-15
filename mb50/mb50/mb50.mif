@@ -22,5 +22,20 @@ ADDRESS_RADIX=HEX;
 DATA_RADIX=HEX;
 
 CONTENT BEGIN
-	[0000..77FF]  :   00;
+	-- ldis r0, pc 0x7200 -- attr x=0, y=0
+	0000 : 0c;
+	0001 : 0f;
+	0002 : 00;
+	0003 : 72;
+	-- ldis r1, pc 0xc387 -- blink bw, blink RC
+	0004 : 0c;
+	0005 : 1f;
+	0006 : 87;
+	0007 : c3;
+	-- sto r0, r1
+	0008 : 15;
+	0009 : 01;
+	[000a..74ff]  :   00;
+	7500 : 03; -- border C
+	[7501..77ff]  :   00;
 END;

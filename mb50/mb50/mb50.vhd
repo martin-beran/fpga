@@ -2,7 +2,9 @@
 
 library ieee, lib_io;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use work.types.all;
+use work.sys_params.all;
 use lib_io.pkg_reset.all;
 use lib_io.pkg_ps2;
 use lib_io.pkg_vga;
@@ -119,12 +121,19 @@ begin
 		end if;
 	end process;
 	
-	display: pkg_vga.vga port map (
-		PxClk=>vga_clk,
-		HSync=>VGA_HSYNC, VSync=>VGA_VSYNC,
-		R=>VGA_R, G=>VGA_G, B=>VGA_B,
-		std_logic_vector(Addr)=>vga_addr_bus, Data=>pkg_vga.data_t(vga_data_bus_rd)
-	);
+	display: pkg_vga.vga
+		generic map (
+			AddrPx => VIDEO_ADDR, -- 0x5a00 = 23040
+			AddrAttr => VIDEO_ADDR + 32 * 192, -- 0x7200 = 29184
+			AddrBorder => VIDEO_ADDR + 32 * 192 + 32 * 24, -- 0x7500 = 29952
+			AddrBlink => VIDEO_ADDR + 32 * 192 + 32 * 24 + 1 -- 0x7501 = 29953
+		)
+		port map (
+			PxClk=>vga_clk,
+			HSync=>VGA_HSYNC, VSync=>VGA_VSYNC,
+			R=>VGA_R, G=>VGA_G, B=>VGA_B,
+			std_logic_vector(Addr)=>vga_addr_bus, Data=>pkg_vga.data_t(vga_data_bus_rd)
+		);
 	
 	pixel_clk: entity lib_io.vga_pixel_clk_pll port map (
 		inclk0=>FPGA_CLK, c0=>vga_clk
