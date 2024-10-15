@@ -27,15 +27,37 @@ CONTENT BEGIN
 	0001 : 0f;
 	0002 : 00;
 	0003 : 72;
-	-- ldis r1, pc 0xc387 -- blink bw, blink RC
+	-- ldis r1, pc 0xc287 -- blink bw, blink RG
 	0004 : 0c;
 	0005 : 1f;
 	0006 : 87;
-	0007 : c3;
+	0007 : c2;
 	-- sto r0, r1
 	0008 : 15;
 	0009 : 01;
-	[000a..74ff]  :   00;
-	7500 : 03; -- border C
-	[7501..77ff]  :   00;
+	-- ldis r0, pc 0x5a40 -- px x=0, y=2
+	000a : 0c;
+	000b : 0f;
+	000c : 40;
+	000d : 5a;
+	-- not r2, r2
+	000e : 10;
+	000f : 22;
+	-- sto r0, r2
+	0010 : 15;
+	0011 : 02;
+	-- ldis r0, pc 0x7500 -- border, blink
+	0012 : 0c;
+	0013 : 0f;
+	0014 : 00;
+	0015 : 75;
+	-- ldis r1, pc 0x1e03 -- border C, blink 1 Hz
+	0016 : 0c;
+	0017 : 1f;
+	0018 : 03;
+	0019 : 1e;
+	-- sto r0, r1
+	001a : 15;
+	001b : 01;
+	[001c..77ff]  :   00;
 END;

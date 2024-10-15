@@ -60,7 +60,7 @@ begin
 	RamAddrBus <=
 		(others=>'0') when Rst /= '0' else
 		(others=>'0') when CpuAddrBus > MEM_MAX else
-		std_logic_vector(addr_reg(14 downto 0)) when CpuRd = '0' else
+		std_logic_vector(addr_reg(14 downto 0)) when CpuRd = '0' and CpuWr = '0' else
 		std_logic_vector(CpuAddrBus(14 downto 0));
 	RamDataBusWr <=
 		(others=>'0') when Rst /= '0' else
