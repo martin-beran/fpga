@@ -47,15 +47,22 @@ entity cdi is
 	);
 	subtype UartData is std_logic_vector(7 downto 0); -- Data type of the serial port
 	-- CDI reguests (received from the debugger) ------------------------------
-	-- Request for a status, expects RespStatus
+	-- Request for executing the program, returns RespStatus with X='1'
+	-- Can be interrupted by ReqStatus (which returns RespStatus with X='0'); such interrupting ReqStatus must be
+	-- prepared to receive one ReqStatus (X='0') or two ReqStatus (X='1', X='0', if CPU stops execution at the same
+	-- time as ReqStatus is sent)
+	constant ReqExecute: UartData := X"02";
+	-- Request for a status, returns RespStatus
 	constant ReqStatus: UartData := X"00";
-	-- Request for executing a single instruction, expects RespStatus
+	-- Request for executing a single instruction, returns RespStatus
 	constant ReqStep: UartData := X"01";
 	-- CDI responses (sent to the debugger) -----------------------------------
 	-- Returned for an unknown request code
 	constant RespUnknownReq: UartData := X"00";
 	-- System status, followed by bytes:
-	-- 1. '0000000H'; H = CPU signal Halted
+	-- 1. '000000XH'
+	--    H = CPU signal Halted
+	--    X = '1' returned as a response to ReqExecute, '0' otherwise
 	-- 2. lower byte of register PC
 	-- 3. upper byte of register PC
 	constant RespStatus: UartData := X"01";
