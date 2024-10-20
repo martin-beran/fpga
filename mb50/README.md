@@ -487,8 +487,9 @@ port to signals controlling system operation. In the opposite direction, it
 sends information about an internal system state (e.g., contents of registers
 and memory) to the serial port.
 
-The list of control commands and format of responses are defined in section
-Debugger reference.
+The serial protocol used between the CDI and the debugger running on a host
+computer is considered an implementation detail defined only by the source
+code of the CDI (in VHDL) and the debugger (in C++).
 
 ### VGA display
 
@@ -1772,12 +1773,12 @@ running `make` in directory `mb50/mb50dev/`.
         - [x] Debugger
 - [ ] Implementation
     - [ ] On FPGA
-        - [ ] CPU
-        - [ ] Memory
+        - [x] CPU
+        - [x] Memory
         - [ ] Serial CDI
-        - [ ] VGA display
-        - [ ] PS/2 keyboard
-        - [ ] System clock
+        - [x] VGA display
+        - [x] PS/2 keyboard
+        - [x] System clock
     - [ ] Development environment for a host computer
         - [ ] Debugger
             - [ ] Serial communication with the target computer
