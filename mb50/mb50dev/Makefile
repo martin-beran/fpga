@@ -6,11 +6,10 @@ CXXFLAGS_OPT ?= -O2
 CXXFLAGS += \
 	${CXXFLAGS_DBG} ${CXXFLAGS_OPT} \
 	-std=c++23 -Wall -Wextra -pedantic -Werror \
-	-Wconversion -Wsign-conversion \
+	-Wconversion \
 	-Wswitch-default -Wswitch-enum \
 	-Wno-mismatched-new-delete \
-	-Wimplicit-fallthrough \
-	-Wno-sign-conversion
+	-Wimplicit-fallthrough
 
 SRCS = mb50as.cpp mb50dbg.cpp
 BINS = ${basename ${SRCS}}
