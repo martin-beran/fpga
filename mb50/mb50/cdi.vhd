@@ -47,18 +47,22 @@ entity cdi is
 	);
 	subtype UartData is std_logic_vector(7 downto 0); -- Data type of the serial port
 	-- CDI reguests (received from the debugger) ------------------------------
+	-- Zero byte is intentionally left unused as a special null/invalid value
+	constant ReqZeroUnused: UartData := X"00";
 	-- Request for executing the program, returns RespStatus with X='1'
 	-- Can be interrupted by ReqStatus (which returns RespStatus with X='0'); such interrupting ReqStatus must be
 	-- prepared to receive one ReqStatus (X='0') or two ReqStatus (X='1', X='0', if CPU stops execution at the same
 	-- time as ReqStatus is sent)
-	constant ReqExecute: UartData := X"02";
+	constant ReqExecute: UartData := X"03";
 	-- Request for a status, returns RespStatus
-	constant ReqStatus: UartData := X"00";
+	constant ReqStatus: UartData := X"01";
 	-- Request for executing a single instruction, returns RespStatus
-	constant ReqStep: UartData := X"01";
+	constant ReqStep: UartData := X"02";
 	-- CDI responses (sent to the debugger) -----------------------------------
+	-- Zero byte is intentionally left unused as a special null/invalid value
+	constant RespZeroUnused: UartData := X"00";
 	-- Returned for an unknown request code
-	constant RespUnknownReq: UartData := X"00";
+	constant RespUnknownReq: UartData := X"01";
 	-- System status, followed by bytes:
 	-- 1. '000000XH'
 	--    H = CPU signal Halted
@@ -92,7 +96,11 @@ begin
 			SendStatus1,
 			SendStatus2,
 			SendStatus3,
-			DoStep -- Execute a single instruction
+			DoStep, -- Execute a single instruction
+			DoExecute, -- Execute instructions until CPU halts or CDI stops execution
+			DoExecuteRun,
+			DoExecuteHalt, -- DoExecuteRun terminated by CPU halt
+			DoExecuteHalt1
 		);
 		signal state: state_t := Init;
 	begin
@@ -145,6 +153,9 @@ begin
 						if uart_rx_valid = '1' then
 							uart_rx_ack <= '1';
 							case uart_rxd is
+								when ReqExecute =>
+									CpuRun <= '1';
+									state <= DoExecute;
 								when ReqStatus =>
 									state <= SendStatus;
 								when ReqStep =>
@@ -171,6 +182,27 @@ begin
 						send_byte(std_logic_vector(CpuRegDataRd(15 downto 8)));
 					when DoStep =>
 						state <= WaitNotRun;
+					when DoExecute =>
+						CpuRun <= '1';
+						state <= DoExecuteRun;
+					when DoExecuteRun =>
+						CpuRun <= '1';
+						if CpuBusy /= '1' then
+							-- CPU halted
+							state <= DoExecuteHalt;
+						elsif uart_rx_valid = '1' then
+							-- Check stop by CDI (ignore requests except ReqStatus)
+							uart_rx_ack <= '1';
+							if uart_rxd = ReqStatus then
+								state <= SendStatus;
+							end if;
+						end if;
+					when DoExecuteHalt =>
+						send_byte(RespStatus, DoExecuteHalt1);
+					when DoExecuteHalt1 =>
+						CpuRegIdx <= to_reg_idx(reg_idx_pc);
+						CpuRegRd <= '1';
+						send_byte("0000001" & CpuHalted, SendStatus2);
 				end case;
 			end if;
 		end process;
