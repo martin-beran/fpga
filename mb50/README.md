@@ -1310,7 +1310,9 @@ address value.
 The assembler reads a single source file (with extension `.s`). This file can
 include (directly or indirectly) other assembler source files. It then produces
 a raw binary file (with extension `.bin`), which can be uploaded to the target
-system memory by the debugger. In addition, an output text file (with
+system memory by the debugger, and a textual memory initialization file (with
+extension `.mif`), which can be used by FPGA development tools to initialize
+memory during FPGA configuration. In addition, an output text file (with
 extension `.out`) is produced. It contains the assembler input annotated by
 content (addresses and byte values) of the binary in hexadecimal format.
 
@@ -1318,10 +1320,10 @@ content (addresses and byte values) of the binary in hexadecimal format.
 
     mb50as FILE.s
 
-Compiles file `FILE.s`. If successful, it produces binary `FILE.bin`, text
-output `FILE.out`, and terminates with exit code 0. Any errors and warnings are
-written to the standard error. After an error, the assembler terminates with
-exit code 1.
+Compiles file `FILE.s`. If successful, it produces binary `FILE.bin`, textual
+memory initialization file `FILE.mif`, text output `FILE.out`, and terminates
+with exit code 0. Any errors and warnings are written to the standard error.
+After an error, the assembler terminates with exit code 1.
 
 ### Syntax
 
@@ -1529,6 +1531,12 @@ defined in the file can be accessed by qualified names with the specified
 The binary output file of the assembler starts with one line (four hexadecimal
 digits followed by newline) that defines the starting address of the memory
 image. Then memory content follows as raw bytes.
+
+#### Binary file in the MIF format
+
+This file contains the same data as the raw binary file, but in the textual
+Memory Initialization File format. It can be included into the Quartus Prime
+project in order to initialize the memory during FPGA configuration.
 
 #### Text file
 
