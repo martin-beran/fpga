@@ -1631,7 +1631,8 @@ dumping in hexadecimal.
     exe
     x
 
-Run the program.
+Run the program. Program execution is interrupted by entering a newline. Any
+characters on the line before the newline are ignored.
 
 #### Help
 
