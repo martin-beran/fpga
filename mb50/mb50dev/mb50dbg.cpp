@@ -4,9 +4,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <span>
 #include <system_error>
+#include <vector>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -149,21 +151,245 @@ void cdi::cmd_status()
 {
 }
 
+/*** Processing debugger commands ********************************************/
+
+constexpr std::string_view whitespace = " \t";
+
+bool do_file(cdi& mb50, script_history& log, const std::filesystem::path& file);
+
+// Base class for all commands
+class command {
+public:
+    command() = default;
+    command(const command&) = delete;
+    command(command&&) = delete;
+    virtual ~command() = default;
+    command& operator=(const command&) = delete;
+    command& operator=(command&&) = delete;
+    virtual std::vector<std::string_view> aliases();
+    virtual std::string_view help_args();
+    virtual std::string_view help();
+    // Returns false if the debugger should terminate, true otherwise
+    virtual bool operator()(cdi& mb50, script_history& log, std::string_view args);
+};
+
+std::vector<std::string_view> command::aliases()
+{
+    return {};
+}
+
+std::string_view command::help_args()
+{
+    return "";
+}
+
+std::string_view command::help()
+{
+    return "Not implemented.";
+}
+
+bool command::operator()(cdi&, script_history& log, std::string_view)
+{
+    log.output() << "Not implemented";
+    log.endl();
+    return true;
+}
+
+// Mapping from commands names to implementations
+class command_table {
+public:
+    static command_table& get();
+    void help(std::string_view name);
+    void help();
+    // Returns false if the debugger should terminate, true otherwise
+    bool run_cmd(cdi& mb50, script_history& log, std::string_view name, std::string_view args);
+private:
+    struct command_t {
+        std::shared_ptr<command> impl;
+        bool alias = false;
+        command_t make_alias() {
+            return command_t{impl, true};
+        }
+    };
+    command_table();
+    std::map<std::string_view, command_t> commands;
+};
+
+// Command do
+class cmd_do: public command {
+public:
+    std::string_view help_args() override { return "FILE"; }
+    std::string_view help() override { return R"(Describe available commands.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    return do_file(mb50, log, args);
+}
+
+// Command help
+class cmd_help: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"h", "?"}; }
+    std::string_view help_args() override { return "[COMMAND]"; }
+    std::string_view help() override { return R"(Describe available commands.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_help::operator()(cdi&, script_history&, std::string_view args)
+{
+    if (args.empty())
+        command_table::get().help();
+    else
+        command_table::get().help(args);
+    return true;
+}
+
+// Command history
+class cmd_history: public command {
+public:
+    std::string_view help_args() override { return "[FILE]"; }
+    std::string_view help() override {
+        return R"(If called with a FILE name, start appending all executed commands to the end
+of the file. If called without a file name, stop recording commands.)";
+    }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_history::operator()(cdi&, script_history& log, std::string_view args)
+{
+    if (args.empty())
+        log.stop_history();
+    else
+        log.start_history(args);
+    return true;
+}
+
+// Command quit
+class cmd_quit: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"q"}; }
+    std::string_view help() override { return R"(Terminate the debugger.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_quit::operator()(cdi&, script_history& log, std::string_view)
+{
+    log.output() << "Quit!";
+    log.endl();
+    return false;
+}
+
+// Command script
+class cmd_script: public command {
+public:
+    std::string_view help_args() override { return "[FILE]"; }
+    std::string_view help() override {
+        return R"(If called with a FILE name, start appending all user input and debugger output
+to the end of the file. If called without a file name, stop recording.)";
+    }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_script::operator()(cdi&, script_history& log, std::string_view args)
+{
+    if (args.empty())
+        log.stop_script();
+    else
+        log.start_script(args);
+    return true;
+}
+
+// Implementation of command_table
+
+command_table::command_table():
+    commands{
+        {"break", {std::make_shared<command>()}},
+        {"csr", {std::make_shared<command>()}},
+        {"do", {std::make_shared<cmd_do>()}},
+        {"dump", {std::make_shared<command>()}},
+        {"dumpd", {std::make_shared<command>()}},
+        {"dumpw", {std::make_shared<command>()}},
+        {"dumpwd", {std::make_shared<command>()}},
+        {"execute", {std::make_shared<command>()}},
+        {"help", {std::make_shared<cmd_help>()}},
+        {"history", {std::make_shared<cmd_history>()}},
+        {"load", {std::make_shared<command>()}},
+        {"memset", {std::make_shared<command>()}},
+        {"quit", {std::make_shared<cmd_quit>()}},
+        {"register", {std::make_shared<command>()}},
+        {"save", {std::make_shared<command>()}},
+        {"script", {std::make_shared<cmd_script>()}},
+        {"step", {std::make_shared<command>()}},
+        {"trace", {std::make_shared<command>()}},
+    }
+{
+    std::vector<std::pair<std::string_view, command_t>> aliases;
+    for (auto&& c: commands)
+        for (auto&& a: c.second.impl->aliases())
+            aliases.emplace_back(a, c.second.make_alias());
+    for (auto&& a: aliases)
+        commands[a.first] = std::move(a.second);
+}
+
+command_table& command_table::get()
+{
+    static command_table t{};
+    return t;
+}
+
+void command_table::help(std::string_view name)
+{
+    if (auto cmd = commands.find(name); cmd != commands.end()) {
+        std::cout << cmd->first;
+        if (auto args = cmd->second.impl->help_args(); !args.empty())
+            std::cout << ' ' << args;
+        std::cout << '\n';
+        if (auto aliases = cmd->second.impl->aliases(); !aliases.empty()) {
+            std::string_view delim = "aliases: ";
+            for (auto&& a: aliases) {
+                std::cout << delim << a;
+                delim = ", ";
+            }
+            std::cout << '\n';
+        }
+        std::cout << cmd->second.impl->help() << '\n' << std::endl;
+    } else
+        std::cout << "Unknown command" << std::endl;
+}
+
+void command_table::help()
+{
+    for (auto&& cmd: commands)
+        if (!cmd.second.alias)
+            help(cmd.first);
+}
+
+bool command_table::run_cmd(cdi& mb50, script_history& log, std::string_view name, std::string_view args)
+{
+    if (auto hnd = commands.find(name); hnd != commands.end())
+        return (*hnd->second.impl)(mb50, log, args);
+    else {
+        log.output() << "Unknown command";
+        log.endl();
+        return true;
+    }
+}
+
 /*** The main processing loop ************************************************/
 
 // Returns false if the debugger should terminate, true otherwise
 bool run_cmd(cdi& mb50, script_history& log, std::string_view cmd)
 {
-    // TODO
-    (void)mb50;
-
-    if (cmd == "quit"sv || cmd == "q"sv)
-        return false;
-    else {
-        log.output() << "Unknown command";
-        log.endl();
-    }
-    return true;
+    constexpr size_t npos = std::string_view::npos;
+    size_t args_i = cmd.find_first_of(whitespace);
+    std::string_view name = cmd.substr(0, args_i);
+    if (args_i != npos)
+        args_i = cmd.find_first_not_of(whitespace, args_i + 1);
+    std::string_view args = args_i != npos ? cmd.substr(args_i) : std::string_view{};
+    args = args.substr(0, args.find_first_of(whitespace));
+    return command_table::get().run_cmd(mb50, log, name, args);
 }
 
 bool do_file(cdi& mb50, script_history& log, const std::filesystem::path& file)

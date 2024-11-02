@@ -1636,10 +1636,12 @@ characters on the line before the newline are ignored.
 
 #### Help
 
-    help
+    help [COMMAND]
     h
+    ?
 
-Show the list of commands.
+Show the help for all commands (without an argument), or a help for a single
+command (with a command name as the argument).
 
 #### History
 
