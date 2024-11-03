@@ -1,5 +1,6 @@
 // MB50DEV debugger
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -19,6 +20,11 @@
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+
+char display_ascii(uint8_t c, char replace)
+{
+    return c >= 32 && c < 127 ? char(c) : replace;
+}
 
 /*** Error handling **********************************************************/
 
@@ -115,7 +121,11 @@ template<class T> script_history& script_history::operator<<(const T& v)
 
 // Request codes correspond to Req* constants in cdi.vhd
 enum class cdi_request: uint8_t {
+    csr_rd = 0x06,
+    csr_wr = 0x07,
     execute = 0x03,
+    reg_rd = 0x04,
+    reg_wr = 0x05,
     status = 0x01,
     step = 0x02,
     zero_unused = 0x00,
@@ -123,6 +133,8 @@ enum class cdi_request: uint8_t {
 
 // Response codes correspond to Resp* constants in cdi.vhd
 enum class cdi_response: uint8_t {
+    reg_rd = 0x03,
+    reg_wr = 0x04,
     status = 0x02,
     unknown_req = 0x01,
     zero_unused = 0x00,
@@ -142,9 +154,12 @@ public:
     cdi& operator=(const cdi&) = delete;
     cdi& operator=(cdi&&) = delete;
     void cmd_execute();
+    uint16_t cmd_register(uint8_t r, bool csr);
+    void cmd_register(uint8_t r, bool csr, uint16_t v);
     void cmd_status();
     void cmd_step();
 private:
+    std::vector<uint8_t> read_serial(size_t n) const;
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
     void read_status(bool expect_exe_resp = false);
     script_history& log;
@@ -176,6 +191,7 @@ cdi::~cdi()
 void cdi::cmd_execute()
 {
     auto req = cdi_request::execute;
+    std::cout << "Executing program, press Enter to break" << std::endl;
     if (write(tty_fd, &req, sizeof(req)) < 0)
         throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
     fd_set fds;
@@ -190,6 +206,30 @@ void cdi::cmd_execute()
         cmd_status();
     } else // tty_fd ready
         read_status(true);
+}
+
+uint16_t cdi::cmd_register(uint8_t r, bool csr)
+{
+    std::array req{
+        static_cast<uint8_t>(csr ? cdi_request::csr_rd : cdi_request::reg_rd),
+        r,
+    };
+    if (write(tty_fd, req.data(), req.size()) < 0)
+        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    auto resp = read_serial(3);
+    if (resp[0] != static_cast<uint8_t>(cdi_response::reg_rd))
+        throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
+                                      resp[0], static_cast<uint8_t>(cdi_response::reg_rd)));
+    return uint16_t(resp[1] + (resp[2] << 8U));
+}
+
+void cdi::cmd_register(uint8_t r, bool csr, uint16_t v)
+{
+    (void)this;
+    (void)r;
+    (void)csr;
+    (void)v;
+    // TODO
 }
 
 void cdi::cmd_status()
@@ -208,18 +248,24 @@ void cdi::cmd_step()
     read_status();
 }
 
+std::vector<uint8_t> cdi::read_serial(size_t n) const
+{
+    std::vector<uint8_t> result(n);
+    for (size_t i = 0; i < result.size();)
+        if (auto r = read(tty_fd, result.data() + i, result.size() - i); r < 0)
+            throw fatal_error("Cannot read from serial port: "s.append(errno_message()));
+        else
+            i += size_t(r);
+    return result;
+}
+
 void cdi::read_status(bool expect_exe_resp)
 {
     bool halted = false;
     bool exe_resp = false;
     uint16_t pc = 0x0000;
     do {
-        std::array<uint8_t, 4> resp{};
-        for (size_t i = 0; i < resp.size();)
-            if (auto r = read(tty_fd, resp.data() + i, resp.size() - i); r < 0)
-                throw fatal_error("Cannot read from serial port: "s.append(errno_message()));
-            else
-                i += size_t(r);
+        auto resp = read_serial(4);
         if (resp[0] != static_cast<uint8_t>(cdi_response::status))
             throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
                                           resp[0], static_cast<uint8_t>(cdi_response::status)));
@@ -294,6 +340,91 @@ private:
     command_table();
     std::map<std::string_view, command_t> commands;
 };
+
+// Command csr
+class cmd_csr: public command {
+public:
+    std::string_view help_args() override { return R"([NAME] [VALUE])"; }
+    std::string_view help() override { return R"(Like register, but operates on csr0...csr15.)"; }
+    bool operator()(cdi& mb50, script_history&log, std::string_view args) override;
+protected:
+    struct reg_name {
+        std::string_view index;
+        std::string_view name;
+        std::string_view alias;
+        std::string_view display;
+    };
+    static constexpr char ascii_replace = ' ';
+    void display(script_history& log, uint8_t r, uint16_t v);
+    virtual const std::vector<reg_name>& registers();
+    virtual bool csr() { return true; }
+};
+
+void cmd_csr::display(script_history& log, uint8_t r, uint16_t v)
+{
+    log.output() <<
+        std::format("{:7}  {:#06x}  {:5d}  {:+6d}  {:3d}  {:3d}  {:c}{:c}  0b{:04b}_{:04b}_{:04b}_{:04b}",
+                    registers().at(r).display,
+                    v, v, int16_t(v), v % 256, v / 256,
+                    display_ascii(uint8_t(v % 256), ascii_replace), display_ascii(v / 256, ascii_replace),
+                    (v & 0xf000U) >> 12U, (v & 0x0f00U) >> 8U, (v & 0x00f0U) >> 4U, v & 0x000fU);
+    log.endl();
+}
+
+bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    std::string_view name{};
+    std::string_view value{};
+    size_t name_e = args.find_first_of(whitespace);
+    name = args.substr(0, name_e);
+    std::optional<uint8_t> reg_idx{};
+    if (!name.empty()) {
+        reg_idx = uint8_t(
+            std::ranges::find_if(registers(),
+                                 [name](auto&& v) { return name == v.index || name == v.name || name == v.alias; }) -
+            registers().begin());
+        if (reg_idx >= registers().size()) {
+            log.output() << "Unknown register name \"" << name << "\"";
+            log.endl();
+            return true;
+        }
+    }
+    if (name_e != npos)
+        if (size_t value_b = args.find_first_not_of(whitespace, name_e); value_b != npos)
+            value = args.substr(value_b);
+    if (value.empty()) {
+        log.output() << "REG      HEX     DEC    SIGNED  LO   HI   LH    ---- KCEI oscz 3210";
+                      // r15(pc)  0x04d2  01234  +01234  210  004      0b0000_0100_1101_0010
+        log.endl();
+        if (reg_idx)
+            display(log, *reg_idx, mb50.cmd_register(*reg_idx, csr()));
+        else
+            for (uint8_t i = 0; i < registers().size(); ++i)
+                display(log, i, mb50.cmd_register(i, csr()));
+    } else {
+        // TODO
+        log.output() << "Setting register value not implemented";
+        log.endl();
+    }
+
+    return true;
+}
+
+const std::vector<cmd_csr::reg_name>& cmd_csr::registers()
+{
+    static std::vector<reg_name> r{
+        {"0", "csr0", "csr0", "csr0"}, {"1", "csr1", "csr1", "csr1"},
+        {"2", "csr2", "csr2", "csr2"}, {"3", "csr3", "csr3", "csr3"},
+        {"4", "csr4", "csr4", "csr4"}, {"5", "csr5", "csr5", "csr5"},
+        {"6", "csr6", "csr6", "csr6"}, {"7", "csr7", "csr7", "csr7"},
+        {"8", "csr8", "csr8", "csr8"}, {"9", "csr9", "csr9", "csr9"},
+        {"10", "csr10", "csr10", "csr10"}, {"11", "csr11", "csr11", "csr11"},
+        {"12", "csr12", "csr12", "csr12"}, {"13", "csr13", "csr13", "csr13"},
+        {"14", "csr14", "csr14", "csr14"}, {"15", "csr15", "csr15", "csr15"},
+    };
+    return r;
+}
 
 // Command do
 class cmd_do: public command {
@@ -392,6 +523,36 @@ bool cmd_quit::operator()(cdi&, script_history& log, std::string_view)
     return false;
 }
 
+// Command register
+class cmd_register: public cmd_csr {
+public:
+    std::vector<std::string_view> aliases() override { return {"reg", "r"}; }
+    std::string_view help() override {
+        return R"(Display or set values of registers. Without arguments, it shows values of all
+registers r0...r15. With NAME, only a single register is shown, where NAME is
+a register name or a standard register alias (r0...r15, pc, f, ia, ca, sp).
+With also VALUE, the value is stored in the register.)";
+    }
+protected:
+    const std::vector<reg_name>& registers() override;
+    bool csr() override { return false; }
+};
+
+const std::vector<cmd_csr::reg_name>& cmd_register::registers()
+{
+    static std::vector<reg_name> r{
+        {"0", "r0", "r0", "r0"}, {"1", "r1", "r1", "r1"},
+        {"2", "r2", "r2", "r2"}, {"3", "r3", "r3", "r3"},
+        {"4", "r4", "r4", "r4"}, {"5", "r5", "r5", "r5"},
+        {"6", "r6", "r6", "r6"}, {"7", "r7", "r7", "r7"},
+        {"8", "r8", "r8", "r8"}, {"9", "r9", "r9", "r9"},
+        {"10", "r10", "r10", "r10"}, {"11", "r11", "sp", "r11(sp)"},
+        {"12", "r12", "ca", "r12(ca)"}, {"13", "r13", "ia", "r13(ia)"},
+        {"14", "r14", "f", "r14(f)"}, {"15", "r15", "pc", "r15(pc)"},
+    };
+    return r;
+}
+
 // Command script
 class cmd_script: public command {
 public:
@@ -417,7 +578,7 @@ bool cmd_script::operator()(cdi&, script_history& log, std::string_view args)
 command_table::command_table():
     commands{
         {"break", {std::make_shared<command>()}},
-        {"csr", {std::make_shared<command>()}},
+        {"csr", {std::make_shared<cmd_csr>()}},
         {"do", {std::make_shared<cmd_do>()}},
         {"dump", {std::make_shared<command>()}},
         {"dumpd", {std::make_shared<command>()}},
@@ -429,7 +590,7 @@ command_table::command_table():
         {"load", {std::make_shared<command>()}},
         {"memset", {std::make_shared<command>()}},
         {"quit", {std::make_shared<cmd_quit>()}},
-        {"register", {std::make_shared<command>()}},
+        {"register", {std::make_shared<cmd_register>()}},
         {"save", {std::make_shared<command>()}},
         {"script", {std::make_shared<cmd_script>()}},
         {"step", {std::make_shared<cmd_step>()}},

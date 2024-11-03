@@ -51,11 +51,27 @@ entity cdi is
 	-- CDI reguests (received from the debugger) ------------------------------
 	-- Zero byte is intentionally left unused as a special null/invalid value
 	constant ReqZeroUnused: UartData := X"00";
+	-- Request for reading a CSR, followed by byte:
+	-- "0000RRRR" = index of a CSR
+	constant ReqCsrRd: UartData := X"06";
+	-- Request for writing a CSR, followed by bytes:
+	-- 1. "0000RRRR" = index of a CSR
+	-- 2. lower byte of new register value
+	-- 3. upper byte of new register value
+	constant ReqCsrWr: UartData := X"07";
 	-- Request for executing the program, returns RespStatus with X='1'
 	-- Can be interrupted by ReqStatus (which returns RespStatus with X='0'); such interrupting ReqStatus must be
 	-- prepared to receive one ReqStatus (X='0') or two ReqStatus (X='1', X='0', if CPU stops execution at the same
 	-- time as ReqStatus is sent)
 	constant ReqExecute: UartData := X"03";
+	-- Request for reading a register, followed by byte:
+	-- "0000RRRR" = index of a register
+	constant ReqRegRd: UartData := X"04";
+	-- Request for writing a register, followed by bytes:
+	-- 1. "0000RRRR" = index of a register
+	-- 2. lower byte of new register value
+	-- 3. upper byte of new register value
+	constant ReqRegWr: UartData := X"05";
 	-- Request for a status, returns RespStatus
 	constant ReqStatus: UartData := X"01";
 	-- Request for executing a single instruction, returns RespStatus
@@ -65,8 +81,14 @@ entity cdi is
 	constant RespZeroUnused: UartData := X"00";
 	-- Returned for an unknown request code
 	constant RespUnknownReq: UartData := X"01";
+	-- Register (or CSR) value, followed by bytes:
+	-- 1. lower byte of the register value
+	-- 2. upper byte of a register value
+	constant RespRegRd: UartData := X"03";
+	-- Register (or CSR) written
+	constant RespRegWr: UartData := X"04";
 	-- System status, followed by bytes:
-	-- 1. '000000XH'
+	-- 1. "000000XH"
 	--    H = CPU signal Halted
 	--    X = '1' returned as a response to ReqExecute, '0' otherwise
 	-- 2. lower byte of register PC
@@ -102,12 +124,26 @@ begin
 			DoExecute, -- Execute instructions until CPU halts or CDI stops execution
 			DoExecuteRun,
 			DoExecuteHalt, -- DoExecuteRun terminated by CPU halt
-			DoExecuteHalt1
+			DoExecuteHalt1,
+			DoRegRd, -- Read a register
+			DoRegRdVal,
+			DoRegRdResp,
+			DoRegRdLo,
+			DoRegRdHi,
+			DoRegWr, -- Write a register
+			DoRegWrLo,
+			DoRegWrHi
 		);
 		signal state: state_t := Init;
 	begin
 		run: process (Rst, Clk) is
-			variable delay: boolean := false; -- wait one clock cycle for UART deasserting tx_ready
+			variable delay_tx: boolean := false; -- wait one clock cycle for UART deasserting TxReady
+			variable delay_rx: boolean := true; -- wait one clock cycle for UART deasserting RxValid
+			variable received: boolean;
+			variable rx_byte: UartData;
+			variable reg_csr: std_logic; -- select between ordinary registers and CSRs
+			variable reg_idx: reg_idx_t; -- index of a read/written register
+			variable reg_val: word_t; -- read/written register value
 			procedure init_signals is
 			begin
 				CpuRun <= '0';
@@ -130,13 +166,26 @@ begin
 			end procedure;
 			procedure send_byte(byte: UartData; new_state: state_t := Ready) is
 			begin
-				if delay then
-					delay := false;
+				if delay_tx then
+					delay_tx := false;
 					state <= new_state;
 				elsif uart_tx_ready = '1' then
-					delay := true;
+					delay_tx := true;
 					uart_txd <= byte;
 					uart_tx_start <= '1';
+				end if;
+			end procedure;
+			procedure recv_byte(received: out boolean; byte: out UartData; new_state: state_t) is
+			begin
+				received := false;
+				if delay_rx then
+					delay_rx := false;
+				elsif uart_rx_valid = '1' then
+					delay_rx := true;
+					uart_rx_ack <= '1';
+					byte := uart_rxd;
+					received := true;
+					state <= new_state;
 				end if;
 			end procedure;
 		begin
@@ -155,10 +204,26 @@ begin
 						if uart_rx_valid = '1' then
 							uart_rx_ack <= '1';
 							case uart_rxd is
+								when ReqCsrRd =>
+									reg_csr := '1';
+									delay_rx := true;
+									state <= DoRegRd;
+								when ReqCsrWr =>
+									reg_csr := '1';
+									delay_rx := true;
+									state <= DoRegWr;
 								when ReqExecute =>
 									-- Allow 1 cycle for CPU to signal Busy='1'
 									CpuRun <= '1';
 									state <= DoExecute;
+								when ReqRegRd =>
+									reg_csr := '0';
+									delay_rx := true;
+									state <= DoRegRd;
+								when ReqRegWr =>
+									reg_csr := '0';
+									delay_rx := true;
+									state <= DoRegWr;
 								when ReqStatus =>
 									state <= SendStatus;
 								when ReqStep =>
@@ -211,6 +276,42 @@ begin
 						CpuRegIdx <= to_reg_idx(reg_idx_pc);
 						CpuRegRd <= '1';
 						send_byte("0000001" & CpuHalted, SendStatus2);
+					when DoRegRd =>
+						recv_byte(received, rx_byte, DoRegRdVal);
+						if received then
+							reg_idx := unsigned(rx_byte(3 downto 0));
+							CpuRegIdx <= reg_idx;
+							CpuRegRd <= '1';
+							CpuRegCsr <= reg_csr;
+						end if;
+					when DoRegRdVal =>
+						reg_val := CpuRegDataRd;
+						state <= DoRegRdResp;
+					when DoRegRdResp =>
+						send_byte(RespRegRd, DoRegRdLo);
+					when DoRegRdLo =>
+						send_byte(std_logic_vector(reg_val(7 downto 0)), DoRegRdHi);
+					when DoRegRdHi =>
+						send_byte(std_logic_vector(reg_val(15 downto 8)));
+					when DoRegWr =>
+						recv_byte(received, rx_byte, DoRegWrLo);
+						if received then
+							reg_idx := unsigned(rx_byte(3 downto 0));
+						end if;
+					when DoRegWrLo =>
+						recv_byte(received, rx_byte, DoRegWrHi);
+						if received then
+							reg_val(7 downto 0) := unsigned(rx_byte);
+						end if;
+					when DoRegWrHi =>
+						recv_byte(received, rx_byte, Ready);
+						if received then
+							reg_val(15 downto 8) := unsigned(rx_byte);
+							CpuRegIdx <= reg_idx;
+							CpuRegDataWr <= reg_val;
+							CpuRegWr <= '1';
+							CpuRegCsr <= reg_csr;
+						end if;
 				end case;
 			end if;
 		end process;
