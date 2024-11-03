@@ -1,4 +1,6 @@
 -- MB50: CDI (Control and Debugging Interface)
+-- Requests to the CDI may be sent only if the CPU is not running.
+-- The only exception is ReqStatus, which may be sent to a running CPU in order to stop execution.
 
 library ieee, lib_io;
 use ieee.std_logic_1164.all;
@@ -69,7 +71,7 @@ entity cdi is
 	--    X = '1' returned as a response to ReqExecute, '0' otherwise
 	-- 2. lower byte of register PC
 	-- 3. upper byte of register PC
-	constant RespStatus: UartData := X"01";
+	constant RespStatus: UartData := X"02";
 end entity;
 
 architecture main of cdi is
@@ -89,7 +91,6 @@ begin
 	cdi_fsm: block is
 		type state_t is (
 			Init, -- Initial state
-			WaitNotRun, -- Wait for CPU not running
 			Ready, -- Serial interface configured and listening for a command from the debugger
 			SendUnknownReq, -- Send RespUnknownReq
 			SendStatus, -- Send RespStatus
@@ -97,6 +98,7 @@ begin
 			SendStatus2,
 			SendStatus3,
 			DoStep, -- Execute a single instruction
+			DoStepRun,
 			DoExecute, -- Execute instructions until CPU halts or CDI stops execution
 			DoExecuteRun,
 			DoExecuteHalt, -- DoExecuteRun terminated by CPU halt
@@ -105,6 +107,7 @@ begin
 		signal state: state_t := Init;
 	begin
 		run: process (Rst, Clk) is
+			variable delay: boolean := false; -- wait one clock cycle for UART deasserting tx_ready
 			procedure init_signals is
 			begin
 				CpuRun <= '0';
@@ -125,12 +128,15 @@ begin
 				uart_tx_break <= '0';
 				uart_rx_ack <= '0';
 			end procedure;
-			procedure send_byte(byte: UartData; new_state: state_t := WaitNotRun) is
+			procedure send_byte(byte: UartData; new_state: state_t := Ready) is
 			begin
-				if uart_tx_ready = '1' then
+				if delay then
+					delay := false;
+					state <= new_state;
+				elsif uart_tx_ready = '1' then
+					delay := true;
 					uart_txd <= byte;
 					uart_tx_start <= '1';
-					state <= new_state;
 				end if;
 			end procedure;
 		begin
@@ -144,16 +150,13 @@ begin
 						-- Set serial port speed
 						uart_cfg_set <= '1';
 						uart_cfg <= pkg_uart.uart_baud_115200;
-						state <= WaitNotRun;
-					when WaitNotRun =>
-						if CpuBusy /= '1' then
-							state <= Ready;
-						end if;
+						state <= Ready;
 					when Ready =>
 						if uart_rx_valid = '1' then
 							uart_rx_ack <= '1';
 							case uart_rxd is
 								when ReqExecute =>
+									-- Allow 1 cycle for CPU to signal Busy='1'
 									CpuRun <= '1';
 									state <= DoExecute;
 								when ReqStatus =>
@@ -167,7 +170,7 @@ begin
 							end case;
 						end if;
 					when SendUnknownReq =>
-						send_byte(RespUnknownReq, WaitNotRun);
+						send_byte(RespUnknownReq, Ready);
 					when SendStatus =>
 						send_byte(RespStatus, SendStatus1);
 					when SendStatus1 =>
@@ -181,20 +184,25 @@ begin
 					when SendStatus3 =>
 						send_byte(std_logic_vector(CpuRegDataRd(15 downto 8)));
 					when DoStep =>
-						state <= WaitNotRun;
+						CpuRun <= '1';
+						state <= DoStepRun;
+					when DoStepRun =>
+						if CpuBusy /= '1' then
+							state <= SendStatus;
+						end if;
 					when DoExecute =>
 						CpuRun <= '1';
 						state <= DoExecuteRun;
 					when DoExecuteRun =>
 						CpuRun <= '1';
-						if CpuBusy /= '1' then
+						if CpuBusy /= '1' and CpuHalted = '1' then
 							-- CPU halted
 							state <= DoExecuteHalt;
 						elsif uart_rx_valid = '1' then
 							-- Check stop by CDI (ignore requests except ReqStatus)
 							uart_rx_ack <= '1';
 							if uart_rxd = ReqStatus then
-								state <= SendStatus;
+								state <= DoStepRun; -- Wait until the current instruction finishes execution
 							end if;
 						end if;
 					when DoExecuteHalt =>

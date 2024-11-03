@@ -2,14 +2,15 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <optional>
 #include <span>
 #include <system_error>
 #include <vector>
 
+#include <sys/select.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -112,33 +113,58 @@ template<class T> script_history& script_history::operator<<(const T& v)
 
 /*** MB50 CDI ****************************************************************/
 
+// Request codes correspond to Req* constants in cdi.vhd
+enum class cdi_request: uint8_t {
+    execute = 0x03,
+    status = 0x01,
+    step = 0x02,
+    zero_unused = 0x00,
+};
+
+// Response codes correspond to Resp* constants in cdi.vhd
+enum class cdi_response: uint8_t {
+    status = 0x02,
+    unknown_req = 0x01,
+    zero_unused = 0x00,
+};
+
+std::string errno_message()
+{
+    return std::error_code(errno, std::generic_category()).message();
+}
+
 class cdi {
 public:
-    explicit cdi(const std::filesystem::path& p);
+    explicit cdi(script_history& log, const std::filesystem::path& p);
     cdi(const cdi&) = delete;
     cdi(cdi&&) = delete;
     ~cdi();
     cdi& operator=(const cdi&) = delete;
     cdi& operator=(cdi&&) = delete;
+    void cmd_execute();
     void cmd_status();
+    void cmd_step();
 private:
+    // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
+    void read_status(bool expect_exe_resp = false);
+    script_history& log;
     int tty_fd = -1;
 };
 
-cdi::cdi(const std::filesystem::path& p):
-    tty_fd{open(p.c_str(), O_RDWR)}
+cdi::cdi(script_history& log, const std::filesystem::path& p):
+    log(log), tty_fd{open(p.c_str(), O_RDWR)}
 {
     if (tty_fd < 0)
         throw fatal_error("Cannot open serial port device \""s.append(p.string()).append("\": ").
-                          append(std::error_code(errno, std::generic_category()).message()));
+                          append(errno_message()));
     termios t{};
+    if (tcgetattr(tty_fd, &t) != 0)
+        throw fatal_error("Cannot get serial port configuration: "s. append(errno_message()));
     cfmakeraw(&t);
     if (cfsetispeed(&t, B115200) != 0 || cfsetospeed(&t, B115200) != 0)
-        throw fatal_error("Cannot set serial port speed: "s.
-                          append(std::error_code(errno, std::generic_category()).message()));
+        throw fatal_error("Cannot set serial port speed: "s.append(errno_message()));
     if (tcsetattr(tty_fd, TCSANOW, &t) != 0)
-        throw fatal_error("Cannot configure serial port: "s.
-                          append(std::error_code(errno, std::generic_category()).message()));
+        throw fatal_error("Cannot configure serial port: "s. append(errno_message()));
 }
 
 cdi::~cdi()
@@ -147,8 +173,62 @@ cdi::~cdi()
         close(tty_fd);
 }
 
+void cdi::cmd_execute()
+{
+    auto req = cdi_request::execute;
+    if (write(tty_fd, &req, sizeof(req)) < 0)
+        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    FD_SET(tty_fd, &fds);
+    if (select(tty_fd + 1, &fds, nullptr, nullptr, nullptr) < 0)
+        throw fatal_error("Failed call to select(2): "s.append(errno_message()));
+    if (FD_ISSET(STDIN_FILENO, &fds)) {
+        std::string line;
+        std::getline(std::cin, line);
+        cmd_status();
+    } else // tty_fd ready
+        read_status(true);
+}
+
 void cdi::cmd_status()
 {
+    auto req = cdi_request::status;
+    if (write(tty_fd, &req, sizeof(req)) < 0)
+        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    read_status();
+}
+
+void cdi::cmd_step()
+{
+    auto req = cdi_request::step;
+    if (write(tty_fd, &req, sizeof(req)) < 0)
+        throw fatal_error("Cannot write to serial port: "s. append(errno_message()));
+    read_status();
+}
+
+void cdi::read_status(bool expect_exe_resp)
+{
+    bool halted = false;
+    bool exe_resp = false;
+    uint16_t pc = 0x0000;
+    do {
+        std::array<uint8_t, 4> resp{};
+        for (size_t i = 0; i < resp.size();)
+            if (auto r = read(tty_fd, resp.data() + i, resp.size() - i); r < 0)
+                throw fatal_error("Cannot read from serial port: "s.append(errno_message()));
+            else
+                i += size_t(r);
+        if (resp[0] != static_cast<uint8_t>(cdi_response::status))
+            throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
+                                          resp[0], static_cast<uint8_t>(cdi_response::status)));
+        halted = (resp[1] & 0b0000'0001U) != 0;
+        exe_resp = (resp[1] & 0b0000'0010U) != 0;
+        pc = uint16_t(resp[2] + (resp[3] << 8U));
+    } while (!expect_exe_resp && exe_resp);
+    log.output() << std::format("Ready r15(pc)={:#06x} halted={}", pc, halted);
+    log.endl();
 }
 
 /*** Processing debugger commands ********************************************/
@@ -228,6 +308,23 @@ bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view args)
     return do_file(mb50, log, args);
 }
 
+// Command execute
+class cmd_execute: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"exe", "x"}; }
+    std::string_view help() override {
+        return R"(Run the program. Program execution is interrupted by entering a newline.
+Any characters on the line before the newline are ignored.)";
+    }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_execute::operator()(cdi& mb50, script_history&, std::string_view)
+{
+    mb50.cmd_execute();
+    return true;
+}
+
 // Command help
 class cmd_help: public command {
 public:
@@ -263,6 +360,20 @@ bool cmd_history::operator()(cdi&, script_history& log, std::string_view args)
         log.stop_history();
     else
         log.start_history(args);
+    return true;
+}
+
+// Command step
+class cmd_step: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"s"}; }
+    std::string_view help() override { return R"(Execute a single instruction.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view)
+{
+    mb50.cmd_step();
     return true;
 }
 
@@ -312,7 +423,7 @@ command_table::command_table():
         {"dumpd", {std::make_shared<command>()}},
         {"dumpw", {std::make_shared<command>()}},
         {"dumpwd", {std::make_shared<command>()}},
-        {"execute", {std::make_shared<command>()}},
+        {"execute", {std::make_shared<cmd_execute>()}},
         {"help", {std::make_shared<cmd_help>()}},
         {"history", {std::make_shared<cmd_history>()}},
         {"load", {std::make_shared<command>()}},
@@ -321,7 +432,7 @@ command_table::command_table():
         {"register", {std::make_shared<command>()}},
         {"save", {std::make_shared<command>()}},
         {"script", {std::make_shared<cmd_script>()}},
-        {"step", {std::make_shared<command>()}},
+        {"step", {std::make_shared<cmd_step>()}},
         {"trace", {std::make_shared<command>()}},
     }
 {
@@ -482,8 +593,8 @@ int main(int argc, char* argv[])
         if (args.help()) {
             std::cerr << args.usage() << std::endl;
         } else {
-            cdi mb50(args.tty());
             script_history log;
+            cdi mb50(log, args.tty());
             run(mb50, log, args.init_file());
         }
         return EXIT_SUCCESS;
