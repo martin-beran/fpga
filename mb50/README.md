@@ -1586,9 +1586,13 @@ the minus sign to compute a negative value (two's complement).
 ### Alphabetical list of commands
 
 In commands, `ADDR` and `SZ` may be entered as unsigned decimal or hexadecimal
-(`0xaabb`) value. `VALUE` may be decimal (negative values allowed), hexadecimal
-(`0x1a2b`), or binary (`0b1111000010101100`). Groups of digits may be separated
-by underscores.
+(`0xaabb`) value. `VALUE` may be a decimal number (negative values allowed),
+a hexadecimal number (`0x1a2b`), a binary number (`0b1111000010101100`), or
+a character constant containing one ('x') or two ('xy') characters, the first
+stored in the lower byte. Groups of digits may be separated by underscores.
+Command `memset` permits also strings in double quotes. Character and
+string values can contain the same escape sequences as defined by the
+[assembler syntax](#syntax).
 
 #### Break
 
@@ -1669,14 +1673,17 @@ containing start address in hexadecimal before binary data.
 
 #### Memset
 
-    memset ADDR VAL [VAL...]
+    memset ADDR VALUE [VALUE...]
     m
 
-Store values in memory. Each value can be a number or a string constant. Size
-of a binary or hexadecimal constant is determined by the number of digits (up
-to 8 binary or 2 hexadecimal digits yield a byte, more digits store a word).
-Size of a decimal constant is set by mandatory appending `b` for a byte or `w`
-for a word. All values are stored sequentially starting at address `ADDR`.
+Store values in memory. Each value can be a number (little endian if more than
+one byte) or a string constant (in double quotes, characters stored in the
+order of appearance in the string). Size of a binary or hexadecimal constant is
+determined by the number of digits (up to 8 binary or 2 hexadecimal digits or
+1 character yield a byte, more digits or characters store a little endian
+word). Size of a decimal constant is two bytes if the value is outside the
+range 0–255 or if it contains more than 3 digits (e.g., 0000, 0009, 0099,
+0200). All values are stored sequentially starting at address `ADDR`.
 
 #### Quit
 

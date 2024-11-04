@@ -1,5 +1,7 @@
 // MB50DEV debugger
 
+#include "mb50common.hpp"
+
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -17,14 +19,6 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-
-using namespace std::string_literals;
-using namespace std::string_view_literals;
-
-char display_ascii(uint8_t c, char replace)
-{
-    return c >= 32 && c < 127 ? char(c) : replace;
-}
 
 /*** Error handling **********************************************************/
 
@@ -159,7 +153,9 @@ public:
     void cmd_status();
     void cmd_step();
 private:
-    std::vector<uint8_t> read_serial(size_t n) const;
+    [[nodiscard]] std::vector<uint8_t> read_serial(size_t n) const;
+    void write_serial(std::span<uint8_t> data) const;
+    static void check_response(uint8_t resp, cdi_response expected);
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
     void read_status(bool expect_exe_resp = false);
     script_history& log;
@@ -188,12 +184,20 @@ cdi::~cdi()
         close(tty_fd);
 }
 
+void cdi::check_response(uint8_t resp, cdi_response expected)
+{
+    if (resp != static_cast<uint8_t>(expected))
+        throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
+                                      resp, static_cast<uint8_t>(expected)));
+}
+
 void cdi::cmd_execute()
 {
-    auto req = cdi_request::execute;
+    std::array req{
+        static_cast<uint8_t>(cdi_request::execute),
+    };
     std::cout << "Executing program, press Enter to break" << std::endl;
-    if (write(tty_fd, &req, sizeof(req)) < 0)
-        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    write_serial(req);
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(STDIN_FILENO, &fds);
@@ -214,37 +218,40 @@ uint16_t cdi::cmd_register(uint8_t r, bool csr)
         static_cast<uint8_t>(csr ? cdi_request::csr_rd : cdi_request::reg_rd),
         r,
     };
-    if (write(tty_fd, req.data(), req.size()) < 0)
-        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    write_serial(req);
     auto resp = read_serial(3);
-    if (resp[0] != static_cast<uint8_t>(cdi_response::reg_rd))
-        throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
-                                      resp[0], static_cast<uint8_t>(cdi_response::reg_rd)));
+    check_response(resp[0], cdi_response::reg_rd);
     return uint16_t(resp[1] + (resp[2] << 8U));
 }
 
 void cdi::cmd_register(uint8_t r, bool csr, uint16_t v)
 {
-    (void)this;
-    (void)r;
-    (void)csr;
-    (void)v;
-    // TODO
+    std::array req{
+        static_cast<uint8_t>(csr ? cdi_request::csr_wr : cdi_request::reg_wr),
+        r,
+        uint8_t(v % 256),
+        uint8_t(v / 256),
+    };
+    write_serial(req);
+    auto resp = read_serial(1);
+    check_response(resp[0], cdi_response::reg_wr);
 }
 
 void cdi::cmd_status()
 {
-    auto req = cdi_request::status;
-    if (write(tty_fd, &req, sizeof(req)) < 0)
-        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
+    std::array req{
+        static_cast<uint8_t>(cdi_request::status),
+    };
+    write_serial(req);
     read_status();
 }
 
 void cdi::cmd_step()
 {
-    auto req = cdi_request::step;
-    if (write(tty_fd, &req, sizeof(req)) < 0)
-        throw fatal_error("Cannot write to serial port: "s. append(errno_message()));
+    std::array req{
+        static_cast<uint8_t>(cdi_request::step),
+    };
+    write_serial(req);
     read_status();
 }
 
@@ -266,15 +273,19 @@ void cdi::read_status(bool expect_exe_resp)
     uint16_t pc = 0x0000;
     do {
         auto resp = read_serial(4);
-        if (resp[0] != static_cast<uint8_t>(cdi_response::status))
-            throw fatal_error(std::format("Invalid response {:#04x}, expected {:#04x}",
-                                          resp[0], static_cast<uint8_t>(cdi_response::status)));
+        check_response(resp[0], cdi_response::status);
         halted = (resp[1] & 0b0000'0001U) != 0;
         exe_resp = (resp[1] & 0b0000'0010U) != 0;
         pc = uint16_t(resp[2] + (resp[3] << 8U));
     } while (!expect_exe_resp && exe_resp);
     log.output() << std::format("Ready r15(pc)={:#06x} halted={}", pc, halted);
     log.endl();
+}
+
+void cdi::write_serial(std::span<uint8_t> data) const
+{
+    if (write(tty_fd, data.data(), data.size()) < 0)
+        throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
 }
 
 /*** Processing debugger commands ********************************************/
@@ -403,9 +414,12 @@ bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
             for (uint8_t i = 0; i < registers().size(); ++i)
                 display(log, i, mb50.cmd_register(i, csr()));
     } else {
-        // TODO
-        log.output() << "Setting register value not implemented";
-        log.endl();
+        if (auto v = parser::number(value); v.first)
+            mb50.cmd_register(*reg_idx, csr(), v.first->val);
+        else {
+            log.output() << "Invalid value: " << v.first.error();
+            log.endl();
+        }
     }
 
     return true;
