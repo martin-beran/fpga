@@ -290,8 +290,6 @@ void cdi::write_serial(std::span<uint8_t> data) const
 
 /*** Processing debugger commands ********************************************/
 
-constexpr std::string_view whitespace = " \t";
-
 bool do_file(cdi& mb50, script_history& log, const std::filesystem::path& file);
 
 // Base class for all commands
@@ -387,7 +385,7 @@ bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
     constexpr size_t npos = std::string_view::npos;
     std::string_view name{};
     std::string_view value{};
-    size_t name_e = args.find_first_of(whitespace);
+    size_t name_e = args.find_first_of(whitespace_chars);
     name = args.substr(0, name_e);
     std::optional<uint8_t> reg_idx{};
     if (!name.empty()) {
@@ -402,7 +400,7 @@ bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
         }
     }
     if (name_e != npos)
-        if (size_t value_b = args.find_first_not_of(whitespace, name_e); value_b != npos)
+        if (size_t value_b = args.find_first_not_of(whitespace_chars, name_e); value_b != npos)
             value = args.substr(value_b);
     if (value.empty()) {
         log.output() << "REG      HEX     DEC    SIGNED  LO   HI   LH    ---- KCEI oscz 3210";
@@ -411,11 +409,11 @@ bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
         if (reg_idx)
             display(log, *reg_idx, mb50.cmd_register(*reg_idx, csr()));
         else
-            for (uint8_t i = 0; i < registers().size(); ++i)
+            for (uint8_t i = 0; size_t(i) < registers().size(); ++i)
                 display(log, i, mb50.cmd_register(i, csr()));
     } else {
-        if (auto v = parser::number(value); v.first)
-            mb50.cmd_register(*reg_idx, csr(), v.first->val);
+        if (auto v = parser::number(value, true); v.first)
+            mb50.cmd_register(reg_idx.value(), csr(), v.first->val); // NOLINT(bugprone-unchecked-optional-access)
         else {
             log.output() << "Invalid value: " << v.first.error();
             log.endl();
@@ -669,12 +667,12 @@ bool command_table::run_cmd(cdi& mb50, script_history& log, std::string_view nam
 bool run_cmd(cdi& mb50, script_history& log, std::string_view cmd)
 {
     constexpr size_t npos = std::string_view::npos;
-    size_t args_i = cmd.find_first_of(whitespace);
+    size_t args_i = cmd.find_first_of(whitespace_chars);
     std::string_view name = cmd.substr(0, args_i);
     if (args_i != npos)
-        args_i = cmd.find_first_not_of(whitespace, args_i + 1);
+        args_i = cmd.find_first_not_of(whitespace_chars, args_i + 1);
     std::string_view args = args_i != npos ? cmd.substr(args_i) : std::string_view{};
-    args = args.substr(0, args.find_first_of(whitespace));
+    args = args.substr(0, args.find_first_of(whitespace_chars));
     return command_table::get().run_cmd(mb50, log, name, args);
 }
 

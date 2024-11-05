@@ -20,7 +20,7 @@ COMPILE_DB ?= compile_commands.json
 .PHONY: all clean compile_commands.json
 
 %: %.cpp
-	${CXX} ${CPPFLAGS} ${CXXFLAGS} -o $@ $^
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} -o $@ $<
 
 # Build all programs
 all: ${COMPILE_DB} ${BINS}
@@ -40,7 +40,7 @@ ${COMPILE_DB}:
 
 # Build individual programs
 define bin_src_dep
-${1}: ${1}.cpp
+${1}: ${1}.cpp mb50common.hpp
 endef
 
-${foreach B, ${BINS}, ${eval ${call bin_src_dep ${B}}}}
+${foreach B, ${BINS}, ${eval ${call bin_src_dep, ${B}}}}

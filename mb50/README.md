@@ -1344,7 +1344,7 @@ identifiers and hexadecimal numbers).
 
 A _string constant_ is a sequence of zero or more characters enclosed in quotes,
 e.g., `"string const"`. Quotes must be escape inside string constants.
-Following escape sequences are supported in string constants:
+Following escape sequences are supported in character and string constants:
 
 | Escape sequence | Replaced character | Character code |
 |:---------------:|:------------------:|:--------------:|
@@ -1352,7 +1352,8 @@ Following escape sequences are supported in string constants:
 | `\t` | `HT` (horizontal tab) | 9, 0x09 |
 | `\n` | `NL` (new line) | 10, 0x0a |
 | `\r` | `CR` (carriage return) | 13, 0x0d |
-| `"` | `"` | 34, 0x22 |
+| `\"` | `"` | 34, 0x22 |
+| `\'` | `'` | 39, 0x27 |
 | `\\` | `\` | 92, 0x5c |
 | `\xHH` | Character with hex. code HH | 0xHH |
 
@@ -1420,9 +1421,10 @@ integers. Components of an expression:
   `0b`). Groups of digits may be separated by an underscore to improve
   readability.
 - Unary operator `-` that computes two's complement
-- A single character string constant, converted to a number with the higher
+- A single character constant, converted to a number with the higher
   byte containing zero and the lower byte containing the character code
-- A two-character string constant, converted to a number with the lower byte
+- An empty character constant `''`, equal to `'\0'`
+- A two-character constant, converted to a number with the lower byte
   containing the first character code and the higher byte containing the second
   character code
 - Binary operators with left associativity and the same meaning and precedence
@@ -1588,11 +1590,11 @@ the minus sign to compute a negative value (two's complement).
 In commands, `ADDR` and `SZ` may be entered as unsigned decimal or hexadecimal
 (`0xaabb`) value. `VALUE` may be a decimal number (negative values allowed),
 a hexadecimal number (`0x1a2b`), a binary number (`0b1111000010101100`), or
-a character constant containing one ('x') or two ('xy') characters, the first
-stored in the lower byte. Groups of digits may be separated by underscores.
-Command `memset` permits also strings in double quotes. Character and
-string values can contain the same escape sequences as defined by the
-[assembler syntax](#syntax).
+a character constant containing zero (`''` equal to `'\0'`), one (`'x'`), or
+two (`'xy'`) characters, the first stored in the lower byte. Groups of digits
+may be separated by underscores. Command `memset` permits also strings in
+double quotes. Character and string values can contain the same escape
+sequences as defined by the [assembler syntax](#syntax).
 
 #### Break
 
