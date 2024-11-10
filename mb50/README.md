@@ -1577,7 +1577,7 @@ it will be executed before entering the interactive mode.
 - Debugger control: `do`, `help`, `quit`
 - Command history and session recording: `history`, `script`
 - Running a program: `execute`, `interrupt`, `step`
-- Breakpoints and tracepoints: `break`, `trace`
+- Breakpoints and watchpoints: `break`, `watch`
 - View and modify CPU state: `csr`, `register`
 - Read and write memory: `dump`, `load`, `memset`, `save`
 
@@ -1731,19 +1731,19 @@ output to the end of the file. If called without a file name, stop recording.
 
 Execute a single instruction.
 
-#### Trace
+#### Watch
 
-    trace [r|w|-] [ADDR]
-    t
+    watch [r|w|-] [ADDR]
+    w
 
-If a tracepoint is set on an address, the program execution is stopped after
+If a watchpoint is set on an address, the program execution is stopped after
 executing an instruction that reads or writes that address. Executing an
 instruction is considered as reading. If called without arguments, list all
-tracepoints. If called with `ADDR`, set a tracepoint at this address that will
+watchpoints. If called with `ADDR`, set a watchpoint at this address that will
 be triggered by both reading and writing. If `r` or `w` is used before an
-address, the tracepoint is triggered only by reading or writing, respectively.
-If `-` is used before an address, delete a tracepoint at this address. If
-called with `-` only, delete all tracepoints.
+address, the watchpoint is triggered only by reading or writing, respectively.
+If `-` is used before an address, delete a watchpoint at this address. If
+called with `-` only, delete all watchpoints.
 
 -------------------------------------------------------------------------------
 

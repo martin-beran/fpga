@@ -606,7 +606,7 @@ command_table::command_table():
         {"save", {std::make_shared<command>()}},
         {"script", {std::make_shared<cmd_script>()}},
         {"step", {std::make_shared<cmd_step>()}},
-        {"trace", {std::make_shared<command>()}},
+        {"watch", {std::make_shared<command>()}},
     }
 {
     std::vector<std::pair<std::string_view, command_t>> aliases;
