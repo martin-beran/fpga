@@ -64,6 +64,23 @@ entity cdi is
 	-- prepared to receive one ReqStatus (X='0') or two ReqStatus (X='1', X='0', if CPU stops execution at the same
 	-- time as ReqStatus is sent)
 	constant ReqExecute: UartData := X"03";
+	-- Request for reading from memory, followed by bytes:
+	-- 1. lower byte of the first read address
+	-- 2. upper byte of the first read address
+	-- 3. lower byte of the number of bytes to read
+	-- 4. upper byte of the number of bytes to read
+	-- Addresses are mod 0x10000 = 65536, after 0xffff, address 0x0000 is read.
+	-- At least one byte is always read, number of bytes = 0 requests reading 0x10000 = 65536 bytes.
+	constant ReqMemRd: UartData := X"08";
+	-- Reques for writing to memory, followed by bytes:
+	-- 1. lower byte of the first written address
+	-- 2. upper byte of the first written address
+	-- 3. lower byte of the number of bytes to write
+	-- 4. upper byte of the number of bytes to write
+	-- 5-(5+N-1). individual bytes to be written
+	-- Addresses are mod 0x10000 = 65536, after 0xffff, address 0x0000 is written.
+	-- At least one byte is always written, number of bytes = 0 requests writing 0x10000 = 65536 bytes.
+	constant ReqMemWr: UartData := X"09";
 	-- Request for reading a register, followed by byte:
 	-- "0000RRRR" = index of a register
 	constant ReqRegRd: UartData := X"04";
@@ -81,6 +98,10 @@ entity cdi is
 	constant RespZeroUnused: UartData := X"00";
 	-- Returned for an unknown request code
 	constant RespUnknownReq: UartData := X"01";
+	-- Bytes read from memory, followed by bytes from memory, with a length specified by the request
+	constant RespMemRd: UartData := X"05";
+	-- Bytes written to memory
+	constant RespMemWr: UartData := X"06";
 	-- Register (or CSR) value, followed by bytes:
 	-- 1. lower byte of the register value
 	-- 2. upper byte of a register value
@@ -132,18 +153,28 @@ begin
 			DoRegRdHi,
 			DoRegWr, -- Write a register
 			DoRegWrLo,
-			DoRegWrHi
+			DoRegWrHi,
+			DoMemRd, -- Read from memory
+			DoMemRdAddrLo,
+			DoMemRdAddrHi,
+			DoMemRdSizeLo,
+			DoMemRdSizeHi,
+			DoMemRdByte,
+			DoMemWr -- Write to memory
 		);
 		signal state: state_t := Init;
 	begin
 		run: process (Rst, Clk) is
 			variable delay_tx: boolean := false; -- wait one clock cycle for UART deasserting TxReady
 			variable delay_rx: boolean := true; -- wait one clock cycle for UART deasserting RxValid
-			variable received: boolean;
-			variable rx_byte: UartData;
+			variable received: boolean; -- if a byte has been received from UART
+			variable rx_byte: UartData; -- data byte received from UART
 			variable reg_csr: std_logic; -- select between ordinary registers and CSRs
 			variable reg_idx: reg_idx_t; -- index of a read/written register
 			variable reg_val: word_t; -- read/written register value
+			variable mem_addr: addr_t; -- read/written memory address
+			variable mem_size: word_t; -- nuber of bytes read from / written to memory
+			variable mem_val: byte_t; --  read/written memory byte
 			procedure init_signals is
 			begin
 				CpuRun <= '0';
@@ -216,6 +247,12 @@ begin
 									-- Allow 1 cycle for CPU to signal Busy='1'
 									CpuRun <= '1';
 									state <= DoExecute;
+								when ReqMemRd =>
+									delay_rx := true;
+									state <= DoMemRd;
+								when ReqMemWr =>
+									delay_rx := true;
+									state <= DoMemWr;
 								when ReqRegRd =>
 									reg_csr := '0';
 									delay_rx := true;
@@ -312,6 +349,34 @@ begin
 							CpuRegWr <= '1';
 							CpuRegCsr <= reg_csr;
 						end if;
+					when DoMemRd =>
+						recv_byte(received, rx_byte, DoMemRdAddrLo);
+						if received then
+							mem_addr(7 downto 0) := unsigned(rx_byte);
+						end if;
+					when DoMemRdAddrLo =>
+						recv_byte(received, rx_byte, DoMemRdAddrHi);
+						if received then
+							mem_addr(15 downto 8) := unsigned(rx_byte);
+						end if;
+					when DoMemRdAddrHi =>
+						recv_byte(received, rx_byte, DoMemRdSizeLo);
+						if received then
+							mem_size(7 downto 0) := unsigned(rx_byte);
+						end if;
+					when DoMemRdSizeLo =>
+						recv_byte(received, rx_byte, DoMemRdSizeHi);
+						if received then
+							mem_size(15 downto 8) := unsigned(rx_byte);
+						end if;
+					when DoMemRdSizeHi =>
+						send_byte(RespMemRd, DoMemRdByte);
+					when DoMemRdByte =>
+						-- TODO
+						null;
+					when DoMemWr =>
+						-- TODO
+						null;
 				end case;
 			end if;
 		end process;
