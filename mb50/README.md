@@ -1795,10 +1795,10 @@ running `make` in directory `mb50/mb50dev/`.
         - [x] Assembler
         - [x] Debugger
 - [ ] Implementation
-    - [ ] On FPGA
+    - [x] On FPGA
         - [x] CPU
         - [x] Memory
-        - [ ] Serial CDI
+        - [x] Serial CDI
         - [x] VGA display
         - [x] PS/2 keyboard
         - [x] System clock

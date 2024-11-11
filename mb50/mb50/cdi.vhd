@@ -159,8 +159,16 @@ begin
 			DoMemRdAddrHi,
 			DoMemRdSizeLo,
 			DoMemRdSizeHi,
+			DoMemRdStart,
+			DoMemRdWait,
 			DoMemRdByte,
-			DoMemWr -- Write to memory
+			DoMemRdSend,
+			DoMemRdNext,
+			DoMemWr, -- Write to memory
+			DoMemWrAddrLo,
+			DoMemWrAddrHi,
+			DoMemWrSizeLo,
+			DoMemWrSizeHi
 		);
 		signal state: state_t := Init;
 	begin
@@ -173,7 +181,7 @@ begin
 			variable reg_idx: reg_idx_t; -- index of a read/written register
 			variable reg_val: word_t; -- read/written register value
 			variable mem_addr: addr_t; -- read/written memory address
-			variable mem_size: word_t; -- nuber of bytes read from / written to memory
+			variable mem_size: word_t; -- number of bytes read from / written to memory
 			variable mem_val: byte_t; --  read/written memory byte
 			procedure init_signals is
 			begin
@@ -370,13 +378,56 @@ begin
 							mem_size(15 downto 8) := unsigned(rx_byte);
 						end if;
 					when DoMemRdSizeHi =>
-						send_byte(RespMemRd, DoMemRdByte);
+						send_byte(RespMemRd, DoMemRdStart);
+					when DoMemRdStart =>
+						AddrBus <= mem_addr;
+						Rd <= '1';
+						state <= DoMemRdWait;
+					when DoMemRdWait =>
+						state <= DoMemRdByte;
 					when DoMemRdByte =>
-						-- TODO
-						null;
+						mem_val := DataBusRd;
+						state <= DoMemRdSend;
+					when DoMemRdSend =>
+						send_byte(std_logic_vector(mem_val), DoMemRdNext);
+					when DoMemRdNext =>
+						mem_size := mem_size - 1;
+						if mem_size = X"0000" then
+							state <= Ready;
+						else
+							state <= DoMemRdStart;
+						end if;
 					when DoMemWr =>
-						-- TODO
-						null;
+						recv_byte(received, rx_byte, DoMemWrAddrLo);
+						if received then
+							mem_addr(7 downto 0) := unsigned(rx_byte);
+						end if;
+					when DoMemWrAddrLo =>
+						recv_byte(received, rx_byte, DoMemWrAddrHi);
+						if received then
+							mem_addr(15 downto 8) := unsigned(rx_byte);
+						end if;
+					when DoMemWrAddrHi =>
+						recv_byte(received, rx_byte, DoMemWrSizeLo);
+						if received then
+							mem_size(7 downto 0) := unsigned(rx_byte);
+						end if;
+					when DoMemWrSizeLo =>
+						recv_byte(received, rx_byte, DoMemWrSizeHi);
+						if received then
+							mem_size(15 downto 8) := unsigned(rx_byte);
+						end if;
+					when DoMemWrSizeHi =>
+						recv_byte(received, rx_byte, DoMemWrSizeHi);
+						if received then
+							AddrBus <= mem_addr;
+							DataBusWr <= unsigned(rx_byte);
+							Wr <= '1';
+							mem_size := mem_size - 1;
+							if mem_size = X"0000" then
+								state <= Ready;
+							end if;
+						end if;
 				end case;
 			end if;
 		end process;
