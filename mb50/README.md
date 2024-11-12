@@ -1766,6 +1766,10 @@ Compile the assembler `mb50as` and the debugger `mb50dbg` from C++ sources
 `mb50/mb50dev/mb50as.cpp` and `mb50/mb50dev/mb50dbg.cpp`. Both can be built by
 running `make` in directory `mb50/mb50dev/`.
 
+Build with Clang 19 and libc++:
+
+    CXX=clang++-19 CXXFLAGS='-fexperimental-library -stdlib=libc++' make
+
 -------------------------------------------------------------------------------
 
 ## ToDo
