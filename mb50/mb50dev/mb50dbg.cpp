@@ -578,7 +578,7 @@ bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
                 return true;
             }
         }
-    std::ifstream ifs{std::string(file), std::ios::in | std::ios::binary};
+    std::ifstream ifs(std::string(file), std::ios::binary);
     if (!ifs) {
         log.output() << "Cannot read file \"" << file << "\"";
         log.endl();
@@ -611,6 +611,68 @@ bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
     log.endl();
     mb50.cmd_memory(addr.value(), data);
     log.output() << std::format("Loaded at address {:#06x}", addr.value());
+    log.endl();
+    return true;
+}
+
+// Command save
+class cmd_save: public command {
+public:
+    std::string_view help() override {
+        return R"(Save binary content of memory starting at ADDR and SIZE bytes long.
+If an address and size is not specified, save the whole memory.
+It produces the file format expected by command load, that is, there is
+a single line containing start address in hexadecimal before binary data.)";
+    }
+    std::string_view help_args() override { return "FILE [ADDR SIZE]"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_save::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    size_t file_e = args.find_first_of(whitespace_chars);
+    std::string_view file = args.substr(0, file_e);
+    if (file.empty()) {
+        log.output() << "Missing file name";
+        log.endl();
+        return true;
+    }
+    uint16_t addr = 0;
+    uint16_t size = 0;
+    if (file_e != npos)
+        if (size_t addr_b = args.find_first_not_of(whitespace_chars, file_e); addr_b != npos) {
+            if (auto addr_v = parser::number_unsigned(args.substr(addr_b), false); !addr_v.first) {
+                log.output() << "Invalid address: " << addr_v.first.error();
+                log.endl();
+                return true;
+            } else {
+                addr = addr_v.first->val;
+                if (size_t size_b = addr_v.second.find_first_not_of(whitespace_chars); size_b == npos || size_b == 0) {
+                    log.output() << "Missing size";
+                    log.endl();
+                    return true;
+                } else
+                    if (auto size_v = parser::number_unsigned(addr_v.second.substr(size_b), true); !size_v.first) {
+                        log.output() << "Invalid size: " << size_v.first.error();
+                        log.endl();
+                        return true;
+                    } else
+                        size = size_v.first->val;
+            }
+        }
+    log.output() << std::format("Saving {1:d} = {1:#06x} bytes at address {0:d} = {0:#06x}", addr, size);
+    log.endl();
+    std::vector<uint8_t> data = mb50.cmd_memory(addr, size);
+    std::ofstream ofs(std::string(file), std::ios::trunc | std::ios::binary);
+    if (!ofs) {
+        log.output() << "Cannot write file \"" << file << "\"";
+        log.endl();
+        return true;
+    }
+    ofs << std::format("{:04x}\n", addr);
+    ofs.write(reinterpret_cast<const char*>(data.data()), size);
+    log.output() << "Saved to file \"" << file << "\"";
     log.endl();
     return true;
 }
@@ -712,7 +774,7 @@ command_table::command_table():
         {"memset", {std::make_shared<command>()}},
         {"quit", {std::make_shared<cmd_quit>()}},
         {"register", {std::make_shared<cmd_register>()}},
-        {"save", {std::make_shared<command>()}},
+        {"save", {std::make_shared<cmd_save>()}},
         {"script", {std::make_shared<cmd_script>()}},
         {"step", {std::make_shared<cmd_step>()}},
         {"watch", {std::make_shared<command>()}},

@@ -1587,8 +1587,9 @@ the minus sign to compute a negative value (two's complement).
 
 ### Alphabetical list of commands
 
-In commands, `ADDR` and `SZ` may be entered as unsigned decimal or hexadecimal
-(`0xaabb`) value. `VALUE` may be a decimal number (negative values allowed),
+In commands, `ADDR` and `SIZE` may be entered as unsigned decimal or hexadecimal
+(`0xaabb`) value. Zero `SIZE` means the whole address space, that is, 65536
+bytes. `VALUE` may be a decimal number (negative values allowed),
 a hexadecimal number (`0x1a2b`), a binary number (`0b1111000010101100`), or
 a character constant containing zero (`''` equal to `'\0'`), one (`'x'`), or
 two (`'xy'`) characters, the first stored in the lower byte. Groups of digits
@@ -1621,18 +1622,18 @@ Reads and executes commands from `FILE`.
 
 #### Dump
 
-    dump [ADDR [SZ]]
-    dumpd [ADDR [SZ]]
-    dumpw [ADDR [SZ]]
-    dumpwd [ADDR [SZ]]
+    dump [ADDR [SIZE]]
+    dumpd [ADDR [SIZE]]
+    dumpw [ADDR [SIZE]]
+    dumpwd [ADDR [SIZE]]
     d
     dd
     dw
     dwd
 
-Dump data from memory in a readable format. It dumps `SZ` bytes, or just
-a single byte or word if `SZ` is no specified, starting at address `ADDR`. If
-an address is not specified, it uses `ADDR` and `SZ` from the previous
+Dump data from memory in a readable format. It dumps `SIZE` bytes, or just
+a single byte or word if `SIZE` is no specified, starting at address `ADDR`. If
+an address is not specified, it uses `ADDR` and `SIZE` from the previous
 `dump[w][d]` command. With suffix `d`, decimal values are dumped, otherwise,
 hexadecimal format is used. With suffix `w`, 16-bit words are dumped,
 otherwise it dumps individual bytes and shows also ASCII characters when
