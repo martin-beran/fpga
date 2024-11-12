@@ -49,8 +49,10 @@ struct number_t {
     bool negative = false; // number entered as negative (val is two's complement)
 };
 
-// Parses a number from a string. See documentation for assembler and debugger
-// number syntax.
+// Parses an unsigned (non-negative) number from a string
+result_t<number_t> number_unsigned(std::string_view s, bool all);
+
+// Parses a number from a string. See documentation for assembler and debugger number syntax.
 result_t<number_t> number(std::string_view s, bool all);
 
 std::optional<uint8_t> digit_bin(char c, bool all);
@@ -115,6 +117,14 @@ result_t<number_t> number(std::string_view s, bool all)
         return character(s, all);
     else
         return number_dec(s, all);
+}
+
+result_t<number_t> number_unsigned(std::string_view s, bool all)
+{
+    auto result  = number(s, all);
+    if (result.first && result.first->negative)
+        return result_t<number_t>{std::unexpected{"Negative number not allowed"s}, s};
+    return result;
 }
 
 result_t<number_t> character(std::string_view s, bool all)

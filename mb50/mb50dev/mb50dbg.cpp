@@ -340,8 +340,8 @@ public:
     command& operator=(const command&) = delete;
     command& operator=(command&&) = delete;
     virtual std::vector<std::string_view> aliases();
-    virtual std::string_view help_args();
     virtual std::string_view help();
+    virtual std::string_view help_args();
     // Returns false if the debugger should terminate, true otherwise
     virtual bool operator()(cdi& mb50, script_history& log, std::string_view args);
 };
@@ -351,14 +351,14 @@ std::vector<std::string_view> command::aliases()
     return {};
 }
 
-std::string_view command::help_args()
-{
-    return "";
-}
-
 std::string_view command::help()
 {
     return "Not implemented.";
+}
+
+std::string_view command::help_args()
+{
+    return "";
 }
 
 bool command::operator()(cdi&, script_history& log, std::string_view)
@@ -510,8 +510,8 @@ bool cmd_execute::operator()(cdi& mb50, script_history&, std::string_view)
 class cmd_help: public command {
 public:
     std::vector<std::string_view> aliases() override { return {"h", "?"}; }
-    std::string_view help_args() override { return "[COMMAND]"; }
     std::string_view help() override { return R"(Describe available commands.)"; }
+    std::string_view help_args() override { return "[COMMAND]"; }
     bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
 };
 
@@ -527,11 +527,11 @@ bool cmd_help::operator()(cdi&, script_history&, std::string_view args)
 // Command history
 class cmd_history: public command {
 public:
-    std::string_view help_args() override { return "[FILE]"; }
     std::string_view help() override {
         return R"(If called with a FILE name, start appending all executed commands to the end
 of the file. If called without a file name, stop recording commands.)";
     }
+    std::string_view help_args() override { return "[FILE]"; }
     bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
 };
 
@@ -541,6 +541,77 @@ bool cmd_history::operator()(cdi&, script_history& log, std::string_view args)
         log.stop_history();
     else
         log.start_history(args);
+    return true;
+}
+
+// Command load
+class cmd_load: public command {
+public:
+    std::string_view help() override {
+        return R"(Load content of a binary FILE from address ADDR. If ADDR is not specified,
+use the starting address from FILE. It expects the binary format produced
+by the assembler or by command save, that is, there is a single line
+containing start address in hexadecimal before binary data.)";
+    }
+    std::string_view help_args() override { return "FILE [ADDR]"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    size_t file_e = args.find_first_of(whitespace_chars);
+    std::string_view file = args.substr(0, file_e);
+    if (file.empty()) {
+        log.output() << "Missing file name";
+        log.endl();
+        return true;
+    }
+    std::optional<uint16_t> addr;
+    if (file_e != npos)
+        if (size_t value_b = args.find_first_not_of(whitespace_chars, file_e); value_b != npos) {
+            if (auto v = parser::number_unsigned(args.substr(value_b), true); v.first)
+                addr = v.first->val;
+            else {
+                log.output() << "Invalid address: " << v.first.error();
+                log.endl();
+                return true;
+            }
+        }
+    std::ifstream ifs{std::string(file), std::ios::in | std::ios::binary};
+    if (!ifs) {
+        log.output() << "Cannot read file \"" << file << "\"";
+        log.endl();
+        return true;
+    }
+    std::string addr_s(5, '\0');
+    if (!ifs.read(addr_s.data(), std::streamsize(addr_s.size())) || addr_s.back() != '\n') {
+        log.output() << "Cannot read address from file \"" << file << "\"";
+        log.endl();
+        return true;
+    }
+    addr_s.pop_back();
+    if (!addr) {
+        addr = 0;
+        for (auto c: addr_s)
+            if (auto d = parser::digit_hex(c))
+                addr = (*addr << 8U) + *d;
+            else {
+                log.output() << "Cannot read address from file \"" << file << "\"";
+                log.endl();
+                return true;
+            }
+    }
+    std::vector<uint8_t> data{};
+    std::array<uint8_t, 1024> buf{};
+    while (ifs.read(reinterpret_cast<char*>(buf.data()), buf.size()))
+           data.append_range(buf);
+    data.append_range(std::span(buf.data(), size_t(ifs.gcount())));
+    log.output() << std::format("Loaded {0:d} = {0:#06x} bytes from \"{1}\"", data.size(), file);
+    log.endl();
+    mb50.cmd_memory(addr.value(), data);
+    log.output() << std::format("Loaded at address {:#06x}", addr.value());
+    log.endl();
     return true;
 }
 
@@ -606,11 +677,11 @@ const std::vector<cmd_csr::reg_name>& cmd_register::registers()
 // Command script
 class cmd_script: public command {
 public:
-    std::string_view help_args() override { return "[FILE]"; }
     std::string_view help() override {
         return R"(If called with a FILE name, start appending all user input and debugger output
 to the end of the file. If called without a file name, stop recording.)";
     }
+    std::string_view help_args() override { return "[FILE]"; }
     bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
 };
 
@@ -637,7 +708,7 @@ command_table::command_table():
         {"execute", {std::make_shared<cmd_execute>()}},
         {"help", {std::make_shared<cmd_help>()}},
         {"history", {std::make_shared<cmd_history>()}},
-        {"load", {std::make_shared<command>()}},
+        {"load", {std::make_shared<cmd_load>()}},
         {"memset", {std::make_shared<command>()}},
         {"quit", {std::make_shared<cmd_quit>()}},
         {"register", {std::make_shared<cmd_register>()}},
