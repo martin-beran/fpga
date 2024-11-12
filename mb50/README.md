@@ -1804,7 +1804,7 @@ running `make` in directory `mb50/mb50dev/`.
         - [x] System clock
     - [ ] Development environment for a host computer
         - [ ] Debugger
-            - [ ] Serial communication with the target computer
+            - [x] Serial communication with the target computer
             - [ ] CLI
         - [ ] Assembler
             - [ ] Generic processing

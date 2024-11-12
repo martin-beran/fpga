@@ -118,6 +118,8 @@ enum class cdi_request: uint8_t {
     csr_rd = 0x06,
     csr_wr = 0x07,
     execute = 0x03,
+    mem_rd = 0x08,
+    mem_wr = 0x09,
     reg_rd = 0x04,
     reg_wr = 0x05,
     status = 0x01,
@@ -127,6 +129,8 @@ enum class cdi_request: uint8_t {
 
 // Response codes correspond to Resp* constants in cdi.vhd
 enum class cdi_response: uint8_t {
+    mem_rd = 0x05,
+    mem_wr = 0x06,
     reg_rd = 0x03,
     reg_wr = 0x04,
     status = 0x02,
@@ -148,13 +152,15 @@ public:
     cdi& operator=(const cdi&) = delete;
     cdi& operator=(cdi&&) = delete;
     void cmd_execute();
+    std::vector<uint8_t> cmd_memory(uint16_t addr, uint16_t size);
+    void cmd_memory(uint16_t addr, const std::vector<uint8_t>& data);
     uint16_t cmd_register(uint8_t r, bool csr);
     void cmd_register(uint8_t r, bool csr, uint16_t v);
     void cmd_status();
     void cmd_step();
 private:
     [[nodiscard]] std::vector<uint8_t> read_serial(size_t n) const;
-    void write_serial(std::span<uint8_t> data) const;
+    void write_serial(std::span<const uint8_t> data) const;
     static void check_response(uint8_t resp, cdi_response expected);
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
     void read_status(bool expect_exe_resp = false);
@@ -210,6 +216,38 @@ void cdi::cmd_execute()
         cmd_status();
     } else // tty_fd ready
         read_status(true);
+}
+
+std::vector<uint8_t> cdi::cmd_memory(uint16_t addr, uint16_t size)
+{
+    size_t result_sz = size == 0 ? 0xffff : size;
+    std::array req{
+        static_cast<uint8_t>(cdi_request::mem_rd),
+            uint8_t(addr % 256),
+            uint8_t(addr / 256),
+            uint8_t(size % 256),
+            uint8_t(size / 256),
+    };
+    write_serial(req);
+    auto resp = read_serial(1 + result_sz);
+    check_response(resp[0], cdi_response::mem_rd);
+    resp.erase(resp.begin());
+    return resp;
+}
+
+void cdi::cmd_memory(uint16_t addr, const std::vector<uint8_t>& data)
+{
+    std::array req{
+        static_cast<uint8_t>(cdi_request::mem_wr),
+        uint8_t(addr % 256),
+        uint8_t(addr / 256),
+        uint8_t(data.size() % 256),
+        uint8_t(data.size() / 256),
+    };
+    write_serial(req);
+    write_serial(data);
+    auto resp = read_serial(1);
+    check_response(resp[0], cdi_response::mem_wr);
 }
 
 uint16_t cdi::cmd_register(uint8_t r, bool csr)
@@ -282,7 +320,7 @@ void cdi::read_status(bool expect_exe_resp)
     log.endl();
 }
 
-void cdi::write_serial(std::span<uint8_t> data) const
+void cdi::write_serial(std::span<const uint8_t> data) const
 {
     if (write(tty_fd, data.data(), data.size()) < 0)
         throw fatal_error("Cannot write to serial port: "s.append(errno_message()));
