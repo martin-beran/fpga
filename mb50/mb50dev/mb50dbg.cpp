@@ -220,7 +220,7 @@ void cdi::cmd_execute()
 
 std::vector<uint8_t> cdi::cmd_memory(uint16_t addr, uint16_t size)
 {
-    size_t result_sz = size == 0 ? 0xffff : size;
+    size_t result_sz = size == 0 ? 0x10000U : size;
     std::array req{
         static_cast<uint8_t>(cdi_request::mem_rd),
             uint8_t(addr % 256),
@@ -237,6 +237,8 @@ std::vector<uint8_t> cdi::cmd_memory(uint16_t addr, uint16_t size)
 
 void cdi::cmd_memory(uint16_t addr, const std::vector<uint8_t>& data)
 {
+    if (data.size() > 0x10000U)
+        throw fatal_error("Writing more than 65536 bytes of data");
     std::array req{
         static_cast<uint8_t>(cdi_request::mem_wr),
         uint8_t(addr % 256),
@@ -604,8 +606,14 @@ bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
     }
     std::vector<uint8_t> data{};
     std::array<uint8_t, 1024> buf{};
-    while (ifs.read(reinterpret_cast<char*>(buf.data()), buf.size()))
+    while (ifs.read(reinterpret_cast<char*>(buf.data()), buf.size())) {
            data.append_range(buf);
+           if (data.size() > 0xffff) {
+               log.output() << "File too large";
+               log.endl();
+               return true;
+           }
+    }
     data.append_range(std::span(buf.data(), size_t(ifs.gcount())));
     log.output() << std::format("Loaded {0:d} = {0:#06x} bytes from \"{1}\"", data.size(), file);
     log.endl();
@@ -613,6 +621,55 @@ bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
     log.output() << std::format("Loaded at address {:#06x}", addr.value());
     log.endl();
     return true;
+}
+
+// Command memset
+class cmd_memset: public command {
+};
+
+// Command quit
+class cmd_quit: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"q"}; }
+    std::string_view help() override { return R"(Terminate the debugger.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_quit::operator()(cdi&, script_history& log, std::string_view)
+{
+    log.output() << "Quit!";
+    log.endl();
+    return false;
+}
+
+// Command register
+class cmd_register: public cmd_csr {
+public:
+    std::vector<std::string_view> aliases() override { return {"reg", "r"}; }
+    std::string_view help() override {
+        return R"(Display or set values of registers. Without arguments, it shows values of all
+registers r0...r15. With NAME, only a single register is shown, where NAME is
+a register name or a standard register alias (r0...r15, pc, f, ia, ca, sp).
+With also VALUE, the value is stored in the register.)";
+    }
+protected:
+    const std::vector<reg_name>& registers() override;
+    bool csr() override { return false; }
+};
+
+const std::vector<cmd_csr::reg_name>& cmd_register::registers()
+{
+    static std::vector<reg_name> r{
+        {"0", "r0", "r0", "r0"}, {"1", "r1", "r1", "r1"},
+        {"2", "r2", "r2", "r2"}, {"3", "r3", "r3", "r3"},
+        {"4", "r4", "r4", "r4"}, {"5", "r5", "r5", "r5"},
+        {"6", "r6", "r6", "r6"}, {"7", "r7", "r7", "r7"},
+        {"8", "r8", "r8", "r8"}, {"9", "r9", "r9", "r9"},
+        {"10", "r10", "r10", "r10"}, {"11", "r11", "sp", "r11(sp)"},
+        {"12", "r12", "ca", "r12(ca)"}, {"13", "r13", "ia", "r13(ia)"},
+        {"14", "r14", "f", "r14(f)"}, {"15", "r15", "pc", "r15(pc)"},
+    };
+    return r;
 }
 
 // Command save
@@ -677,65 +734,6 @@ bool cmd_save::operator()(cdi& mb50, script_history& log, std::string_view args)
     return true;
 }
 
-// Command step
-class cmd_step: public command {
-public:
-    std::vector<std::string_view> aliases() override { return {"s"}; }
-    std::string_view help() override { return R"(Execute a single instruction.)"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
-};
-
-bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view)
-{
-    mb50.cmd_step();
-    return true;
-}
-
-// Command quit
-class cmd_quit: public command {
-public:
-    std::vector<std::string_view> aliases() override { return {"q"}; }
-    std::string_view help() override { return R"(Terminate the debugger.)"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
-};
-
-bool cmd_quit::operator()(cdi&, script_history& log, std::string_view)
-{
-    log.output() << "Quit!";
-    log.endl();
-    return false;
-}
-
-// Command register
-class cmd_register: public cmd_csr {
-public:
-    std::vector<std::string_view> aliases() override { return {"reg", "r"}; }
-    std::string_view help() override {
-        return R"(Display or set values of registers. Without arguments, it shows values of all
-registers r0...r15. With NAME, only a single register is shown, where NAME is
-a register name or a standard register alias (r0...r15, pc, f, ia, ca, sp).
-With also VALUE, the value is stored in the register.)";
-    }
-protected:
-    const std::vector<reg_name>& registers() override;
-    bool csr() override { return false; }
-};
-
-const std::vector<cmd_csr::reg_name>& cmd_register::registers()
-{
-    static std::vector<reg_name> r{
-        {"0", "r0", "r0", "r0"}, {"1", "r1", "r1", "r1"},
-        {"2", "r2", "r2", "r2"}, {"3", "r3", "r3", "r3"},
-        {"4", "r4", "r4", "r4"}, {"5", "r5", "r5", "r5"},
-        {"6", "r6", "r6", "r6"}, {"7", "r7", "r7", "r7"},
-        {"8", "r8", "r8", "r8"}, {"9", "r9", "r9", "r9"},
-        {"10", "r10", "r10", "r10"}, {"11", "r11", "sp", "r11(sp)"},
-        {"12", "r12", "ca", "r12(ca)"}, {"13", "r13", "ia", "r13(ia)"},
-        {"14", "r14", "f", "r14(f)"}, {"15", "r15", "pc", "r15(pc)"},
-    };
-    return r;
-}
-
 // Command script
 class cmd_script: public command {
 public:
@@ -756,6 +754,20 @@ bool cmd_script::operator()(cdi&, script_history& log, std::string_view args)
     return true;
 }
 
+// Command step
+class cmd_step: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"s"}; }
+    std::string_view help() override { return R"(Execute a single instruction.)"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+};
+
+bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view)
+{
+    mb50.cmd_step();
+    return true;
+}
+
 // Implementation of command_table
 
 command_table::command_table():
@@ -771,7 +783,7 @@ command_table::command_table():
         {"help", {std::make_shared<cmd_help>()}},
         {"history", {std::make_shared<cmd_history>()}},
         {"load", {std::make_shared<cmd_load>()}},
-        {"memset", {std::make_shared<command>()}},
+        {"memset", {std::make_shared<cmd_memset>()}},
         {"quit", {std::make_shared<cmd_quit>()}},
         {"register", {std::make_shared<cmd_register>()}},
         {"save", {std::make_shared<cmd_save>()}},
