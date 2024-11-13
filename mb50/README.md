@@ -1594,13 +1594,16 @@ a hexadecimal number (`0x1a2b`), a binary number (`0b1111000010101100`), or
 a character constant containing zero (`''` equal to `'\0'`), one (`'x'`), or
 two (`'xy'`) characters, the first stored in the lower byte. Groups of digits
 may be separated by underscores. Command `memset` permits also strings in
-double quotes. Character and string values can contain the same escape
-sequences as defined by the [assembler syntax](#syntax).
+double quotes (unlike in C, there is no terminating null byte appended).
+Character and string values can contain the same escape sequences as defined by
+the [assembler syntax](#syntax).
 
 #### Break
 
     break [-] [ADDR]
     b
+
+_(not implemented)_
 
 If a breakpoint is set on an address, the program execution is stopped before
 executing the instruction at that address. If called without arguments, list
@@ -1679,7 +1682,7 @@ containing start address in hexadecimal before binary data.
     memset ADDR VALUE [VALUE...]
     m
 
-Store values in memory. Each value can be a number (little endian if more than
+Store values to memory. Each value can be a number (little endian if more than
 one byte) or a string constant (in double quotes, characters stored in the
 order of appearance in the string). Size of a binary or hexadecimal constant is
 determined by the number of digits (up to 8 binary or 2 hexadecimal digits or
@@ -1736,6 +1739,8 @@ Execute a single instruction.
 
     watch [r|w|-] [ADDR]
     w
+
+_(not implemented)_
 
 If a watchpoint is set on an address, the program execution is stopped after
 executing an instruction that reads or writes that address. Executing an

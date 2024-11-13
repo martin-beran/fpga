@@ -11,7 +11,6 @@
 #include <map>
 #include <span>
 #include <system_error>
-#include <vector>
 
 #include <sys/select.h>
 #include <sys/types.h>
@@ -625,7 +624,69 @@ bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
 
 // Command memset
 class cmd_memset: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"m"}; }
+    std::string_view help() override {
+        return R"(Store values in memory. Each value can be a number (little endian if more
+than one byte) or a string constant (in double quotes, characters stored
+in the order of appearance in the string). Size of a binary or hexadecimal
+constant is determined by the number of digits (up to 8 binary or
+2 hexadecimal digits or 1 character yield a byte, more digits or
+characters store a little endian word). Size of a decimal constant is
+two bytes if the value is outside the range 0–255 or if it contains more
+than 3 digits (e.g., 0000, 0009, 0099, 0200). All values are stored
+sequentially starting at address ADDR.)";
+    }
+    std::string_view help_args() override { return "ADDR VALUE [VALUE...]"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
 };
+
+bool cmd_memset::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    auto v = parser::number_unsigned(args, false);
+    if (!v.first) {
+        log.output() << "Invalid address: " << v.first.error();
+        log.endl();
+        return true;
+    }
+    uint16_t addr = v.first->val;
+    std::vector<uint8_t> data{};
+    for (std::string_view s = v.second; !s.empty();) {
+        size_t value_b = s.find_first_not_of(whitespace_chars);
+        if (value_b == 0) {
+            log.output() << "Whitespace expected between address and values";
+            log.endl();
+        }
+        if (value_b == npos)
+            break;
+        s = s.substr(value_b);
+        if (auto b = parser::bytes(s, false); b.first) {
+            data.append_range(*b.first);
+            if (data.size() > 0xffff) {
+                log.output() << "Data too large";
+                log.endl();
+                return true;
+            }
+            s = b.second;
+        } else {
+            log.output() << "Invalid value: " << b.first.error();
+            log.endl();
+            return true;
+        }
+    }
+    if (data.empty()) {
+        log.output() << "No data to store in memory";
+        log.endl();
+        return true;
+    }
+    log.output() << std::format("Storing {0:d} = {0:#06x} bytes to memory", data.size());
+    log.endl();
+    mb50.cmd_memory(addr, data);
+    log.output() << std::format("Stored at address {:#06x}", addr);
+    log.endl();
+    return true;
+}
 
 // Command quit
 class cmd_quit: public command {

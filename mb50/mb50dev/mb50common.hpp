@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 using namespace std::string_literals; // NOLINT
 using namespace std::string_view_literals; // NOLINT
@@ -55,6 +56,10 @@ result_t<number_t> number_unsigned(std::string_view s, bool all);
 // Parses a number from a string. See documentation for assembler and debugger number syntax.
 result_t<number_t> number(std::string_view s, bool all);
 
+// Parses a sequence of bytes from a string. It can be one or two bytes (little
+// endian) parsed by number(), or a string constant in double quotes.
+result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all);
+
 std::optional<uint8_t> digit_bin(char c, bool all);
 std::optional<uint8_t> digit_dec(char c, bool all);
 std::optional<uint8_t> digit_hex(char c, bool all);
@@ -94,6 +99,33 @@ std::optional<uint8_t> digit_hex(char c)
         return std::nullopt;
 }
 
+result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all)
+{
+    if (s.starts_with("\""sv)) {
+        auto s_orig = s;
+        s = s.substr(1);
+        std::vector<uint8_t> data;
+        while (!s.empty() && s.front() != '"')
+            if (auto v = str_char(s, false, '"'); v.first) {
+                data.push_back(uint8_t(v.first->val));
+                s = v.second;
+            } else
+                return {std::unexpected{v.first.error()}, s_orig};
+        if (s.empty())
+            return {std::unexpected{"Missing terminating quote in string constant"}, s_orig};
+        s = s.substr(1); // s.front() == '"'
+        if (!all || s.empty())
+            return {{std::move(data)}, s};
+        else
+            return {std::unexpected{"Expected string constant"}, s_orig};
+    } else {
+        if (auto v = number(s, all); v.first)
+            return {{{uint8_t(v.first->val % 256), uint8_t(v.first->val / 256)}}, v.second};
+        else
+            return {std::unexpected{v.first.error()}, s};
+    }
+}
+
 result_t<number_t> number(std::string_view s, bool all)
 {
     if (s.starts_with("0x"sv) || s.starts_with("0X"sv)) {
@@ -123,14 +155,14 @@ result_t<number_t> number_unsigned(std::string_view s, bool all)
 {
     auto result  = number(s, all);
     if (result.first && result.first->negative)
-        return result_t<number_t>{std::unexpected{"Negative number not allowed"s}, s};
+        return {std::unexpected{"Negative number not allowed"s}, s};
     return result;
 }
 
 result_t<number_t> character(std::string_view s, bool all)
 {
     if (s.empty() || s.front() != '\'')
-        return result_t<number_t>{std::unexpected{"Expected character constant"s}, s};
+        return {std::unexpected{"Expected character constant"s}, s};
     if (auto c = str_char(s.substr(1), all, '\''); c.first)
         return c;
     else
@@ -274,9 +306,11 @@ result_t<number_t> str_char(std::string_view s, bool all, char quote)
             }
         } else
             c = s.front();
-        if (n == 1)
+        if (n == 1) {
             result.val = uint8_t(c);
-        else {
+            if (quote == '"') // used to get one character in a string in double quotes
+                return expected(result, s.substr(1));
+        } else {
             result.val |= unsigned(c) << 8U;
             result.word = true;
         }
