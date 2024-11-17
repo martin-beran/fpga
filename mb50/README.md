@@ -1603,7 +1603,9 @@ the [assembler syntax](#syntax).
     break [-] [ADDR]
     b
 
-_(not implemented)_
+_The current implementation uses single stepping controlled by the debugger
+instead of full-speed execution, therefore a program executes much slower if at
+least one breakpoint is defined._
 
 If a breakpoint is set on an address, the program execution is stopped before
 executing the instruction at that address. If called without arguments, list
@@ -1814,9 +1816,9 @@ Build with Clang 19 and libc++:
         - [x] PS/2 keyboard
         - [x] System clock
     - [ ] Development environment for a host computer
-        - [ ] Debugger
+        - [x] Debugger
             - [x] Serial communication with the target computer
-            - [ ] CLI
+            - [x] CLI
         - [ ] Assembler
             - [ ] Generic processing
             - [ ] Instruction set

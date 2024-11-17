@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <set>
 #include <span>
 #include <system_error>
 
@@ -156,13 +157,14 @@ public:
     uint16_t cmd_register(uint8_t r, bool csr);
     void cmd_register(uint8_t r, bool csr, uint16_t v);
     void cmd_status();
-    void cmd_step();
+    std::pair<std::string, uint16_t> cmd_step(bool quiet = false);
 private:
     [[nodiscard]] std::vector<uint8_t> read_serial(size_t n) const;
     void write_serial(std::span<const uint8_t> data) const;
     static void check_response(uint8_t resp, cdi_response expected);
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
-    void read_status(bool expect_exe_resp = false);
+    std::pair<std::string, uint16_t> read_status(bool expect_exe_resp = false);
+    std::pair<std::string, uint16_t> show_status(bool expect_exe_resp = false);
     script_history& log;
     int tty_fd = -1;
 };
@@ -201,7 +203,8 @@ void cdi::cmd_execute()
     std::array req{
         static_cast<uint8_t>(cdi_request::execute),
     };
-    std::cout << "Executing program, press Enter to break" << std::endl;
+    log.output() << "Executing program, press Enter to break";
+    log.endl();
     write_serial(req);
     fd_set fds;
     FD_ZERO(&fds);
@@ -214,7 +217,7 @@ void cdi::cmd_execute()
         std::getline(std::cin, line);
         cmd_status();
     } else // tty_fd ready
-        read_status(true);
+        show_status(true);
 }
 
 std::vector<uint8_t> cdi::cmd_memory(uint16_t addr, uint16_t size)
@@ -282,16 +285,19 @@ void cdi::cmd_status()
         static_cast<uint8_t>(cdi_request::status),
     };
     write_serial(req);
-    read_status();
+    show_status();
 }
 
-void cdi::cmd_step()
+std::pair<std::string, uint16_t> cdi::cmd_step(bool quiet)
 {
     std::array req{
         static_cast<uint8_t>(cdi_request::step),
     };
     write_serial(req);
-    read_status();
+    if (quiet)
+        return read_status();
+    else
+        return show_status();
 }
 
 std::vector<uint8_t> cdi::read_serial(size_t n) const
@@ -305,7 +311,7 @@ std::vector<uint8_t> cdi::read_serial(size_t n) const
     return result;
 }
 
-void cdi::read_status(bool expect_exe_resp)
+std::pair<std::string, uint16_t> cdi::read_status(bool expect_exe_resp)
 {
     bool halted = false;
     bool exe_resp = false;
@@ -317,8 +323,15 @@ void cdi::read_status(bool expect_exe_resp)
         exe_resp = (resp[1] & 0b0000'0010U) != 0;
         pc = uint16_t(resp[2] + (resp[3] << 8U));
     } while (!expect_exe_resp && exe_resp);
-    log.output() << std::format("Ready r15(pc)={:#06x} halted={}", pc, halted);
+    return {std::format("Ready r15(pc)={:#06x} halted={}", pc, halted), pc};
+}
+
+std::pair<std::string, uint16_t> cdi::show_status(bool expect_exe_resp)
+{
+    auto [result, addr] = read_status(expect_exe_resp);
+    log.output() << result;
     log.endl();
+    return {std::move(result), addr};
 }
 
 void cdi::write_serial(std::span<const uint8_t> data) const
@@ -370,6 +383,9 @@ bool command::operator()(cdi&, script_history& log, std::string_view)
 }
 
 // Mapping from commands names to implementations
+class cmd_break;
+class cmd_dump;
+
 class command_table {
 public:
     static command_table& get();
@@ -386,8 +402,85 @@ private:
         }
     };
     command_table();
+    std::shared_ptr<cmd_break> _cmd_break;
+    std::shared_ptr<cmd_dump> _cmd_dump;
     std::map<std::string_view, command_t> commands;
 };
+
+// Command break
+class cmd_break: public command {
+public:
+    using breakpoints_t = std::set<uint16_t>;
+    std::string_view help() override {
+        return R"(If a breakpoint is set on an address, the program execution is stopped
+before executing the instruction at that address. If called without arguments,
+list all breakpoints. If called with ADDR, set a breakpoint at this address.
+If - is used before an address, delete a breakpoint at this address.
+If called with - only, delete all breakpoints.)";
+    }
+    std::string_view help_args() override { return R"([-] [ADDR])"; }
+    bool operator()(cdi& mb50, script_history&log, std::string_view args) override;
+    [[nodiscard]] const breakpoints_t& breakpoints() const { return _breakpoints; }
+private:
+    breakpoints_t _breakpoints{};
+};
+
+bool cmd_break::operator()(cdi&, script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    bool del = false;
+    std::optional<uint16_t> addr{};
+    auto del_e = args.find_first_of(whitespace_chars);
+    if (args.substr(0, del_e) == "-"sv) {
+        del = true;
+        if (del_e == npos)
+            args = {};
+        else
+            args = args.substr(del_e, args.find_first_not_of(whitespace_chars, del_e));
+    }
+    if (!args.empty()) {
+        if (auto addr_v = parser::number_unsigned(args, true); !addr_v.first) {
+            log.output() << "Invalid address: " << addr_v.first.error();
+            log.endl();
+            return true;
+        } else
+            addr = addr_v.first->val;
+    }
+    if (del) {
+        if (addr) {
+            if (_breakpoints.contains(*addr)) {
+                _breakpoints.erase(*addr);
+                log.output() << std::format("Deleted breakpoints at {:#06x}", *addr);
+                log.endl();
+            } else {
+                log.output() << std::format("No breakpoint at {:#06x}", *addr);
+                log.endl();
+            }
+        } else {
+            _breakpoints.clear();
+            log.output() << "Deleted all breakpoints";
+            log.endl();
+        }
+    } else {
+        if (addr) {
+            if (_breakpoints.insert(*addr).second) {
+                log.output() << std::format("Set breakpoint at {:#06x}", *addr);
+                log.endl();
+            } else {
+                log.output() << std::format("Breakpoint already exists at {:#06x}", *addr);
+                log.endl();
+            }
+        } else {
+            log.output() << "Breakpoints:";
+            log.endl();
+            for (auto a: _breakpoints) {
+                log.output() << std::format("{:#06x}", a);
+                log.endl();
+            }
+        }
+    }
+    return true;
+}
 
 // Command csr
 class cmd_csr: public command {
@@ -493,6 +586,7 @@ bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view args)
 // Command dump
 class cmd_dump: public command {
 public:
+    explicit cmd_dump(std::shared_ptr<cmd_dump> other = nullptr): other{std::move(other)} {}
     std::vector<std::string_view> aliases() override { return {"d"}; }
     std::string_view help() override {
         static std::string text =
@@ -512,6 +606,7 @@ it uses ADDR and SIZE from the previous dump[w][d] command.
     }
     virtual size_t line_bytes() { return 16; }
     virtual std::string display(std::span<const uint8_t> data);
+    std::shared_ptr<cmd_dump> other;
 private:
     std::optional<std::pair<uint16_t, uint16_t>> parse_args(script_history& log, std::string_view args);
     uint16_t last_addr = 0;
@@ -543,16 +638,18 @@ bool cmd_dump::operator()(cdi& mb50, script_history& log, std::string_view args)
         return true;
     size = uint16_t(line_bytes() * ((size + line_bytes() - 1) / line_bytes()));
     std::vector<uint8_t> data = mb50.cmd_memory(addr, size);
-    for (auto it = data.cbegin(); data.end() - it >= ptrdiff_t(line_bytes()); it += ptrdiff_t(line_bytes()))
-        std::cout << std::format("{:04x}:", addr) << display(std::span(it, line_bytes())) << std::endl;
+    for (auto it = data.cbegin(); data.end() - it >= ptrdiff_t(line_bytes()); it += ptrdiff_t(line_bytes())) {
+        log.output() << std::format("{:04x}:", addr) << display(std::span(it, line_bytes()));
+        log.endl();
+    }
     return true;
 }
 
 std::optional<std::pair<uint16_t, uint16_t>> cmd_dump::parse_args(script_history& log, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
-    uint16_t addr = last_addr;
-    uint16_t size = last_size;
+    uint16_t addr = other ? other->last_addr : last_addr;
+    uint16_t size = other ? other->last_size : last_size;
     if (args.empty())
         return std::pair{addr, size};
     auto v = parser::number_unsigned(args, false);
@@ -577,11 +674,14 @@ std::optional<std::pair<uint16_t, uint16_t>> cmd_dump::parse_args(script_history
             }
             size = v.first->val;
         }
+    (other ? other->last_addr : last_addr) = addr;
+    (other ? other->last_size : last_size) = size;
     return std::pair{addr, size};
 }
 
 // Command dumpd
 class cmd_dumpd: public cmd_dump {
+    using cmd_dump::cmd_dump;
 public:
     std::vector<std::string_view> aliases() override { return {"dd"}; }
     std::string_view help() override {
@@ -607,6 +707,7 @@ std::string cmd_dumpd::display(std::span<const uint8_t> data)
 
 // Command dumpw
 class cmd_dumpw: public cmd_dump {
+    using cmd_dump::cmd_dump;
 public:
     std::vector<std::string_view> aliases() override { return {"dw"}; }
     std::string_view help() override {
@@ -632,6 +733,7 @@ std::string cmd_dumpw::display(std::span<const uint8_t> data)
 
 // Command dumpwd
 class cmd_dumpwd: public cmd_dump {
+    using cmd_dump::cmd_dump;
 public:
     std::vector<std::string_view> aliases() override { return {"dwd"}; }
     std::string_view help() override {
@@ -657,17 +759,53 @@ std::string cmd_dumpwd::display(std::span<const uint8_t> data)
 // Command execute
 class cmd_execute: public command {
 public:
+    explicit cmd_execute(std::shared_ptr<cmd_break> breakpoints = nullptr): breakpoints{std::move(breakpoints)} {}
     std::vector<std::string_view> aliases() override { return {"exe", "x"}; }
     std::string_view help() override {
         return R"(Run the program. Program execution is interrupted by entering a newline.
 Any characters on the line before the newline are ignored.)";
     }
     bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+private:
+    std::shared_ptr<cmd_break> breakpoints;
 };
 
-bool cmd_execute::operator()(cdi& mb50, script_history&, std::string_view)
+bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view)
 {
-    mb50.cmd_execute();
+    auto bp = breakpoints ? &breakpoints->breakpoints() : nullptr;
+    if (bp && bp->empty())
+        bp = nullptr;
+    if (bp)
+        mb50.cmd_execute();
+    else {
+        log.output() << "Breakpoints set, expect very slow performance.";
+        log.endl();
+        log.output() << "Executing program, press Enter to break";
+        log.endl();
+        std::string status;
+        for (;;) {
+            uint16_t addr{};
+            std::tie(status, addr) = mb50.cmd_step(true);
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(STDIN_FILENO, &fds);
+            timeval tv{};
+            if (select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) < 0)
+                throw fatal_error("Failed call to select(2): "s.append(errno_message()));
+            if (FD_ISSET(STDIN_FILENO, &fds)) {
+                std::string line;
+                std::getline(std::cin, line);
+                break;
+            }
+            if (bp && bp->contains(addr)) {
+                log.output() << std::format("Breakpoint at {:#06x}", addr);
+                log.endl();
+                break;
+            }
+        }
+        log.output() << status;
+        log.endl();
+    }
     return true;
 }
 
@@ -996,15 +1134,17 @@ bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view)
 // Implementation of command_table
 
 command_table::command_table():
+    _cmd_break{std::make_shared<cmd_break>()},
+    _cmd_dump{std::make_shared<cmd_dump>()},
     commands{
-        {"break", {std::make_shared<command>()}},
+        {"break", {_cmd_break}},
         {"csr", {std::make_shared<cmd_csr>()}},
         {"do", {std::make_shared<cmd_do>()}},
-        {"dump", {std::make_shared<cmd_dump>()}},
-        {"dumpd", {std::make_shared<cmd_dumpd>()}},
-        {"dumpw", {std::make_shared<cmd_dumpw>()}},
-        {"dumpwd", {std::make_shared<cmd_dumpwd>()}},
-        {"execute", {std::make_shared<cmd_execute>()}},
+        {"dump", {_cmd_dump}},
+        {"dumpd", {std::make_shared<cmd_dumpd>(_cmd_dump)}},
+        {"dumpw", {std::make_shared<cmd_dumpw>(_cmd_dump)}},
+        {"dumpwd", {std::make_shared<cmd_dumpwd>(_cmd_dump)}},
+        {"execute", {std::make_shared<cmd_execute>(_cmd_break)}},
         {"help", {std::make_shared<cmd_help>()}},
         {"history", {std::make_shared<cmd_history>()}},
         {"load", {std::make_shared<cmd_load>()}},
