@@ -392,8 +392,8 @@ private:
 // Command csr
 class cmd_csr: public command {
 public:
-    std::string_view help_args() override { return R"([NAME] [VALUE])"; }
     std::string_view help() override { return R"(Like register, but operates on csr0...csr15.)"; }
+    std::string_view help_args() override { return R"([NAME] [VALUE])"; }
     bool operator()(cdi& mb50, script_history&log, std::string_view args) override;
 protected:
     struct reg_name {
@@ -480,8 +480,8 @@ const std::vector<cmd_csr::reg_name>& cmd_csr::registers()
 // Command do
 class cmd_do: public command {
 public:
-    std::string_view help_args() override { return "FILE"; }
     std::string_view help() override { return R"(Describe available commands.)"; }
+    std::string_view help_args() override { return "FILE"; }
     bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
 };
 
@@ -490,6 +490,170 @@ bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view args)
     return do_file(mb50, log, args);
 }
 
+// Command dump
+class cmd_dump: public command {
+public:
+    std::vector<std::string_view> aliases() override { return {"d"}; }
+    std::string_view help() override {
+        static std::string text =
+            help_prefix().append(R"(Values of individual bytes are dumped as hexadecimal numbers and
+ASCII characters)");
+        return text;
+    }
+    std::string_view help_args() override { return "[ADDR [SIZE]]"; }
+    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+protected:
+    std::string help_prefix() {
+        return std::format(R"(Dump data from memory in a readable format. It dumps SIZE bytes rounded up
+to a full line of output, or just a single output line ({} bytes) if SIZE
+is not specified, starting at address ADDR. If an address is not specified,
+it uses ADDR and SIZE from the previous dump[w][d] command.
+)", line_bytes());
+    }
+    virtual size_t line_bytes() { return 16; }
+    virtual std::string display(std::span<const uint8_t> data);
+private:
+    std::optional<std::pair<uint16_t, uint16_t>> parse_args(script_history& log, std::string_view args);
+    uint16_t last_addr = 0;
+    uint16_t last_size = 1;
+};
+
+std::string cmd_dump::display(std::span<const uint8_t> data)
+{
+    std::string result{};
+    for (size_t i = 0; i < data.size(); ++i) {
+        result += std::format(" {:02x}", data[i]);
+        if (i % 8 == 7)
+            result += ' ';
+    }
+    result += " |";
+    for (auto c: data)
+        result += display_ascii(c, '.');
+    result += '|';
+    return result;
+}
+
+bool cmd_dump::operator()(cdi& mb50, script_history& log, std::string_view args)
+{
+    uint16_t addr{};
+    uint16_t size{};
+    if (auto a = parse_args(log, args))
+        std::tie(addr, size) = *a;
+    else
+        return true;
+    size = uint16_t(line_bytes() * ((size + line_bytes() - 1) / line_bytes()));
+    std::vector<uint8_t> data = mb50.cmd_memory(addr, size);
+    for (auto it = data.cbegin(); data.end() - it >= ptrdiff_t(line_bytes()); it += ptrdiff_t(line_bytes()))
+        std::cout << std::format("{:04x}:", addr) << display(std::span(it, line_bytes())) << std::endl;
+    return true;
+}
+
+std::optional<std::pair<uint16_t, uint16_t>> cmd_dump::parse_args(script_history& log, std::string_view args)
+{
+    constexpr size_t npos = std::string_view::npos;
+    uint16_t addr = last_addr;
+    uint16_t size = last_size;
+    if (args.empty())
+        return std::pair{addr, size};
+    auto v = parser::number_unsigned(args, false);
+    if (!v.first) {
+        log.output() << "Invalid address: " << v.first.error();
+        log.endl();
+        return std::nullopt;
+    }
+    addr = v.first->val;
+    size = uint16_t(line_bytes());
+    if (auto size_b = v.second.find_first_not_of(whitespace_chars); size_b == 0) {
+        log.output() << "Whitespace expected between address and size";
+        log.endl();
+        return std::nullopt;
+    } else
+        if (size_b != npos) {
+            v = parser::number_unsigned(v.second.substr(size_b), true);
+            if (!v.first) {
+                log.output() << "Invalid size: " << v.first.error();
+                log.endl();
+                return std::nullopt;
+            }
+            size = v.first->val;
+        }
+    return std::pair{addr, size};
+}
+
+// Command dumpd
+class cmd_dumpd: public cmd_dump {
+public:
+    std::vector<std::string_view> aliases() override { return {"dd"}; }
+    std::string_view help() override {
+        static std::string text =
+            help_prefix().append(R"(Values of individual bytes are dumped as decimal numbers.)");
+        return text;
+    }
+protected:
+    size_t line_bytes() override { return 8; }
+    std::string display(std::span<const uint8_t> data) override;
+};
+
+std::string cmd_dumpd::display(std::span<const uint8_t> data)
+{
+    std::string result{};
+    for (auto b: data)
+        result += std::format(" {:03d}", b);
+    result += ' ';
+    for (auto b: data)
+        result += std::format(" {:+04d}", int8_t(b));
+    return result;
+}
+
+// Command dumpw
+class cmd_dumpw: public cmd_dump {
+public:
+    std::vector<std::string_view> aliases() override { return {"dw"}; }
+    std::string_view help() override {
+        static std::string text =
+            help_prefix().append(R"(Values of 2-byte words are dumped as hexadecimal numbers.)");
+        return text;
+    }
+protected:
+    size_t line_bytes() override { return 16; }
+    std::string display(std::span<const uint8_t> data) override;
+};
+
+std::string cmd_dumpw::display(std::span<const uint8_t> data)
+{
+    std::string result{};
+    for (size_t i = 0; i < data.size() / 2; i += 2) {
+        result += std::format(" {:02x}{:02x}", data[2 * i + 1], data[2 * i]);
+        if (i == 3)
+            result += ' ';
+    }
+    return result;
+}
+
+// Command dumpwd
+class cmd_dumpwd: public cmd_dump {
+public:
+    std::vector<std::string_view> aliases() override { return {"dwd"}; }
+    std::string_view help() override {
+        static std::string text =
+            help_prefix().append(R"(Values of 2-byte words are dumped as decimal numbers.)");
+        return text;
+    }
+protected:
+    size_t line_bytes() override { return 8; }
+    std::string display(std::span<const uint8_t> data) override;
+};
+
+std::string cmd_dumpwd::display(std::span<const uint8_t> data)
+{
+    std::string result{};
+    for (size_t i = 0; i < data.size() / 2; i += 2)
+        result += std::format(" {:05d}", data[2 * i] + 256 * data[2 * i + 1]);
+    result += ' ';
+    for (size_t i = 0; i < data.size() / 2; i += 2)
+        result += std::format(" {:+06d}", int16_t(data[2 * i] + 256 * data[2 * i + 1]));
+    return result;
+}
 // Command execute
 class cmd_execute: public command {
 public:
@@ -836,10 +1000,10 @@ command_table::command_table():
         {"break", {std::make_shared<command>()}},
         {"csr", {std::make_shared<cmd_csr>()}},
         {"do", {std::make_shared<cmd_do>()}},
-        {"dump", {std::make_shared<command>()}},
-        {"dumpd", {std::make_shared<command>()}},
-        {"dumpw", {std::make_shared<command>()}},
-        {"dumpwd", {std::make_shared<command>()}},
+        {"dump", {std::make_shared<cmd_dump>()}},
+        {"dumpd", {std::make_shared<cmd_dumpd>()}},
+        {"dumpw", {std::make_shared<cmd_dumpw>()}},
+        {"dumpwd", {std::make_shared<cmd_dumpwd>()}},
         {"execute", {std::make_shared<cmd_execute>()}},
         {"help", {std::make_shared<cmd_help>()}},
         {"history", {std::make_shared<cmd_history>()}},

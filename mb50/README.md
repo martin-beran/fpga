@@ -1634,8 +1634,9 @@ Reads and executes commands from `FILE`.
     dw
     dwd
 
-Dump data from memory in a readable format. It dumps `SIZE` bytes, or just
-a single byte or word if `SIZE` is no specified, starting at address `ADDR`. If
+Dump data from memory in a readable format. It dumps `SIZE` bytes rounded up to
+a full line of output, or just
+a single output line if `SIZE` is not specified, starting at address `ADDR`. If
 an address is not specified, it uses `ADDR` and `SIZE` from the previous
 `dump[w][d]` command. With suffix `d`, decimal values are dumped, otherwise,
 hexadecimal format is used. With suffix `w`, 16-bit words are dumped,
