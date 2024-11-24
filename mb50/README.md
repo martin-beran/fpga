@@ -1469,13 +1469,6 @@ It evaluates a `EXPRESSION` (which must be fully evaluated during the first
 compilation phase) and sets the result as the current address for code
 generation.
 
-#### $alias
-
-    $alias ALIAS, NAME
-
-Defines an alias for an instruction mnemonic name or for a register name.
-`NAME` must be the canonical name or a previously defined alias.
-
 #### $constant
 
     $constant NAME, EXPRESSION
