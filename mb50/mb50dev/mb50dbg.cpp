@@ -157,14 +157,14 @@ public:
     uint16_t cmd_register(uint8_t r, bool csr);
     void cmd_register(uint8_t r, bool csr, uint16_t v);
     void cmd_status();
-    std::pair<std::string, uint16_t> cmd_step(bool quiet = false);
+    std::tuple<std::string, uint16_t, bool> cmd_step(bool quiet = false);
 private:
     [[nodiscard]] std::vector<uint8_t> read_serial(size_t n) const;
     void write_serial(std::span<const uint8_t> data) const;
     static void check_response(uint8_t resp, cdi_response expected);
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
-    std::pair<std::string, uint16_t> read_status(bool expect_exe_resp = false);
-    std::pair<std::string, uint16_t> show_status(bool expect_exe_resp = false);
+    std::tuple<std::string, uint16_t, bool> read_status(bool expect_exe_resp = false);
+    std::tuple<std::string, uint16_t, bool> show_status(bool expect_exe_resp = false);
     script_history& log;
     int tty_fd = -1;
 };
@@ -288,7 +288,7 @@ void cdi::cmd_status()
     show_status();
 }
 
-std::pair<std::string, uint16_t> cdi::cmd_step(bool quiet)
+std::tuple<std::string, uint16_t, bool> cdi::cmd_step(bool quiet)
 {
     std::array req{
         static_cast<uint8_t>(cdi_request::step),
@@ -311,7 +311,7 @@ std::vector<uint8_t> cdi::read_serial(size_t n) const
     return result;
 }
 
-std::pair<std::string, uint16_t> cdi::read_status(bool expect_exe_resp)
+std::tuple<std::string, uint16_t, bool> cdi::read_status(bool expect_exe_resp)
 {
     bool halted = false;
     bool exe_resp = false;
@@ -323,15 +323,15 @@ std::pair<std::string, uint16_t> cdi::read_status(bool expect_exe_resp)
         exe_resp = (resp[1] & 0b0000'0010U) != 0;
         pc = uint16_t(resp[2] + (resp[3] << 8U));
     } while (!expect_exe_resp && exe_resp);
-    return {std::format("Ready r15(pc)={:#06x} halted={}", pc, halted), pc};
+    return {std::format("Ready r15(pc)={:#06x} halted={}", pc, halted), pc, halted};
 }
 
-std::pair<std::string, uint16_t> cdi::show_status(bool expect_exe_resp)
+std::tuple<std::string, uint16_t, bool> cdi::show_status(bool expect_exe_resp)
 {
-    auto [result, addr] = read_status(expect_exe_resp);
+    auto [result, addr, halted] = read_status(expect_exe_resp);
     log.output() << result;
     log.endl();
-    return {std::move(result), addr};
+    return {std::move(result), addr, halted};
 }
 
 void cdi::write_serial(std::span<const uint8_t> data) const
@@ -357,7 +357,7 @@ public:
     virtual std::string_view help();
     virtual std::string_view help_args();
     // Returns false if the debugger should terminate, true otherwise
-    virtual bool operator()(cdi& mb50, script_history& log, std::string_view args);
+    virtual bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args);
 };
 
 std::vector<std::string_view> command::aliases()
@@ -375,9 +375,9 @@ std::string_view command::help_args()
     return "";
 }
 
-bool command::operator()(cdi&, script_history& log, std::string_view)
+bool command::operator()(cdi&, script_history& log, std::string_view cmd,  std::string_view)
 {
-    log.output() << "Not implemented";
+    log.output() << "Command\"" << cmd << "\" not implemented";
     log.endl();
     return true;
 }
@@ -389,8 +389,9 @@ class cmd_dump;
 class command_table {
 public:
     static command_table& get();
-    void help(std::string_view name);
+    void help(std::string_view name, bool full = true);
     void help();
+    void help_short();
     // Returns false if the debugger should terminate, true otherwise
     bool run_cmd(cdi& mb50, script_history& log, std::string_view name, std::string_view args);
 private:
@@ -411,6 +412,7 @@ private:
 class cmd_break: public command {
 public:
     using breakpoints_t = std::set<uint16_t>;
+    std::vector<std::string_view> aliases() override { return {"b"}; }
     std::string_view help() override {
         return R"(If a breakpoint is set on an address, the program execution is stopped
 before executing the instruction at that address. If called without arguments,
@@ -419,13 +421,13 @@ If - is used before an address, delete a breakpoint at this address.
 If called with - only, delete all breakpoints.)";
     }
     std::string_view help_args() override { return R"([-] [ADDR])"; }
-    bool operator()(cdi& mb50, script_history&log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history&log, std::string_view cmd, std::string_view args) override;
     [[nodiscard]] const breakpoints_t& breakpoints() const { return _breakpoints; }
 private:
     breakpoints_t _breakpoints{};
 };
 
-bool cmd_break::operator()(cdi&, script_history& log, std::string_view args)
+bool cmd_break::operator()(cdi&, script_history& log, std::string_view, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
     bool del = false;
@@ -435,8 +437,12 @@ bool cmd_break::operator()(cdi&, script_history& log, std::string_view args)
         del = true;
         if (del_e == npos)
             args = {};
-        else
-            args = args.substr(del_e, args.find_first_not_of(whitespace_chars, del_e));
+        else {
+            if (size_t args_b = args.find_first_not_of(whitespace_chars, del_e); args_b != npos)
+                args = args.substr(args_b);
+            else
+                args = {};
+        }
     }
     if (!args.empty()) {
         if (auto addr_v = parser::number_unsigned(args, true); !addr_v.first) {
@@ -487,7 +493,7 @@ class cmd_csr: public command {
 public:
     std::string_view help() override { return R"(Like register, but operates on csr0...csr15.)"; }
     std::string_view help_args() override { return R"([NAME] [VALUE])"; }
-    bool operator()(cdi& mb50, script_history&log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history&log, std::string_view cmd, std::string_view args) override;
 protected:
     struct reg_name {
         std::string_view index;
@@ -512,7 +518,7 @@ void cmd_csr::display(script_history& log, uint8_t r, uint16_t v)
     log.endl();
 }
 
-bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
     std::string_view name{};
@@ -575,10 +581,10 @@ class cmd_do: public command {
 public:
     std::string_view help() override { return R"(Describe available commands.)"; }
     std::string_view help_args() override { return "FILE"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_do::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     return do_file(mb50, log, args);
 }
@@ -595,7 +601,7 @@ ASCII characters)");
         return text;
     }
     std::string_view help_args() override { return "[ADDR [SIZE]]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 protected:
     std::string help_prefix() {
         return std::format(R"(Dump data from memory in a readable format. It dumps SIZE bytes rounded up
@@ -628,7 +634,7 @@ std::string cmd_dump::display(std::span<const uint8_t> data)
     return result;
 }
 
-bool cmd_dump::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_dump::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     uint16_t addr{};
     uint16_t size{};
@@ -641,6 +647,7 @@ bool cmd_dump::operator()(cdi& mb50, script_history& log, std::string_view args)
     for (auto it = data.cbegin(); data.end() - it >= ptrdiff_t(line_bytes()); it += ptrdiff_t(line_bytes())) {
         log.output() << std::format("{:04x}:", addr) << display(std::span(it, line_bytes()));
         log.endl();
+        addr += line_bytes();
     }
     return true;
 }
@@ -723,7 +730,7 @@ protected:
 std::string cmd_dumpw::display(std::span<const uint8_t> data)
 {
     std::string result{};
-    for (size_t i = 0; i < data.size() / 2; i += 2) {
+    for (size_t i = 0; i < data.size() / 2; ++i) {
         result += std::format(" {:02x}{:02x}", data[2 * i + 1], data[2 * i]);
         if (i == 3)
             result += ' ';
@@ -749,10 +756,10 @@ protected:
 std::string cmd_dumpwd::display(std::span<const uint8_t> data)
 {
     std::string result{};
-    for (size_t i = 0; i < data.size() / 2; i += 2)
+    for (size_t i = 0; i < data.size() / 2; ++i)
         result += std::format(" {:05d}", data[2 * i] + 256 * data[2 * i + 1]);
     result += ' ';
-    for (size_t i = 0; i < data.size() / 2; i += 2)
+    for (size_t i = 0; i < data.size() / 2; ++i)
         result += std::format(" {:+06d}", int16_t(data[2 * i] + 256 * data[2 * i + 1]));
     return result;
 }
@@ -765,17 +772,17 @@ public:
         return R"(Run the program. Program execution is interrupted by entering a newline.
 Any characters on the line before the newline are ignored.)";
     }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 private:
     std::shared_ptr<cmd_break> breakpoints;
 };
 
-bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view)
+bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view)
 {
     auto bp = breakpoints ? &breakpoints->breakpoints() : nullptr;
     if (bp && bp->empty())
         bp = nullptr;
-    if (bp)
+    if (!bp)
         mb50.cmd_execute();
     else {
         log.output() << "Breakpoints set, expect very slow performance.";
@@ -785,7 +792,8 @@ bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view)
         std::string status;
         for (;;) {
             uint16_t addr{};
-            std::tie(status, addr) = mb50.cmd_step(true);
+            bool halted;
+            std::tie(status, addr, halted) = mb50.cmd_step(true);
             fd_set fds;
             FD_ZERO(&fds);
             FD_SET(STDIN_FILENO, &fds);
@@ -797,7 +805,9 @@ bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view)
                 std::getline(std::cin, line);
                 break;
             }
-            if (bp && bp->contains(addr)) {
+            if (halted)
+                break;
+            if (bp->contains(addr)) {
                 log.output() << std::format("Breakpoint at {:#06x}", addr);
                 log.endl();
                 break;
@@ -813,16 +823,23 @@ bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view)
 class cmd_help: public command {
 public:
     std::vector<std::string_view> aliases() override { return {"h", "?"}; }
-    std::string_view help() override { return R"(Describe available commands.)"; }
+    std::string_view help() override {
+        return R"(Show the help for all commands (without an argument), or a help for a single
+command (with a command name as the argument). Variant ? shows only one line
+for each command.)";
+    }
     std::string_view help_args() override { return "[COMMAND]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_help::operator()(cdi&, script_history&, std::string_view args)
+bool cmd_help::operator()(cdi&, script_history&, std::string_view cmd, std::string_view args)
 {
-    if (args.empty())
-        command_table::get().help();
-    else
+    if (args.empty()) {
+        if (cmd == "?"sv)
+            command_table::get().help_short();
+        else
+            command_table::get().help();
+    } else
         command_table::get().help(args);
     return true;
 }
@@ -835,10 +852,10 @@ public:
 of the file. If called without a file name, stop recording commands.)";
     }
     std::string_view help_args() override { return "[FILE]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_history::operator()(cdi&, script_history& log, std::string_view args)
+bool cmd_history::operator()(cdi&, script_history& log, std::string_view, std::string_view args)
 {
     if (args.empty())
         log.stop_history();
@@ -857,10 +874,10 @@ by the assembler or by command save, that is, there is a single line
 containing start address in hexadecimal before binary data.)";
     }
     std::string_view help_args() override { return "FILE [ADDR]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_load::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
     size_t file_e = args.find_first_of(whitespace_chars);
@@ -940,10 +957,10 @@ than 3 digits (e.g., 0000, 0009, 0099, 0200). All values are stored
 sequentially starting at address ADDR.)";
     }
     std::string_view help_args() override { return "ADDR VALUE [VALUE...]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_memset::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_memset::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
     auto v = parser::number_unsigned(args, false);
@@ -965,7 +982,7 @@ bool cmd_memset::operator()(cdi& mb50, script_history& log, std::string_view arg
         s = s.substr(value_b);
         if (auto b = parser::bytes(s, false); b.first) {
             data.append_range(*b.first);
-            if (data.size() > 0xffff) {
+            if (data.size() > 0x10000) {
                 log.output() << "Data too large";
                 log.endl();
                 return true;
@@ -995,10 +1012,10 @@ class cmd_quit: public command {
 public:
     std::vector<std::string_view> aliases() override { return {"q"}; }
     std::string_view help() override { return R"(Terminate the debugger.)"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_quit::operator()(cdi&, script_history& log, std::string_view)
+bool cmd_quit::operator()(cdi&, script_history& log, std::string_view, std::string_view)
 {
     log.output() << "Quit!";
     log.endl();
@@ -1045,10 +1062,10 @@ It produces the file format expected by command load, that is, there is
 a single line containing start address in hexadecimal before binary data.)";
     }
     std::string_view help_args() override { return "FILE [ADDR SIZE]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_save::operator()(cdi& mb50, script_history& log, std::string_view args)
+bool cmd_save::operator()(cdi& mb50, script_history& log, std::string_view, std::string_view args)
 {
     constexpr size_t npos = std::string_view::npos;
     size_t file_e = args.find_first_of(whitespace_chars);
@@ -1105,10 +1122,10 @@ public:
 to the end of the file. If called without a file name, stop recording.)";
     }
     std::string_view help_args() override { return "[FILE]"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_script::operator()(cdi&, script_history& log, std::string_view args)
+bool cmd_script::operator()(cdi&, script_history& log, std::string_view, std::string_view args)
 {
     if (args.empty())
         log.stop_script();
@@ -1122,10 +1139,10 @@ class cmd_step: public command {
 public:
     std::vector<std::string_view> aliases() override { return {"s"}; }
     std::string_view help() override { return R"(Execute a single instruction.)"; }
-    bool operator()(cdi& mb50, script_history& log, std::string_view args) override;
+    bool operator()(cdi& mb50, script_history& log, std::string_view cmd, std::string_view args) override;
 };
 
-bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view)
+bool cmd_step::operator()(cdi& mb50, script_history&, std::string_view, std::string_view)
 {
     mb50.cmd_step();
     return true;
@@ -1171,22 +1188,24 @@ command_table& command_table::get()
     return t;
 }
 
-void command_table::help(std::string_view name)
+void command_table::help(std::string_view name, bool full)
 {
     if (auto cmd = commands.find(name); cmd != commands.end()) {
         std::cout << cmd->first;
         if (auto args = cmd->second.impl->help_args(); !args.empty())
             std::cout << ' ' << args;
         std::cout << '\n';
-        if (auto aliases = cmd->second.impl->aliases(); !aliases.empty()) {
-            std::string_view delim = "aliases: ";
-            for (auto&& a: aliases) {
-                std::cout << delim << a;
-                delim = ", ";
+        if (full) {
+            if (auto aliases = cmd->second.impl->aliases(); !aliases.empty()) {
+                std::string_view delim = "aliases: ";
+                for (auto&& a: aliases) {
+                    std::cout << delim << a;
+                    delim = ", ";
+                }
+                std::cout << '\n';
             }
-            std::cout << '\n';
+            std::cout << cmd->second.impl->help() << '\n' << std::endl;
         }
-        std::cout << cmd->second.impl->help() << '\n' << std::endl;
     } else
         std::cout << "Unknown command" << std::endl;
 }
@@ -1195,13 +1214,20 @@ void command_table::help()
 {
     for (auto&& cmd: commands)
         if (!cmd.second.alias)
-            help(cmd.first);
+            help(cmd.first, true);
+}
+
+void command_table::help_short()
+{
+    for (auto&& cmd: commands)
+        if (!cmd.second.alias)
+            help(cmd.first, false);
 }
 
 bool command_table::run_cmd(cdi& mb50, script_history& log, std::string_view name, std::string_view args)
 {
     if (auto hnd = commands.find(name); hnd != commands.end())
-        return (*hnd->second.impl)(mb50, log, args);
+        return (*hnd->second.impl)(mb50, log, name, args);
     else {
         log.output() << "Unknown command";
         log.endl();
@@ -1220,7 +1246,10 @@ bool run_cmd(cdi& mb50, script_history& log, std::string_view cmd)
     if (args_i != npos)
         args_i = cmd.find_first_not_of(whitespace_chars, args_i + 1);
     std::string_view args = args_i != npos ? cmd.substr(args_i) : std::string_view{};
-    args = args.substr(0, args.find_first_of(whitespace_chars));
+    size_t args_e = args.find_last_not_of(whitespace_chars);
+    if (args_e != npos)
+        args_e += 1;
+    args = args.substr(0, args_e);
     return command_table::get().run_cmd(mb50, log, name, args);
 }
 

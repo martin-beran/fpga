@@ -119,9 +119,12 @@ result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all)
         else
             return {std::unexpected{"Expected string constant"}, s_orig};
     } else {
-        if (auto v = number(s, all); v.first)
-            return {{{uint8_t(v.first->val % 256), uint8_t(v.first->val / 256)}}, v.second};
-        else
+        if (auto v = number(s, all); v.first) {
+            if (v.first->word)
+                return {{{uint8_t(v.first->val % 256), uint8_t(v.first->val / 256)}}, v.second};
+            else
+                return {{{uint8_t(v.first->val % 256)}}, v.second};
+        } else
             return {std::unexpected{v.first.error()}, s};
     }
 }
@@ -187,7 +190,7 @@ result_t<number_t> number_bin(std::string_view s, bool all)
             if (n > 16)
                 break;
         } else if (i == 0 || s[i] != '_') {
-            if (!all)
+            if (i > 0 && !all)
                 return expected(result, s.substr(i));
             else
                 break;
@@ -215,7 +218,7 @@ result_t<number_t> number_dec(std::string_view s, bool all)
             if (v > 0xffff)
                 break;
         } else if (i == 0 || s[i] != '_') {
-            if (!all)
+            if (i > 0 && !all)
                 return expected(result, s.substr(i));
             else
                 break;
@@ -242,7 +245,7 @@ result_t<number_t> number_hex(std::string_view s, bool all)
             if (n > 4)
                 break;
         } else if (i == 0 || s[i] != '_') {
-            if (!all)
+            if (i > 0 && !all)
                 return expected(result, s.substr(i));
             else
                 break;

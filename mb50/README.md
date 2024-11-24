@@ -1661,7 +1661,8 @@ characters on the line before the newline are ignored.
     ?
 
 Show the help for all commands (without an argument), or a help for a single
-command (with a command name as the argument).
+command (with a command name as the argument). Variant `?` shows only one line
+for each command.
 
 #### History
 

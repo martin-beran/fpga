@@ -168,7 +168,8 @@ begin
 			DoMemWrAddrLo,
 			DoMemWrAddrHi,
 			DoMemWrSizeLo,
-			DoMemWrSizeHi
+			DoMemWrSizeHi,
+			DoMemWrSend
 		);
 		signal state: state_t := Init;
 	begin
@@ -395,6 +396,7 @@ begin
 						if mem_size = X"0000" then
 							state <= Ready;
 						else
+							mem_addr := mem_addr + 1;
 							state <= DoMemRdStart;
 						end if;
 					when DoMemWr =>
@@ -425,9 +427,13 @@ begin
 							Wr <= '1';
 							mem_size := mem_size - 1;
 							if mem_size = X"0000" then
-								state <= Ready;
+								state <= DoMemWrSend;
+							else
+								mem_addr := mem_addr + 1;
 							end if;
 						end if;
+					when DoMemWrSend =>
+						send_byte(RespMemWr);
 				end case;
 			end if;
 		end process;
