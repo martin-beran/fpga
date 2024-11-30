@@ -10,7 +10,6 @@
 #include <iostream>
 #include <map>
 #include <set>
-#include <span>
 #include <system_error>
 
 #include <sys/select.h>
@@ -19,15 +18,6 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-
-/*** Error handling **********************************************************/
-
-// An exception that prints an error message and terminates the program
-class fatal_error: public std::runtime_error {
-public:
-    explicit fatal_error(std::string_view msg):
-        std::runtime_error{"Fatal error: "s.append(msg)} {}
-};
 
 /*** Saving interaction script and command history ***************************/
 
@@ -1290,7 +1280,7 @@ void run(cdi& mb50, script_history& log, std::optional<std::string_view> init_fi
 
 /*** Command line processing *************************************************/
 
-class cmdline_args {
+class cmdline_args: public cmdline_args_base {
 public:
     cmdline_args(int argc, char* argv[]);
     std::string usage();
@@ -1300,16 +1290,12 @@ public:
         return args.size() > 2 ? std::optional{args[2]} : std::nullopt;
     }
 private:
-    class invalid_cmdline_args: public fatal_error {
-    public:
-        invalid_cmdline_args(): fatal_error("Invalid command line arguments") {}
-    };
     std::span<const char*> args;
     bool _help = false;
 };
 
 cmdline_args::cmdline_args(int argc, char* argv[]):
-    args{const_cast<const char**>(argv), size_t(argc)}
+    cmdline_args_base(argc, argv)
 {
     try {
         if (args.size() < 2 || args.size() > 3)
@@ -1324,7 +1310,7 @@ cmdline_args::cmdline_args(int argc, char* argv[]):
 
 std::string cmdline_args::usage()
 {
-    return "\n"s.append(args[0]).append(R"( tty [init_file]
+    return cmdline_args_base::usage().append(R"(tty [init_file]
 )"sv).append(args[0]).append( R"( {-h|--help}
 
 tty       ... serial port device for communication with the target computer

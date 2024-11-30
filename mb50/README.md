@@ -1320,12 +1320,13 @@ content (addresses and byte values) of the binary in hexadecimal format.
 
 ### Invocation
 
-    mb50as FILE.s
+    mb50as [-v] FILE.s
 
 Compiles file `FILE.s`. If successful, it produces binary `FILE.bin`, textual
 memory initialization file `FILE.mif`, text output `FILE.out`, and terminates
-with exit code 0. Any errors and warnings are written to the standard error.
-After an error, the assembler terminates with exit code 1.
+with exit code 0. Any errors and warnings, as well as verbose messages (enabled
+by option `-v`), are written to the standard error. After an error, the
+assembler terminates with exit code 1.
 
 ### Syntax
 
@@ -1509,17 +1510,20 @@ Starts definition of a macro. Each source line containing the macro name
 followed by arguments will be replaced by the following lines up to
 `$end_macro`. The `ARG*` parameters in the replacement text will be substituted
 by the respective arguments of the macro call. Arguments are substituted as
-expressions, not textually, so it is not to add additional parentheses around
-parameters like in C macro definitions.
+expressions, not textually, so it is not needed to add additional parentheses
+around parameters like in C macro definitions.
 
 #### $use
 
     $use FILE, NAMESPACE
 
-Includes the content of a file, identified by a relative path `FILE`, if it has
+Includes the content of a file, identified by path `FILE`, if it has
 not been already included in the same compilation. Subsequently, identifiers
 defined in the file can be accessed by qualified names with the specified
-`NAMESPACE` name.
+`NAMESPACE` name. If `FILE` is not an absolute path, it is relative to the
+directory with the file containing the `$use`. Directives `$use` may be
+used only at the beginning of a source file, preceded only by empty lines,
+comment lines, or other `$use` directives.
 
 ### Output
 

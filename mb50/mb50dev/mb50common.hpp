@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <expected>
 #include <optional>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -10,6 +12,23 @@
 
 using namespace std::string_literals; // NOLINT
 using namespace std::string_view_literals; // NOLINT
+
+/*** Error handling **********************************************************/
+
+// An exception that prints an error message and terminates the program
+class fatal_error: public std::runtime_error {
+public:
+    explicit fatal_error(std::string_view msg):
+        std::runtime_error{"Fatal error: "s.append(msg)} {}
+};
+
+// An exception that assumes an already printed error message and terminates the program
+class silent_error: public std::runtime_error {
+public:
+    silent_error(): runtime_error("") {}
+};
+
+/*** Parsing text ************************************************************/
 
 // Whitespace characters
 constexpr std::string_view whitespace_chars = " \t";
@@ -333,3 +352,26 @@ result_t<bool> whitespace(std::string_view s, bool all)
 }
 
 } // namespace parser
+
+/*** Command line processing *************************************************/
+
+class cmdline_args_base {
+protected:
+    cmdline_args_base(int argc, char* argv[]);
+    std::string usage();
+    class invalid_cmdline_args: public fatal_error {
+    public:
+        invalid_cmdline_args(): fatal_error("Invalid command line arguments") {}
+    };
+    std::span<const char*> args;
+};
+
+cmdline_args_base::cmdline_args_base(int argc, char* argv[]):
+    args{const_cast<const char**>(argv), size_t(argc)}
+{
+}
+
+std::string cmdline_args_base::usage()
+{
+    return "\n"s.append(args[0]).append(R"( )"sv);
+}
