@@ -1390,12 +1390,17 @@ valid register or CSR names or aliases.
 
 _A label_
 
-    label NAME:
+    LABEL_NAME:
 
 A label defines a symbolic name for a place (an address) in the generated code.
 It can occur on a line by its own, or it can be a prefix of a line containing
 an instruction, a directive, or another label. If multiple labels are defined
 on the same line, they will all have the same value.
+
+In macro definition, a label name may end with `$`, i.e., `LABEL_NAME$`. In
+each expansion of the macro, the character `$` is replaced by a number unique
+across all references to any macros. This feature can be used to generate
+labels unique for a macro expansion.
 
 _A directive_
 
@@ -1515,15 +1520,15 @@ around parameters like in C macro definitions.
 
 #### $use
 
-    $use FILE, NAMESPACE
+    $use NAMESPACE, FILE
 
-Includes the content of a file, identified by path `FILE`, if it has
-not been already included in the same compilation. Subsequently, identifiers
-defined in the file can be accessed by qualified names with the specified
-`NAMESPACE` name. If `FILE` is not an absolute path, it is relative to the
-directory with the file containing the `$use`. Directives `$use` may be
-used only at the beginning of a source file, preceded only by empty lines,
-comment lines, or other `$use` directives.
+Includes the content of a file, identified by path `FILE` (not written in
+quotes), if it has not been already included in the same compilation.
+Subsequently, identifiers defined in the file can be accessed by qualified
+names with the specified `NAMESPACE` name. If `FILE` is not an absolute path,
+it is relative to the directory with the file containing the `$use`. Directives
+`$use` may be used only at the beginning of a source file, preceded only by
+empty lines, comment lines, or other `$use` directives.
 
 ### Output
 

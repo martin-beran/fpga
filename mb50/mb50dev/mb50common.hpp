@@ -62,6 +62,15 @@ bool whitespace(char c)
 // Skip whitespace and return if at least one character was skipped
 result_t<bool> whitespace(std::string_view s, bool all = true);
 
+// An identifier with an optional namespace
+struct ident_t {
+    std::optional<std::string> name_space; // nullopt for unqualified, empty for local
+    std::string name; // nonempty
+};
+
+// Parses an identifier
+result_t<ident_t> identifier(std::string_view s, bool all);
+
 // 8 or 16 bit number
 struct number_t {
     uint16_t val = 0; // unsigned value
@@ -146,6 +155,33 @@ result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all)
         } else
             return {std::unexpected{v.first.error()}, s};
     }
+}
+
+result_t<ident_t> identifier(std::string_view s, bool all)
+{
+    ident_t result{};
+    for (size_t i = 0; i <= s.size(); ++i) {
+        if (i == s.size()) {
+            if (!result.name.empty())
+                return expected(result, s.substr(i));
+            else
+                break;
+        }
+        if ((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= 'a' && s[i] <= 'z') ||
+            (!result.name.empty() && (s[i] >= '0' && s[i] <= '9')) || s[i] == '_')
+        {
+            result.name.push_back(s[i]);
+        } else if (s[i] == '.' && !result.name_space) {
+            result.name_space = std::move(result.name);
+            result.name.clear();
+        } else {
+            if (!result.name.empty() && !all)
+                return expected(result, s.substr(i));
+            else
+                break;
+        }
+    }
+    return {std::unexpected{"Expected identifier"s}, s};
 }
 
 result_t<number_t> number(std::string_view s, bool all)
