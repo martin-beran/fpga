@@ -1443,6 +1443,9 @@ integers. Components of an expression:
     - `^` (bitwise XOR)
     - `|` (bitwise OR)
 - A label, replaced by the corresponding address
+- A special label `__addr`, which is replaced by the address of the current
+  line. Its value is always equal to the value of any label on the current
+  line.
 - A name of a register or CSR; such expression cannot consist of anything else
 - A name of a register alias, evaluated to the canonical register name
 - A name of a constant, evaluated to the constant value. A constant can be
