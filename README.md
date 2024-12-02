@@ -1,4 +1,18 @@
+<style>
+table, td, th {
+    border-collapse: collapse;
+    border: 1px solid;
+    padding: 1ex
+}
+</style>
+
 # Projects
+
+[TOC]
+
+Conversion of this Markdown document to HTML:
+
+    markdown_py -x tables -x toc README.md > README.html
 
 Unless stated otherwise, for all projects:
 
@@ -68,6 +82,11 @@ An alarm clock that uses on-board peripherals
         - switches from clock set to view mode and sets seconds to 00 
         - switches from alarm set to view mode
     - any button: stops a sounding alarm
+
+## basic_logic
+
+Demonstration of basic logic circuits: combinatorial (gates) and sequential
+(flip-flops)
 
 ## demo_lib_led
 
@@ -156,17 +175,17 @@ All pins are inverted (active level '0')
     - 23 FPGA_CLK
 - reset button
     - 25 RESET
-- LEDs
+- LEDs (from left to right)
     - 87 LED1
     - 86 LED2
     - 85 LED3
     - 84 LED4
-- buttons
+- buttons (from left to right)
     - 88 S1 (KEY1)
     - 89 S2 (KEY2)
     - 90 S3 (KEY3)
     - 91 S4 (KEY4)
-- 7-segment display
+- 7-segment display (digits from left to right)
     - 133 DIG1 (7seg. digit 1)
     - 135 DIG2 (7seg. digit 2)
     - 136 DIG3 (7seg. digit 3)
