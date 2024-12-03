@@ -71,9 +71,38 @@ set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_location_assignment PIN_88 -to Button[0]
+set_location_assignment PIN_89 -to Button[1]
+set_location_assignment PIN_90 -to Button[2]
+set_location_assignment PIN_91 -to Button[3]
+set_location_assignment PIN_23 -to Clk
+set_location_assignment PIN_137 -to DIG[0]
+set_location_assignment PIN_136 -to DIG[1]
+set_location_assignment PIN_135 -to DIG[2]
+set_location_assignment PIN_133 -to DIG[3]
+set_location_assignment PIN_87 -to LED[1]
+set_location_assignment PIN_86 -to LED[2]
+set_location_assignment PIN_85 -to LED[3]
+set_location_assignment PIN_84 -to LED[4]
+set_location_assignment PIN_25 -to RstBtn
+set_location_assignment PIN_128 -to SEG[0]
+set_location_assignment PIN_121 -to SEG[1]
+set_location_assignment PIN_125 -to SEG[2]
+set_location_assignment PIN_129 -to SEG[3]
+set_location_assignment PIN_132 -to SEG[4]
+set_location_assignment PIN_126 -to SEG[5]
+set_location_assignment PIN_124 -to SEG[6]
+set_location_assignment PIN_127 -to SEG[7]
 set_global_assignment -name VHDL_FILE ../lib/io/seg7.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/led.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/crystal.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/io/button.vhd -library lib_io
 set_global_assignment -name VHDL_FILE ../lib/util/multiplexer.vhd -library lib_util
 set_global_assignment -name VHDL_FILE basic_logic.vhd
+set_global_assignment -name VHDL_FILE control.vhd
+set_global_assignment -name VHDL_FILE combinatorial.vhd
+set_global_assignment -name VHDL_FILE sequential.vhd
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
