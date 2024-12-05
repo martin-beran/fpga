@@ -86,7 +86,60 @@ An alarm clock that uses on-board peripherals
 ## basic_logic
 
 Demonstration of basic logic circuits: combinatorial (gates) and sequential
-(flip-flops)
+(flip-flops).
+
+It has two operating modes:
+
+- The configuration mode is initially active. Later, it can be entered by
+  a long press of ResetButton. It allows to choose a circuit:
+    - Button1 switches to the next circuit in up to 16 circuits. The current
+      selection is indicated by a hexadecimal digit at the rightmost position
+      on the 7 segment display.
+    - Button2 switches to the previous circuit.
+    - Button3 switches between combinatorial circuits (indicated by `C`) and
+      sequential circuits (indicated by `S`).
+- The normal mode is entered by pressing the ResetButton. It demonstrates
+  operation of the circuit selected in the configuration mode.
+    - Up to four inputs are provided by buttons 1–4.
+    - A short press of ResetButton enables or disables a clock signal with
+      period of 4 s, sent to the circuit as the first input, instead of
+      Button1.
+    - Values of inputs are idicated by LEDs 1–4.
+    - Up to four outputs are indicated by decimal points of the 7 segment
+      display.
+
+Combinatorial circuits implement all 16 Boolean functions with 2 parameters.
+
+| Number | Function | F | 1.1 | 1.0 | 0.1 | 0.0 |
+|:------:|:--------:|:-:|:---:|:---:|:---:|:---:|
+| 0 | constant 0 | 0 | 0 | 0 | 0 | 0 |
+| 1 | NOR | A nor B | 0 | 0 | 0 | 1 |
+| 2 | negated reverse implication | not (A <= B) | 0 | 0 | 1 | 0 |
+| 3 | negation of A | not A | 0 | 0 | 1 | 1 |
+| 4 | negated implication | not (A => B) | 0 | 1 | 0 | 0 |
+| 5 | negation of B| not B | 0 | 1 | 0 | 1 |
+| 6 | XOR | A xor B | 0 | 1 | 1 | 0 |
+| 7 | NAND | A nand B | 0 | 1 | 1 | 1 |
+| 8 | AND | A and B | 1 | 0 | 0 | 0 |
+| 9 | XNOR (equality) | A xnor B | 1 | 0 | 0 | 1 |
+| A | second operand | B | 1 | 0 | 1 | 0 |
+| b | implication | A => B | 1 | 0 | 1 | 1 |
+| C | first operand | A | 1 | 1 | 0 | 0 |
+| d | reverse implication | A <= B | 1 | 1 | 0 | 1 |
+| E | OR | A or B | 1 | 1 | 1 | 0 |
+| F | constant 1 | 1 | 1 | 1 | 1 | 1 |
+
+Sequential circuits implement latches and flip-flops.
+
+| Number | Function | Inputs | Outputs |
+|:------:|:--------:|:------:|:-------:|
+| 0 | RS latch | R, S | Q, /Q |
+| 1 | gated D latch | E, D | Q, /Q |
+| 2 | positive-edge-triggered D flip-flop with asynchronous set and reset | C, D, /S, /R | Q, /Q |
+| 3 | positive edge-triggered T flip-flop | C, T | Q, /Q |
+| 4 | positive edge-triggered master-slave JK flip-flop | C, J, K | Q, /Q |
+
+Inputs /S, /R of circuit 2 are connected to buttons using inverters.
 
 ## demo_lib_led
 
