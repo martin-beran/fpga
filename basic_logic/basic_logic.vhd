@@ -35,7 +35,7 @@ end entity;
 
 architecture main of basic_logic is
 	signal button_state: std_logic_vector(inputs_n downto 0);
-	signal inputs: std_logic_vector(inputs_n - 1 downto 0);
+	signal inputs, not_inputs: std_logic_vector(inputs_n - 1 downto 0);
 	signal outputs: std_logic_vector(outputs_n - 1 downto 0);	
 	signal cfg_mode, ctl_clk, ctl_clk_ena, comb_seq: std_logic;
 	signal circuit: pkg_control.sel_circuit_t;
@@ -61,6 +61,8 @@ begin
 	-- inputs to circuits
 	inputs(0) <= ctl_clk when ctl_clk_ena = '1' else button_state(1);
 	inputs(inputs_n - 1 downto 1) <= button_state(inputs_n downto 2);
+	-- inverted inputs
+	not_inputs <= not inputs;
 	-- indicate input states by LEDs
 	leds: led_group port map (Clk=>Clk, I=>inputs, LED=>LED);
 	-- indicate outputs or control state by 7-segment display
@@ -94,6 +96,20 @@ begin
 	c1111: entity work.comb_1111_const1 port map (A=>inputs(0), B=>inputs(1), Q=>mux_comb_in(15)(0));
 
 	-- sequential circuits
-	s_r_s: entity work.seq_r_s port map (R=>inputs(0), S=>inputs(1), Q=>mux_seq_in(0)(0), notQ=>mux_seq_in(0)(1));
-	s_gated_d_latch: entity work.seq_gated_d_latch port map (E=>inputs(0), D=>inputs(1), Q=>mux_seq_in(1)(0), notQ=>mux_seq_in(1)(1));
+	s_r_s_latch: entity work.seq_r_s_latch port map (
+		R=>inputs(0), S=>inputs(1), Q=>mux_seq_in(0)(0), notQ=>mux_seq_in(0)(1)
+	);
+	s_gated_d_latch: entity work.seq_gated_d_latch port map (
+		E=>inputs(0), D=>inputs(1), Q=>mux_seq_in(1)(0), notQ=>mux_seq_in(1)(1)
+	);
+	s_d_sr: entity work.seq_d_sr port map (
+		C=>inputs(0), D=>inputs(1), notS=>not_inputs(2), notR=>not_inputs(3),
+		Q=>mux_seq_in(2)(0), notQ=>mux_seq_in(2)(1)
+	);
+	s_t: entity work.seq_t(bad) port map (
+		C=>inputs(0), T=>inputs(1), Q=>mux_seq_in(3)(0), notQ=>mux_seq_in(3)(1)
+	);
+	s_jk: entity work.seq_jk port map (
+		C=>inputs(0), J=>inputs(1), K=>inputs(2), Q=>mux_seq_in(4)(0), notQ=>mux_seq_in(4)(1)
+	);
 end architecture;
