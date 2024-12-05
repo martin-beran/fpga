@@ -106,10 +106,10 @@ begin
 		C=>inputs(0), D=>inputs(1), notS=>not_inputs(2), notR=>not_inputs(3),
 		Q=>mux_seq_in(2)(0), notQ=>mux_seq_in(2)(1)
 	);
-	s_t: entity work.seq_t port map (
-		C=>inputs(0), T=>inputs(1), Q=>mux_seq_in(3)(0), notQ=>mux_seq_in(3)(1)
+	s_t: entity work.seq_t(registered) port map (
+		C=>inputs(0), T=>inputs(1), Q=>mux_seq_in(3)(0), notQ=>mux_seq_in(3)(1), DummyClk=>Clk
 	);
-	s_jk: entity work.seq_jk port map (
-		C=>inputs(0), J=>inputs(1), K=>inputs(2), Q=>mux_seq_in(4)(0), notQ=>mux_seq_in(4)(1)
+	s_jk: entity work.seq_jk(registered) port map (
+		C=>inputs(0), J=>inputs(1), K=>inputs(2), Q=>mux_seq_in(4)(0), notQ=>mux_seq_in(4)(1), DummyClk=>Clk
 	);
 end architecture;
