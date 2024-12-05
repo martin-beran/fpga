@@ -30,7 +30,7 @@ begin
 	end process;
 end architecture;
 
--- R-S latch
+-- R-S latch ------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -51,7 +51,7 @@ begin
 	notQ <= o2;
 end architecture;
 
--- Gated D latch
+-- Gated D latch --------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -75,7 +75,7 @@ begin
 	notQ <= nor2;
 end architecture;
 
--- Positive-edge-triggered D flip-flop with asynchronous set and reset
+-- Positive-edge-triggered D flip-flop with asynchronous set and reset --------
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -102,7 +102,7 @@ begin
 	notQ <= nand22;
 end architecture;
 
--- T flip-flop
+-- T flip-flop ----------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -115,7 +115,8 @@ entity seq_t is
 	);
 end entity;
 
-architecture main of seq_t is
+-- This architecture keeps toggling while C='1'
+architecture bad of seq_t is
 	signal and1, and2, nor1, nor2: std_logic;
 begin
 	and1 <= nor1 and T and C;
@@ -126,7 +127,7 @@ begin
 	notQ <= nor2;
 end architecture;
 
-architecture registered of seq_t is
+architecture bad_registered of seq_t is
 	signal and1a, and1b, and2a, and2b, nor1, nor2: std_logic;
 begin
 	and1a <= nor1 and T and C;
@@ -139,11 +140,91 @@ begin
 	notQ <= nor2;
 end architecture;
 
--- J-K flip flop
+-- This architecture can toggle in the middle of clock cycle if T<='1' while C='1'
+architecture d of seq_t is
+	signal fb: std_logic;
+begin
+	d: entity work.seq_d_sr port map (C=>C, D=>fb, notS=>'1', notR=>'1', Q=>Q, notQ=>fb);
+	notQ <= fb;
+end architecture;
+
+architecture d_registered of seq_t is
+	signal fb, ct: std_logic;
+begin
+	dummy: entity work.dummy_reg port map (Clk=>DummyClk, I=>C and T, O=>ct);
+	d: entity work.seq_d_sr port map (C=>ct, D=>fb, notS=>'1', notR=>'1', Q=>Q, notQ=>fb);
+	notQ <= fb;
+end architecture;
+
+-- This architecture works correctly
+architecture d2 of seq_t is
+	signal fb: std_logic;
+begin
+	d: entity work.seq_d_sr port map (C=>C, D=>fb xor T, notS=>'1', notR=>'1', Q=>fb, notQ=>notQ);
+	notQ <= fb;
+end architecture;
+
+architecture d2_registered of seq_t is
+	signal fb, fbt: std_logic;
+begin
+	dummy: entity work.dummy_reg port map (Clk=>DummyClk, I=>fb xor T, O=>fbt);
+	d: entity work.seq_d_sr port map (C=>C, D=>fbt, notS=>'1', notR=>'1', Q=>fb, notQ=>notQ);
+	Q <= fb;
+end architecture;
+
+-- J-K flip flop --------------------------------------------------------------
+
+-- J=K='1' works correctly only if C='1' duration is shorter than the time needed to toggle Q
+-- Otherwise, it keeps toggling Q while C='1'
 library ieee;
 use ieee.std_logic_1164.all;
 
 entity seq_jk is
+	generic (
+		standalone: boolean := true
+	);
+	port (
+		C: in std_logic; -- clock
+		J: in std_logic;
+		K: in std_logic;
+		FbJ, FbK: in std_logic := '1'; -- feedback for standalone=false
+		Q, notQ: out std_logic;
+		DummyClk: in std_logic := '0'
+	);
+end entity;
+
+architecture main of seq_jk is
+	signal nand11, nand12, nand21, nand22: std_logic;
+begin
+	nand11 <= not(nand22 and J and C) when standalone else not(FbJ and J and C);
+	nand12 <= not(C and K and nand21) when standalone else not(C and K and FbK);
+	nand21 <= nand11 nand nand22;
+	nand22 <= nand12 nand nand21;
+	Q <= nand21;
+	notQ <= nand22;
+end architecture;
+
+architecture main_registered of seq_jk is
+	signal nand11a, nand11b, nand12a, nand12b, nand21, nand22: std_logic;
+begin
+	nand11a <= not(nand22 and J and C) when standalone else not(FbJ and J and C);
+	nand12a <= not(C and K and nand21) when standalone else not(C and K and FbK);
+	dummy1: entity work.dummy_reg port map (Clk=>DummyClk, I=>nand11a, O=>nand11b);
+	dummy2: entity work.dummy_reg port map (Clk=>DummyClk, I=>nand12a, O=>nand12b);
+	nand21 <= nand11b nand nand22;
+	nand22 <= nand12b nand nand21;
+	Q <= nand21;
+	notQ <= nand22;
+end architecture;
+
+-- Master-slave J-K flip flop -------------------------------------------------
+
+-- It contains two stages of basic J-K flip flops
+-- J=K='1' works correctly
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity seq_ms_jk is
 	port (
 		C: in std_logic; -- clock
 		J: in std_logic;
@@ -153,26 +234,28 @@ entity seq_jk is
 	);
 end entity;
 
-architecture main of seq_jk is
-	signal nand11, nand12, nand21, nand22: std_logic;
+architecture main of seq_ms_jk is
+	signal ms_c, ms_j, ms_k, s_q, s_not_q: std_logic;
 begin
-	nand11 <= not(nand22 and J and C);
-	nand12 <= not(C and K and nand21);
-	nand21 <= nand11 nand nand22;
-	nand22 <= nand12 nand nand21;
-	Q <= nand21;
-	notQ <= nand22;
+	master: entity work.seq_jk(main)
+		generic map (standalone=>false)
+		port map (C=>C, J=>J, FbJ=>s_not_q, K=>K, FbK=>s_q, Q=>ms_j, notQ=>ms_k, DummyClk=>DummyClk);
+	slave: entity work.seq_jk(main)
+		generic map (standalone=>false)
+		port map (C=>not C, J=>ms_j, K=>ms_k, Q=>s_q, notQ=>s_not_q, DummyClk=>DummyClk);
+	Q <= s_q;
+	notQ <= s_not_q;
 end architecture;
 
-architecture registered of seq_jk is
-	signal nand11a, nand11b, nand12a, nand12b, nand21, nand22: std_logic;
+architecture main_registered of seq_ms_jk is
+	signal ms_c, ms_j, ms_k, s_q, s_not_q: std_logic;
 begin
-	nand11a <= not(nand22 and J and C);
-	nand12a <= not(C and K and nand21);
-	dummy1: entity work.dummy_reg port map (Clk=>DummyClk, I=>nand11a, O=>nand11b);
-	dummy2: entity work.dummy_reg port map (Clk=>DummyClk, I=>nand12a, O=>nand12b);
-	nand21 <= nand11b nand nand22;
-	nand22 <= nand12b nand nand21;
-	Q <= nand21;
-	notQ <= nand22;
+	master: entity work.seq_jk(main_registered)
+		generic map (standalone=>false)
+		port map (C=>C, J=>J, FbJ=>s_not_q, K=>K, FbK=>s_q, Q=>ms_j, notQ=>ms_k, DummyClk=>DummyClk);
+	slave: entity work.seq_jk(main_registered)
+		generic map (standalone=>false)
+		port map (C=>not C, J=>ms_j, K=>ms_k, Q=>s_q, notQ=>s_not_q, DummyClk=>DummyClk);
+	Q <= s_q;
+	notQ <= s_not_q;
 end architecture;
