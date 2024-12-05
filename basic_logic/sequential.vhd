@@ -85,13 +85,6 @@ entity seq_t is
 end entity;
 
 architecture main of seq_t is
-	signal d: std_logic;
-begin
-	s_d: entity work.seq_d_sr port map (C=>C, D=>d, notS=>'1', notR=>'1', Q=>Q, notQ=>notQ);
-	d <= Q xor T;
-end architecture;
-
-architecture bad of seq_t is
 	signal and1, and2, nor1, nor2: std_logic;
 begin
 	and1 <= nor1 and T and C;

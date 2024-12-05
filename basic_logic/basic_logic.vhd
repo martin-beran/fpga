@@ -106,7 +106,7 @@ begin
 		C=>inputs(0), D=>inputs(1), notS=>not_inputs(2), notR=>not_inputs(3),
 		Q=>mux_seq_in(2)(0), notQ=>mux_seq_in(2)(1)
 	);
-	s_t: entity work.seq_t(bad) port map (
+	s_t: entity work.seq_t port map (
 		C=>inputs(0), T=>inputs(1), Q=>mux_seq_in(3)(0), notQ=>mux_seq_in(3)(1)
 	);
 	s_jk: entity work.seq_jk port map (
