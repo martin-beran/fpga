@@ -114,18 +114,18 @@ Combinatorial circuits implement all 16 Boolean functions with 2 parameters.
 |:------:|:--------:|:-:|:---:|:---:|:---:|:---:|
 | 0 | constant 0 | 0 | 0 | 0 | 0 | 0 |
 | 1 | NOR | A nor B | 0 | 0 | 0 | 1 |
-| 2 | negated reverse implication | not (A <= B) | 0 | 0 | 1 | 0 |
+| 2 | negated reverse implication | not (A <= B), not A and B | 0 | 0 | 1 | 0 |
 | 3 | negation of A | not A | 0 | 0 | 1 | 1 |
-| 4 | negated implication | not (A => B) | 0 | 1 | 0 | 0 |
+| 4 | negated implication | not (A => B), A and not B | 0 | 1 | 0 | 0 |
 | 5 | negation of B| not B | 0 | 1 | 0 | 1 |
 | 6 | XOR | A xor B | 0 | 1 | 1 | 0 |
 | 7 | NAND | A nand B | 0 | 1 | 1 | 1 |
 | 8 | AND | A and B | 1 | 0 | 0 | 0 |
 | 9 | XNOR (equality) | A xnor B | 1 | 0 | 0 | 1 |
 | A | second operand | B | 1 | 0 | 1 | 0 |
-| b | implication | A => B | 1 | 0 | 1 | 1 |
+| b | implication | A => B, not A or B | 1 | 0 | 1 | 1 |
 | C | first operand | A | 1 | 1 | 0 | 0 |
-| d | reverse implication | A <= B | 1 | 1 | 0 | 1 |
+| d | reverse implication | A <= B, A or not B | 1 | 1 | 0 | 1 |
 | E | OR | A or B | 1 | 1 | 1 | 0 |
 | F | constant 1 | 1 | 1 | 1 | 1 | 1 |
 
@@ -140,6 +140,11 @@ Sequential circuits implement latches and flip-flops.
 | 4 | positive edge-triggered master-slave JK flip-flop | C, J, K | Q, /Q |
 
 Inputs /S, /R of circuit 2 are connected to buttons using inverters.
+
+The sequential circuits are intended only as a demonstration of latches and
+flip-flops implemented by logic gates with feedback connections. Combinatorial
+loops and latches are strongly discouraged in FPGAs. Registers should be used
+instead.
 
 ## demo_lib_led
 
