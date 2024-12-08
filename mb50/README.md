@@ -1535,7 +1535,11 @@ empty lines, comment lines, or other `$use` directives.
 
 ### Output
 
+Output files for a main assembler input file `FILE.s`
+
 #### Raw binary file
+
+`FILE.bin`
 
 The binary output file of the assembler starts with one line (four hexadecimal
 digits followed by newline) that defines the starting address of the memory
@@ -1543,15 +1547,22 @@ image. Then memory content follows as raw bytes.
 
 #### Binary file in the MIF format
 
+`FILE.mif`
+
 This file contains the same data as the raw binary file, but in the textual
 Memory Initialization File format. It can be included into the Quartus Prime
 project in order to initialize the memory during FPGA configuration.
 
 #### Text file
 
+`FILE.out`
+
 The output file is a copy of the source file, with some additional lines,
 denoted by the starting character `;` (semicolon).
 
+- Before each line from a different file than the previous line, a line is
+  added with the file name (from the command line or from a `$use` directive)
+  and the line number.
 - After each line containing an instruction, a line is added with canonical
   mnemonic name and register names.
 - After each instruction or data line, a line is added with the address and

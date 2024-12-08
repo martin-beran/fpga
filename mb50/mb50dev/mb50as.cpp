@@ -2,8 +2,10 @@
 
 #include "mb50common.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <map>
 #include <ranges>
@@ -48,10 +50,22 @@ private:
 // Output files
 class output {
 public:
-    explicit output(bool verbose): verbose(verbose) {}
+    // Construct output file names from input file name
+    output(sfs::path file, bool verbose);
+    // Stores binary data for all output files, and an optional instruction for the text output file
+    void add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr = {});
+    // Stores a source line for text output file
+    void add_src_line(const sfs::path& file, size_t line, std::string text);
+    // Writes all output files
     void write();
 private:
-    bool verbose;
+    sfs::path file{}; // the input file name
+    sfs::path last_file{};
+    std::vector<std::string> out_text{};
+    std::array<uint8_t, 0x10000> out_bin{}; // The full address space
+    size_t start_addr = 0x10000; // Write part of the address space starting from this address
+    size_t end_addr = 0x0000; // One after the last byte written
+    bool verbose = false;
 };
 
 // Assembler
@@ -179,10 +193,100 @@ std::vector<input::files_t::iterator> input::read(files_t::iterator it)
 
 /*** output ******************************************************************/
 
+output::output(sfs::path file, bool verbose):
+    file(std::move(file)), verbose(verbose)
+{
+    this->file.replace_extension();
+}
+
+void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr)
+{
+    if (addr + bytes.size() > out_bin.size())
+        throw fatal_error("Output does not fit to address space");
+    if (addr < start_addr)
+        start_addr = addr;
+    if (addr + bytes.size() > end_addr)
+        end_addr = addr + bytes.size();
+    std::ranges::copy(bytes, out_bin.begin() + addr);
+    if (!instr.empty())
+        out_text.push_back(std::format("; {:04x}: {}", addr, instr));
+    std::string l = std::format("; {:04x}: $data_b", addr);
+    std::string delim = ""s;
+    for (auto b: bytes) {
+        l += std::format("{} {:#02x}", delim, b);
+        delim = ":"s;
+    }
+    out_text.push_back(std::move(l));
+}
+
+void output::add_src_line(const sfs::path& file, size_t line, std::string text)
+{
+    if (file != last_file) {
+        out_text.push_back(std::format("; {}:{}", file.string(), line));
+        last_file = file;
+    }
+    out_text.push_back(std::move(text));
+}
+
 void output::write()
 {
-    (void)verbose;
-    // TODO
+    std::ofstream ofs;
+    if (start_addr >= out_bin.size() || end_addr > out_bin.size() || end_addr <= start_addr) {
+        start_addr = 0x0000;
+        end_addr = 0x0000;
+    }
+    auto out_size = std::streamsize(end_addr - start_addr);
+
+    sfs::path out_file = file;
+    out_file.replace_extension(".bin");
+    if (verbose)
+        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
+    ofs.open(file, std::ios_base::binary | std::ios_base::trunc);
+    if (!ofs)
+        throw fatal_error(std::format("Cannot write binary output file \"{}\"", file.string()));
+    ofs << std::format("\n", start_addr);
+    if (out_size > 0)
+        ofs.write(reinterpret_cast<const char*>(out_bin.data() + start_addr), out_size);
+    ofs.close();
+    if (!ofs)
+        throw fatal_error(std::format("Error writing binary output file \"{}\"", file.string()));
+
+    out_file = file;
+    out_file.replace_extension(".mif");
+    if (verbose)
+        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
+    ofs.open(file, std::ios_base::binary | std::ios_base::trunc);
+    if (!ofs)
+        throw fatal_error(std::format("Cannot write MIF output file \"{}\"", file.string()));
+    ofs << R"(-- mb50as generated Memory Initialization File (.mif)
+
+WIDTH=8;
+DEPTH=30720;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+)";
+    for (size_t addr = start_addr; addr < end_addr; ++addr)
+        ofs << std::format("\t{:04x}: {:02x};\n", addr, out_bin[addr]);
+    ofs << "END;\n";
+    ofs.close();
+    if (!ofs)
+        throw fatal_error(std::format("Error writing MIF output file \"{}\"", file.string()));
+
+    out_file = file;
+    out_file.replace_extension(".out");
+    if (verbose)
+        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
+    ofs.open(file, std::ios_base::trunc);
+    if (!ofs)
+        throw fatal_error(std::format("Cannot write text output file \"{}\"", file.string()));
+    for (auto&&l: out_text)
+        ofs << l << '\n';
+    ofs.close();
+    if (!ofs)
+        throw fatal_error(std::format("Error writing text output file \"{}\"", file.string()));
 }
 
 /*** assembler ***************************************************************/
@@ -344,7 +448,7 @@ int main(int argc, char* argv[])
     try {
         cmdline_args args{argc, argv};
         input in(args.input_file(), args.verbose());
-        output out(args.verbose());
+        output out(args.input_file(), args.verbose());
         assembler as(in, out, args.verbose());
         as.run();
         out.write();
