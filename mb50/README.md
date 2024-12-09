@@ -1402,6 +1402,11 @@ each expansion of the macro, the character `$` is replaced by a number unique
 across all references to any macros. This feature can be used to generate
 labels unique for a macro expansion.
 
+A label may end with `$$`, i.e., `LABEL_NAME$$`. The characters `$$` are
+replaced by the number replacing `$` in the last macro expansion. This feature
+can be used to access unique macros `LABEL_NAME$`, created in a macro
+expansion, from outside.
+
 _A directive_
 
     $dir ARG1, ARG2, ..., ARGN
@@ -1557,8 +1562,10 @@ project in order to initialize the memory during FPGA configuration.
 
 `FILE.out`
 
-The output file is a copy of the source file, with some additional lines,
-denoted by the starting character `;` (semicolon).
+The output file is a copy of the source file, except lines containing only
+a comment starting in the first column, with some additional lines, denoted by
+the starting character `;` (semicolon). Comments not starting in the first
+column of a line are retained.
 
 - Before each line from a different file than the previous line, a line is
   added with the file name (from the command line or from a `$use` directive)

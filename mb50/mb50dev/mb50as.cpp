@@ -56,12 +56,18 @@ public:
     void add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr = {});
     // Stores a source line for text output file
     void add_src_line(const sfs::path& file, size_t line, std::string text);
+    void set_byte(uint16_t addr, uint8_t byte);
+    void set_word(uint16_t addr, uint16_t word);
     // Writes all output files
     void write();
 private:
+    struct out_line_t {
+        std::string text{};
+        std::span<uint8_t> bytes{};
+    };
     sfs::path file{}; // the input file name
     sfs::path last_file{};
-    std::vector<std::string> out_text{};
+    std::vector<out_line_t> out_text{};
     std::array<uint8_t, 0x10000> out_bin{}; // The full address space
     size_t start_addr = 0x10000; // Write part of the address space starting from this address
     size_t end_addr = 0x0000; // One after the last byte written
@@ -209,23 +215,28 @@ void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view
         end_addr = addr + bytes.size();
     std::ranges::copy(bytes, out_bin.begin() + addr);
     if (!instr.empty())
-        out_text.push_back(std::format("; {:04x}: {}", addr, instr));
-    std::string l = std::format("; {:04x}: $data_b", addr);
-    std::string delim = ""s;
-    for (auto b: bytes) {
-        l += std::format("{} {:#02x}", delim, b);
-        delim = ":"s;
-    }
-    out_text.push_back(std::move(l));
+        out_text.push_back({.text = std::format("; {:04x}: {}", addr, instr)});
+    out_text.push_back({.text = std::format("; {:04x}: $data_b", addr), .bytes = bytes});
 }
 
 void output::add_src_line(const sfs::path& file, size_t line, std::string text)
 {
     if (file != last_file) {
-        out_text.push_back(std::format("; {}:{}", file.string(), line));
+        out_text.push_back({.text = std::format("; {}:{}", file.string(), line)});
         last_file = file;
     }
-    out_text.push_back(std::move(text));
+    out_text.push_back({.text = std::move(text)});
+}
+
+void output::set_byte(uint16_t addr, uint8_t byte)
+{
+    out_bin.at(addr) = byte;
+}
+
+void output::set_word(uint16_t addr, uint16_t word)
+{
+    out_bin.at(addr) = uint8_t(word % 256U);
+    out_bin.at(addr + 1) = uint8_t(word / 256U);
 }
 
 void output::write()
@@ -282,8 +293,15 @@ CONTENT BEGIN
     ofs.open(file, std::ios_base::trunc);
     if (!ofs)
         throw fatal_error(std::format("Cannot write text output file \"{}\"", file.string()));
-    for (auto&&l: out_text)
-        ofs << l << '\n';
+    for (auto&&l: out_text) {
+        ofs << l.text;
+        std::string delim = " "s;
+        for (auto b: l.bytes) {
+            ofs << delim << std::format("{:#02x}", b);
+            delim = ", "s;
+        }
+        ofs << '\n';
+    }
     ofs.close();
     if (!ofs)
         throw fatal_error(std::format("Error writing text output file \"{}\"", file.string()));
