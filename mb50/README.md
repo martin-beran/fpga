@@ -1366,9 +1366,9 @@ with a digit.
 
 _Names_ refer to instructions, registers (normal and CSRs), labels, constants,
 and macros defined elsewhere in the program. All instruction mnemonic names and
-canonical register names are implicitly defined in each source file. It is an
-error to define a single name (implicitly or explicitly) multiple times in the
-same file. A name can be:
+register names are implicitly defined in each source file. It is an error to
+define a single name (implicitly or explicitly) multiple times in the same
+file. A name can be:
 
 - _unqualified_ – a single identifier; it refers to the global definition of
   the name; it is an error if there are multiple definition of the name in the
@@ -1385,7 +1385,7 @@ _An instruction_
 
     opcode DSTR, SRCR
 
-where `opcode` must be a valid instruction or alias, `DSTR` and `SRCR` must be
+where `opcode` must be a valid instruction, `DSTR` and `SRCR` must be
 valid register or CSR names or aliases.
 
 _A label_
@@ -1451,6 +1451,7 @@ integers. Components of an expression:
 - A special label `__addr`, which is replaced by the address of the current
   line. Its value is always equal to the value of any label on the current
   line.
+- A name of an instruction
 - A name of a register or CSR; such expression cannot consist of anything else
 - A name of a register alias, evaluated to the canonical register name
 - A name of a constant, evaluated to the constant value. A constant can be
@@ -1467,7 +1468,10 @@ The current address is used to define label values. The assembler works in two
 phases. In the first phase, source code is read, directives are processed, and
 code is generated. During the first phase, it fully evaluates only expressions
 without labels or containing only labels with know values, that is, defined
-before the expression.
+before the expression. In order to fix addresses of generated code in the first
+phase, arguments of directives `$addr` must not contain (directly or
+indirectly) any forward label references, so that they can be evaluated in the
+first phase.
 
 In the second phase, labels are resolved to addresses, expressions containing
 labels not known in the first phase are evaluated, and their results are
@@ -1483,9 +1487,9 @@ It evaluates a `EXPRESSION` (which must be fully evaluated during the first
 compilation phase) and sets the result as the current address for code
 generation.
 
-#### $constant
+#### $const
 
-    $constant NAME, EXPRESSION
+    $const NAME, EXPRESSION
 
 Defines a constant with `NAME` (an identifier), with the value obtained by
 evaluating the `EXPRESSION`.

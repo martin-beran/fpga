@@ -10,6 +10,8 @@
 #include <map>
 #include <ranges>
 #include <stack>
+#include <tuple>
+#include <utility>
 
 namespace sfs = std::filesystem;
 
@@ -26,12 +28,10 @@ public:
 // All input files
 class input {
 public:
-    input(sfs::path file, bool verbose);
-private:
     using text_t = std::vector<std::string>; // lines of a file
     struct file_t;
     using files_t = std::map<sfs::path, file_t>; // keys are absolute paths
-    using name_spaces_t = std::map<std::string, files_t::iterator>;
+    using name_spaces_t = std::map<std::string, files_t::const_iterator>;
     struct file_t {
         sfs::path orig_path; // from $use directive
         text_t full_text; // original, with comments, without trailing whitespace
@@ -39,11 +39,17 @@ private:
         name_spaces_t name_spaces; // of files included by $use
         bool processed;
     };
+    input(sfs::path file, bool verbose);
+    [[nodiscard]] std::pair<const files_t&, files_t::const_iterator> files() const {
+        return {_files, _top_file};
+    }
+private:
     // Adds a file by $use on line in already read file from (files.end() if adding a top level file)
     files_t::iterator add_file(files_t::iterator from, size_t line, sfs::path relative, const std::string& name_space);
     // Read a file unless already processed
     std::vector<files_t::iterator> read(files_t::iterator it);
-    files_t files;
+    files_t _files;
+    files_t::const_iterator _top_file;
     bool verbose;
 };
 
@@ -88,9 +94,54 @@ public:
     // Expects a line without comment
     static line_t split(std::string_view line);
 private:
+    // expression base
+    struct as_expr {
+        as_expr() = default;
+        as_expr(const as_expr&) = delete;
+        as_expr(as_expr&&) = delete;
+        as_expr& operator=(const as_expr&) = delete;
+        as_expr& operator=(as_expr&&) = delete;
+        virtual ~as_expr() = default;
+        virtual std::optional<uint16_t> eval() {
+            return std::nullopt;
+        }
+        // returns an identifier
+        virtual std::optional<std::string> eval_id() {
+            return std::nullopt;
+        }
+    };
+    // second pass of expression evaluation
+    struct pass2_t {
+        as_expr& expr; // evaluate this expression
+        uint16_t addr; // store value here
+        bool word; // false = byte, true = word
+    };
+    struct label_t {
+        std::optional<uint16_t> value;
+    };
+    struct const_t {
+        std::optional<uint16_t> value;
+        std::unique_ptr<as_expr> expr;
+    };
+    struct macro_t {
+        std::vector<std::string> params;
+        std::span<std::string> replace;
+    };
+    using symbol_t = std::variant<label_t, const_t, macro_t>;
+    using symbol_table_t = std::map<std::string, symbol_t>;
+    std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
+        symbols;
+    void run_file(const input::files_t& files, input::files_t::const_iterator current);
+    // false if symbol name already defined, true otherwise
+    bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
+    std::expected<std::unique_ptr<as_expr>, std::string> parse_expr(std::string_view s);
     input& in;
     output& out;
     bool verbose;
+    uint16_t cur_addr = 0; // current output address
+    uint32_t cur_macro = 0; // for label$:
+    uint32_t last_macro = 0; // for label$$:
+    std::vector<pass2_t> pass2;
 };
 
 /*** src_pos *****************************************************************/
@@ -107,7 +158,7 @@ input::input(sfs::path file, bool verbose):
     verbose(verbose)
 {
     std::stack<files_t::iterator> todo{};
-    todo.push(add_file(files.end(), 0, std::move(file), ""s));
+    todo.push(add_file(_files.end(), 0, std::move(file), ""s));
     while (!todo.empty()) {
         files_t::iterator p = todo.top();
         todo.pop();
@@ -120,12 +171,12 @@ input::add_file(files_t::iterator from, size_t line, sfs::path relative, const s
 {
     sfs::path abs = relative;
     if (abs.is_relative()) {
-        sfs::path base = from != files.end() ? from->first : sfs::path{};
+        sfs::path base = from != _files.end() ? from->first : sfs::path{};
         base.remove_filename();
         abs = base / abs;
     }
     abs = sfs::canonical(abs);
-    auto [result, added] = files.insert({
+    auto [result, added] = _files.insert({
         std::move(abs),
         file_t{
             .orig_path = std::move(relative),
@@ -134,7 +185,9 @@ input::add_file(files_t::iterator from, size_t line, sfs::path relative, const s
             .name_spaces = {},
             .processed = false,
         }});
-    if (from != files.end()) {
+    if (from == _files.end())
+        _top_file = result;
+    else {
         if (from->second.name_spaces.contains(name_space)) {
             std::cerr << src_pos(from->first, line) << "Namespace " << name_space << " already defined" <<
                 std::endl;
@@ -309,6 +362,20 @@ CONTENT BEGIN
 
 /*** assembler ***************************************************************/
 
+bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
+{
+    if (auto it = symbols.find(file); it == symbols.end())
+        throw fatal_error("File used by assembler::run_file() not in assembler::symbols");
+    else
+        return it->second.emplace(std::move(name), label_t{{addr}}).second;
+}
+
+std::expected<std::unique_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view)
+{
+    // TODO
+    return nullptr;
+}
+
 std::string assembler::remove_comment(std::string_view line)
 {
     std::string result{};
@@ -347,11 +414,89 @@ void assembler::run()
 {
     if (verbose)
         std::cerr << "Begin compilation" << std::endl;
-    (void)in;
-    (void)out;
-    // TODO
+    auto [files, top] = in.files();
+    run_file(files, top);
     if (verbose)
         std::cerr << "End compilation" << std::endl;
+}
+
+void assembler::run_file(const input::files_t& files, input::files_t::const_iterator current)
+{
+    if (verbose)
+        std::cerr << "Compiling file \"" << current->first << '"' << std::endl;
+    for (auto [full_it, text_it] = std::pair{current->second.full_text.begin(), current->second.text.begin()};
+         full_it != current->second.full_text.end() && text_it != current->second.text.end();
+         ++full_it, ++text_it
+    ) {
+        // Add source line to text output
+        size_t line_num = size_t(full_it - current->second.full_text.begin()) + 1;
+        if (!full_it->empty() && full_it->front() != '#')
+            out.add_src_line(current->first, line_num, *full_it);
+        if (text_it->empty())
+            continue;
+        // Split to label: cmd args...
+        auto parts = split(*text_it);
+        // Process label
+        if (!parts.label.empty() && !define_label(current, std::string(parts.label), cur_addr)) {
+            std::cerr << src_pos(current->first, line_num) << "Symbol \"" << parts.label << "\" already defined" <<
+                std::endl;
+            throw silent_error{};
+        }
+        if (parts.cmd.empty())
+            continue;
+        // Process directives
+        if (parts.cmd == "$addr"sv) {
+            if (parts.args.size() != 1) {
+                std::cerr << src_pos(current->first, line_num) << "$addr requires one argument" << std::endl;
+                throw silent_error{};
+            }
+            if (auto e = parse_expr(parts.args[0]); !e) {
+                std::cerr << src_pos(current->first, line_num) << "Invalid argument: " << e.error() << std::endl;
+                throw silent_error{};
+            } else {
+                if (auto v = (*e)->eval())
+                    cur_addr = *v;
+                else {
+                    std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
+                        std::endl;
+                    throw silent_error{};
+                }
+            }
+        } else if (parts.cmd == "$const"sv) {
+            // TODO
+        } else if (parts.cmd == "$data_b"sv) {
+            // TODO
+        } else if (parts.cmd == "$data_w"sv) {
+            // TODO
+        } else if (parts.cmd == "$macro"sv) {
+            // TODO
+        } else if (parts.cmd == "$use"sv) {
+            if (parts.args.size() != 2)
+                throw fatal_error{"Invalid $use in assembler::run_file"};
+            auto id_ns = parser::identifier(parts.args[0], true);
+            if (!id_ns.first || id_ns.first->name_space)
+                throw fatal_error{"Invalid namespace in $use in assembler::run_file"};
+            if (auto ns_it = current->second.name_spaces.find(id_ns.first->name);
+                ns_it == current->second.name_spaces.end())
+            {
+                throw fatal_error{std::format("Namespace {} not registered in input::files", id_ns.first->name)};
+            } else
+                if (auto sym_it = symbols.find(ns_it->second); sym_it == symbols.end()) {
+                    symbols.emplace(std::piecewise_construct,
+                                    std::forward_as_tuple(ns_it->second), std::forward_as_tuple());
+                    run_file(files, ns_it->second);
+                }
+        } else if (parts.cmd.front() == '$') {
+            std::cerr << src_pos(current->first, line_num) << "Unknown directive \"" << parts.cmd << '"' << std::endl;
+            throw silent_error{};
+        }
+        // Expand macros
+        // Generate instructions
+        (void)cur_macro;
+        (void)last_macro;
+    }
+    if (verbose)
+        std::cerr << "Done file \"" << current->first << '"' << std::endl;
 }
 
 assembler::line_t assembler::split(std::string_view line)

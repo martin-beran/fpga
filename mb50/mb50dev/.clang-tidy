@@ -2,6 +2,7 @@
 Checks: -*,
         boost-*,
         bugprone-*,
+        -bugprone-branch-clone,
         -bugprone-easily-swappable-parameters,
         cert-*,
         -cert-dcl21-cpp,

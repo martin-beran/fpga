@@ -47,12 +47,6 @@ namespace parser {
 // the unexpected value is returned if all == false.
 template<class T> using result_t = std::pair<std::expected<T, std::string>, std::string_view>;
 
-// Create an expected result
-template<class T> result_t<std::remove_reference_t<T>> expected(T&& v, std::string_view s)
-{
-    return {typename result_t<std::remove_reference_t<T>>::first_type{std::forward<T>(v)}, s};
-}
-
 // Check a whitespace character
 bool whitespace(char c)
 {
@@ -163,7 +157,7 @@ result_t<ident_t> identifier(std::string_view s, bool all)
     for (size_t i = 0; i <= s.size(); ++i) {
         if (i == s.size()) {
             if (!result.name.empty())
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -176,7 +170,7 @@ result_t<ident_t> identifier(std::string_view s, bool all)
             result.name.clear();
         } else {
             if (!result.name.empty() && !all)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -234,7 +228,7 @@ result_t<number_t> number_bin(std::string_view s, bool all)
     for (size_t i = 0; i <= s.size(); ++i) {
         if (i == s.size()) {
             if (n > 0)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -246,7 +240,7 @@ result_t<number_t> number_bin(std::string_view s, bool all)
                 break;
         } else if (i == 0 || s[i] != '_') {
             if (i > 0 && !all)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -262,7 +256,7 @@ result_t<number_t> number_dec(std::string_view s, bool all)
     for (size_t i = 0; i <= s.size(); ++i) {
         if (i == s.size()) {
             if (n > 0)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -274,7 +268,7 @@ result_t<number_t> number_dec(std::string_view s, bool all)
                 break;
         } else if (i == 0 || s[i] != '_') {
             if (i > 0 && !all)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -289,7 +283,7 @@ result_t<number_t> number_hex(std::string_view s, bool all)
     for (size_t i = 0; i <= s.size(); ++i) {
         if (i == s.size()) {
             if (n > 0)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -301,7 +295,7 @@ result_t<number_t> number_hex(std::string_view s, bool all)
                 break;
         } else if (i == 0 || s[i] != '_') {
             if (i > 0 && !all)
-                return expected(result, s.substr(i));
+                return {result, s.substr(i)};
             else
                 break;
         }
@@ -318,7 +312,7 @@ result_t<number_t> str_char(std::string_view s, bool all, char quote)
         if (s.front() == quote) {
             s = s.substr(1);
             if (!all || s.empty())
-                return expected(result, s);
+                return {result, s};
             else
                 return error();
         }
@@ -367,7 +361,7 @@ result_t<number_t> str_char(std::string_view s, bool all, char quote)
         if (n == 1) {
             result.val = uint8_t(c);
             if (quote == '"') // used to get one character in a string in double quotes
-                return expected(result, s.substr(1));
+                return {result, s.substr(1)};
         } else {
             result.val |= unsigned(c) << 8U;
             result.word = true;
@@ -380,11 +374,11 @@ result_t<bool> whitespace(std::string_view s, bool all)
 {
     if (auto l = s.find_first_not_of(whitespace_chars); l != std::string_view::npos) {
         if (!all)
-            return expected(l > 0, s.substr(l));
+            return {l > 0, s.substr(l)};
         else
             return {std::unexpected{"Expected whitespace"s}, s};
     } else
-        return expected(l > 0, s.substr(s.size()));
+        return {l > 0, s.substr(s.size())};
 }
 
 } // namespace parser
