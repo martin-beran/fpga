@@ -62,6 +62,7 @@ public:
     void add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr = {});
     // Stores a source line for text output file
     void add_src_line(const sfs::path& file, size_t line, std::string text);
+    void add_txt_line(std::string_view text);
     void set_byte(uint16_t addr, uint8_t byte);
     void set_word(uint16_t addr, uint16_t word);
     // Writes all output files
@@ -132,6 +133,8 @@ private:
     std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
         symbols;
     void run_file(const input::files_t& files, input::files_t::const_iterator current);
+    // false if symbol name already defined, true otherwise
+    bool define_const(input::files_t::const_iterator file, std::string name, std::unique_ptr<assembler::as_expr> expr);
     // false if symbol name already defined, true otherwise
     bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
     std::expected<std::unique_ptr<as_expr>, std::string> parse_expr(std::string_view s);
@@ -281,6 +284,11 @@ void output::add_src_line(const sfs::path& file, size_t line, std::string text)
     out_text.push_back({.text = std::move(text)});
 }
 
+void output::add_txt_line(std::string_view text)
+{
+    out_text.push_back({.text = std::format("; {}", text)});
+}
+
 void output::set_byte(uint16_t addr, uint8_t byte)
 {
     out_bin.at(addr) = byte;
@@ -362,12 +370,21 @@ CONTENT BEGIN
 
 /*** assembler ***************************************************************/
 
+bool assembler::define_const(input::files_t::const_iterator file, std::string name,
+                             std::unique_ptr<assembler::as_expr> expr)
+{
+    if (auto it = symbols.find(file); it == symbols.end())
+        throw fatal_error("Parsed file not in assembler::symbols");
+    else
+        return it->second.emplace(std::move(name), const_t{.value = expr->eval(), .expr = std::move(expr)}).second;
+}
+
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
 {
     if (auto it = symbols.find(file); it == symbols.end())
-        throw fatal_error("File used by assembler::run_file() not in assembler::symbols");
+        throw fatal_error("Parsed file not in assembler::symbols");
     else
-        return it->second.emplace(std::move(name), label_t{{addr}}).second;
+        return it->second.emplace(std::move(name), label_t{.value = addr}).second;
 }
 
 std::expected<std::unique_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view)
@@ -454,20 +471,66 @@ void assembler::run_file(const input::files_t& files, input::files_t::const_iter
                 std::cerr << src_pos(current->first, line_num) << "Invalid argument: " << e.error() << std::endl;
                 throw silent_error{};
             } else {
-                if (auto v = (*e)->eval())
+                if (auto v = (*e)->eval()) {
                     cur_addr = *v;
-                else {
+                    out.add_txt_line(std::format("$addr {}", cur_addr));
+                } else {
                     std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
                         std::endl;
                     throw silent_error{};
                 }
             }
         } else if (parts.cmd == "$const"sv) {
-            // TODO
+            if (parts.args.size() != 2) {
+                std::cerr << src_pos(current->first, line_num) << "$const requires two arguments" << std::endl;
+                throw silent_error{};
+            }
+            auto id = parser::identifier(parts.args[0], true);
+            if (!id.first || id.first->name_space) {
+                std::cerr << src_pos(current->first, line_num) <<
+                    "Expected identifier (without namespace) as the first argument of $const" << std::endl;
+                throw silent_error{};
+            }
+            auto e = parse_expr(parts.args[1]);
+            if (!e) {
+                std::cerr << src_pos(current->first, line_num) << "Invalid expression in $const: " << e.error() <<
+                    std::endl;
+                throw silent_error{};
+            }
+            if (!define_const(current, id.first->name, std::move(*e))) {
+                std::cerr << src_pos(current->first, line_num) << "Symbol \"" << id.first->name <<
+                    "\" already defined" << std::endl;
+                throw silent_error{};
+            }
         } else if (parts.cmd == "$data_b"sv) {
-            // TODO
+            std::vector<uint8_t> bytes{};
+            for (size_t i = 0; auto&& a: parts.args) {
+                ++i;
+                if (auto b = parser::bytes(a, true); b.first)
+                    bytes.append_range(*b.first);
+                else {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_b: " <<
+                        b.first.error() << std::endl;
+                    throw silent_error{};
+                }
+            }
+            out.add_bytes(cur_addr, bytes);
+            cur_addr += bytes.size();
         } else if (parts.cmd == "$data_w"sv) {
-            // TODO
+            std::vector<uint8_t> bytes{};
+            for (size_t i = 0; auto&& a: parts.args) {
+                ++i;
+                if (auto w = parser::number(a, true); w.first) {
+                    bytes.push_back(uint8_t(w.first->val % 256));
+                    bytes.push_back(w.first->val / 256);
+                } else {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_w: " <<
+                        w.first.error() << std::endl;
+                    throw silent_error{};
+                }
+            }
+            out.add_bytes(cur_addr, bytes);
+            cur_addr += bytes.size();
         } else if (parts.cmd == "$macro"sv) {
             // TODO
         } else if (parts.cmd == "$use"sv) {
