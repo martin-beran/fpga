@@ -1400,12 +1400,15 @@ on the same line, they will all have the same value.
 In macro definition, a label name may end with `$`, i.e., `LABEL_NAME$`. In
 each expansion of the macro, the character `$` is replaced by a number unique
 across all references to any macros. This feature can be used to generate
-labels unique for a macro expansion.
+labels unique for a macro expansion. If used outside a macro definition, `$` is
+replaced by `0` (zero).
 
-A label may end with `$$`, i.e., `LABEL_NAME$$`. The characters `$$` are
-replaced by the number replacing `$` in the last macro expansion. This feature
-can be used to access unique macros `LABEL_NAME$`, created in a macro
-expansion, from outside.
+A label name may end with `$$`, i.e., `LABEL_NAME$$`. The characters `$$` are
+replaced by the number replacing `$` in the previous macro expansion done in the
+current macro expansion if expanding a macro, or in the current file otherwise.
+If there is no previous macro expansion in the current macro expansion or file,
+`$$` is replaced by `0` (zero). This feature can be used to access unique
+macros `LABEL_NAME$`, created in a macro expansion, from outside.
 
 _A directive_
 
@@ -1455,7 +1458,8 @@ integers. Components of an expression:
 - A name of a register or CSR; such expression cannot consist of anything else
 - A name of a register alias, evaluated to the canonical register name
 - A name of a constant, evaluated to the constant value. A constant can be
-  defined by directive `$const`.
+  defined by directive `$const`. Constant names may end with `$` or `$$`, with
+  the same meaning as for labels.
 - Parentheses
 
 ### Compilation process
@@ -1492,7 +1496,8 @@ generation.
     $const NAME, EXPRESSION
 
 Defines a constant with `NAME` (an identifier), with the value obtained by
-evaluating the `EXPRESSION`.
+evaluating the `EXPRESSION`. Characters `$` in `NAME$` and `NAME$$` are
+replaced like in names of labels.
 
 #### $data_b
 

@@ -106,14 +106,17 @@ private:
         virtual std::optional<uint16_t> eval() {
             return std::nullopt;
         }
-        // returns an identifier
-        virtual std::optional<std::string> eval_id() {
-            return std::nullopt;
+        // returns a sequence of bytes; after nullopt in the first phase, length 1 is expected for the second phase
+        virtual std::optional<std::vector<uint8_t>> eval_bytes() {
+            if (auto val = eval())
+                return {{uint8_t(*val % 256U)}};
+            else
+                return std::nullopt;
         }
     };
-    // second pass of expression evaluation
-    struct pass2_t {
-        as_expr& expr; // evaluate this expression
+    // second phase of expression evaluation
+    struct phase2_t {
+        std::shared_ptr<as_expr> expr; // evaluate this expression
         uint16_t addr; // store value here
         bool word; // false = byte, true = word
     };
@@ -122,29 +125,35 @@ private:
     };
     struct const_t {
         std::optional<uint16_t> value;
-        std::unique_ptr<as_expr> expr;
+        std::shared_ptr<as_expr> expr;
     };
     struct macro_t {
-        std::vector<std::string> params;
-        std::span<std::string> replace;
+        std::vector<std::string> params; // names of parameters of this macro
+        input::files_t::const_iterator file; // file containing the macro definition
+        std::span<std::string> replace; // replacement text
+        size_t order; // ordering of macro definitions
     };
     using symbol_t = std::variant<label_t, const_t, macro_t>;
     using symbol_table_t = std::map<std::string, symbol_t>;
-    std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
-        symbols;
+    using macro_args_t = std::map<std::string, std::shared_ptr<as_expr>>;
     void run_file(const input::files_t& files, input::files_t::const_iterator current);
+    // macro_args != nullptr when expanding a macro; cur_macro is for label$
+    void run_lines(const input::files_t& files, input::files_t::const_iterator current,
+                   std::span<const std::string> full_text, std::span<const std::string> text,
+                   size_t first_line = 1, macro_args_t* macro_args = nullptr);
     // false if symbol name already defined, true otherwise
-    bool define_const(input::files_t::const_iterator file, std::string name, std::unique_ptr<assembler::as_expr> expr);
+    bool define_const(input::files_t::const_iterator file, std::string name, std::shared_ptr<assembler::as_expr> expr);
     // false if symbol name already defined, true otherwise
     bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
-    std::expected<std::unique_ptr<as_expr>, std::string> parse_expr(std::string_view s);
+    static std::expected<std::shared_ptr<as_expr>, std::string> parse_expr(std::string_view s);
     input& in;
     output& out;
     bool verbose;
+    std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
+        symbols;
+    size_t max_macro = 0; // for label$
     uint16_t cur_addr = 0; // current output address
-    uint32_t cur_macro = 0; // for label$:
-    uint32_t last_macro = 0; // for label$$:
-    std::vector<pass2_t> pass2;
+    std::vector<phase2_t> phase2;
 };
 
 /*** src_pos *****************************************************************/
@@ -242,7 +251,7 @@ std::vector<input::files_t::iterator> input::read(files_t::iterator it)
                     throw silent_error{};
                 }
                 if (id_ns.first->name_space) {
-                    std::cerr << src_pos(it->first, f.text.size()) << "Expected unqualified identifier" <<
+                    std::cerr << src_pos(it->first, f.text.size()) << "Expected identifier without namespace" <<
                         std::endl;
                     throw silent_error{};
                 }
@@ -269,10 +278,11 @@ void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view
         start_addr = addr;
     if (addr + bytes.size() > end_addr)
         end_addr = addr + bytes.size();
-    std::ranges::copy(bytes, out_bin.begin() + addr);
+    auto addr_begin = out_bin.begin() + addr;
+    auto addr_end = std::ranges::copy(bytes, addr_begin).out;
     if (!instr.empty())
         out_text.push_back({.text = std::format("; {:04x}: {}", addr, instr)});
-    out_text.push_back({.text = std::format("; {:04x}: $data_b", addr), .bytes = bytes});
+    out_text.push_back({.text = std::format("; {:04x}: $data_b", addr), .bytes = {addr_begin, addr_end}});
 }
 
 void output::add_src_line(const sfs::path& file, size_t line, std::string text)
@@ -371,7 +381,7 @@ CONTENT BEGIN
 /*** assembler ***************************************************************/
 
 bool assembler::define_const(input::files_t::const_iterator file, std::string name,
-                             std::unique_ptr<assembler::as_expr> expr)
+                             std::shared_ptr<assembler::as_expr> expr)
 {
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols");
@@ -387,8 +397,9 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
         return it->second.emplace(std::move(name), label_t{.value = addr}).second;
 }
 
-std::expected<std::unique_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view)
+std::expected<std::shared_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view s)
 {
+    (void)s;
     // TODO
     return nullptr;
 }
@@ -435,18 +446,28 @@ void assembler::run()
     run_file(files, top);
     if (verbose)
         std::cerr << "End compilation" << std::endl;
+    for (auto&& p: phase2)
+        if (auto v = p.expr->eval()) {
+            if (p.word)
+                out.set_word(p.addr, *v);
+            else
+                out.set_byte(p.addr, uint8_t(*v % 256));
+        } else
+            throw fatal_error{"Cannot evaluate an expression in the second phase"};
 }
 
-void assembler::run_file(const input::files_t& files, input::files_t::const_iterator current)
+void assembler::run_lines(const input::files_t& files, input::files_t::const_iterator current,
+                          std::span<const std::string> full_text, std::span<const std::string> text,
+                          size_t first_line, macro_args_t* macro_args)
 {
-    if (verbose)
-        std::cerr << "Compiling file \"" << current->first << '"' << std::endl;
-    for (auto [full_it, text_it] = std::pair{current->second.full_text.begin(), current->second.text.begin()};
-         full_it != current->second.full_text.end() && text_it != current->second.text.end();
+    size_t cur_macro = macro_args ? ++max_macro : 0; // for label$
+    size_t last_macro = 0; // for label$$
+    for (auto [full_it, text_it] = std::pair{full_text.begin(), text.begin()};
+         full_it != full_text.end() && text_it != text.end();
          ++full_it, ++text_it
     ) {
         // Add source line to text output
-        size_t line_num = size_t(full_it - current->second.full_text.begin()) + 1;
+        size_t line_num = size_t(full_it - current->second.full_text.begin()) + first_line;
         if (!full_it->empty() && full_it->front() != '#')
             out.add_src_line(current->first, line_num, *full_it);
         if (text_it->empty())
@@ -454,10 +475,18 @@ void assembler::run_file(const input::files_t& files, input::files_t::const_iter
         // Split to label: cmd args...
         auto parts = split(*text_it);
         // Process label
-        if (!parts.label.empty() && !define_label(current, std::string(parts.label), cur_addr)) {
-            std::cerr << src_pos(current->first, line_num) << "Symbol \"" << parts.label << "\" already defined" <<
-                std::endl;
-            throw silent_error{};
+        if (!parts.label.empty()) {
+            auto id = parser::identifier(parts.label, true, {{cur_macro, last_macro}});
+            if (!id.first || id.first->name_space) {
+                std::cerr << src_pos(current->first, line_num) <<
+                    "Expected identifier without namespace as the label" << std::endl;
+                throw silent_error{};
+            }
+            if (!define_label(current, std::string(id.first->name), cur_addr)) {
+                std::cerr << src_pos(current->first, line_num) << "Symbol \"" << id.first->name <<
+                    "\" already defined" << std::endl;
+                throw silent_error{};
+            }
         }
         if (parts.cmd.empty())
             continue;
@@ -485,10 +514,10 @@ void assembler::run_file(const input::files_t& files, input::files_t::const_iter
                 std::cerr << src_pos(current->first, line_num) << "$const requires two arguments" << std::endl;
                 throw silent_error{};
             }
-            auto id = parser::identifier(parts.args[0], true);
+            auto id = parser::identifier(parts.args[0], true, {{cur_macro, last_macro}});
             if (!id.first || id.first->name_space) {
                 std::cerr << src_pos(current->first, line_num) <<
-                    "Expected identifier (without namespace) as the first argument of $const" << std::endl;
+                    "Expected identifier without namespace as the first argument of $const" << std::endl;
                 throw silent_error{};
             }
             auto e = parse_expr(parts.args[1]);
@@ -504,34 +533,51 @@ void assembler::run_file(const input::files_t& files, input::files_t::const_iter
             }
         } else if (parts.cmd == "$data_b"sv) {
             std::vector<uint8_t> bytes{};
+            auto start_addr = cur_addr;
             for (size_t i = 0; auto&& a: parts.args) {
                 ++i;
-                if (auto b = parser::bytes(a, true); b.first)
-                    bytes.append_range(*b.first);
-                else {
+                if (auto b = parse_expr(a); !b) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_b: " <<
-                        b.first.error() << std::endl;
+                        b.error() << std::endl;
                     throw silent_error{};
-                }
+                } else
+                    if (auto v = (*b)->eval_bytes()) {
+                        bytes.append_range(*v);
+                        cur_addr += bytes.size();
+                    } else {
+                        bytes.push_back(0);
+                        phase2.push_back({.expr = std::move(*b), .addr = cur_addr, .word = false});
+                        ++cur_addr;
+                    }
             }
-            out.add_bytes(cur_addr, bytes);
-            cur_addr += bytes.size();
+            out.add_bytes(start_addr, bytes);
         } else if (parts.cmd == "$data_w"sv) {
             std::vector<uint8_t> bytes{};
+            auto start_addr = cur_addr;
             for (size_t i = 0; auto&& a: parts.args) {
                 ++i;
-                if (auto w = parser::number(a, true); w.first) {
-                    bytes.push_back(uint8_t(w.first->val % 256));
-                    bytes.push_back(w.first->val / 256);
-                } else {
+                if (auto w = parse_expr(a); !w) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_w: " <<
-                        w.first.error() << std::endl;
+                        w.error() << std::endl;
                     throw silent_error{};
+                } else {
+                    if (auto v = (*w)->eval()) {
+                        bytes.push_back(uint8_t(*v % 256));
+                        bytes.push_back(uint8_t(*v / 256));
+                    } else {
+                        bytes.push_back(0);
+                        bytes.push_back(0);
+                        phase2.push_back({.expr = std::move(*w), .addr = cur_addr, .word = true});
+                    }
+                    cur_addr += 2;
                 }
             }
-            out.add_bytes(cur_addr, bytes);
-            cur_addr += bytes.size();
+            out.add_bytes(start_addr, bytes);
         } else if (parts.cmd == "$macro"sv) {
+            if (macro_args) {
+                std::cerr << src_pos(current->first, line_num) << "Nested macro definition not allowed" << std::endl;
+                throw silent_error{};
+            }
             // TODO
         } else if (parts.cmd == "$use"sv) {
             if (parts.args.size() != 2)
@@ -555,9 +601,14 @@ void assembler::run_file(const input::files_t& files, input::files_t::const_iter
         }
         // Expand macros
         // Generate instructions
-        (void)cur_macro;
-        (void)last_macro;
     }
+}
+                          
+void assembler::run_file(const input::files_t& files, input::files_t::const_iterator current)
+{
+    if (verbose)
+        std::cerr << "Compiling file \"" << current->first << '"' << std::endl;
+    run_lines(files, current, current->second.full_text, current->second.text);
     if (verbose)
         std::cerr << "Done file \"" << current->first << '"' << std::endl;
 }

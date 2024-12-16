@@ -62,8 +62,9 @@ struct ident_t {
     std::string name; // nonempty
 };
 
-// Parses an identifier
-result_t<ident_t> identifier(std::string_view s, bool all);
+// Parses an identifier; macro defines replacement numbers for $ and $$ in names of labels and constants
+result_t<ident_t> identifier(std::string_view s, bool all,
+                             std::optional<std::pair<size_t, size_t>> macro = std::nullopt);
 
 // 8 or 16 bit number
 struct number_t {
@@ -151,7 +152,7 @@ result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all)
     }
 }
 
-result_t<ident_t> identifier(std::string_view s, bool all)
+result_t<ident_t> identifier(std::string_view s, bool all, std::optional<std::pair<size_t, size_t>> macro)
 {
     ident_t result{};
     for (size_t i = 0; i <= s.size(); ++i) {
@@ -168,6 +169,19 @@ result_t<ident_t> identifier(std::string_view s, bool all)
         } else if (s[i] == '.' && !result.name_space) {
             result.name_space = std::move(result.name);
             result.name.clear();
+        } else if (macro && s[i] == '$') {
+            if (result.name.empty())
+                break;
+            if (i < s.size() - 1 && s[i + 1] == '$') {
+                result.name += std::to_string(macro->second);
+                ++i;
+            } else
+                result.name += std::to_string(macro->first);
+            ++i;
+            if (!all || i == s.size())
+                return {result, s.substr(i)};
+            else
+                break;
         } else {
             if (!result.name.empty() && !all)
                 return {result, s.substr(i)};
