@@ -29,6 +29,7 @@ public:
 class input {
 public:
     using text_t = std::vector<std::string>; // lines of a file
+    using text_span = std::span<const std::string>; // read-only refence to an interval of lines
     struct file_t;
     using files_t = std::map<sfs::path, file_t>; // keys are absolute paths
     using name_spaces_t = std::map<std::string, files_t::const_iterator>;
@@ -130,7 +131,8 @@ private:
     struct macro_t {
         std::vector<std::string> params; // names of parameters of this macro
         input::files_t::const_iterator file; // file containing the macro definition
-        std::span<std::string> replace; // replacement text
+        input::text_span full_replace; // replacement text: original, with comments, without trailing whitespace
+        input::text_span replace; // replacement text: without comments and trailing whitespace
         size_t order; // ordering of macro definitions
     };
     using symbol_t = std::variant<label_t, const_t, macro_t>;
@@ -139,18 +141,22 @@ private:
     void run_file(const input::files_t& files, input::files_t::const_iterator current);
     // macro_args != nullptr when expanding a macro; cur_macro is for label$
     void run_lines(const input::files_t& files, input::files_t::const_iterator current,
-                   std::span<const std::string> full_text, std::span<const std::string> text,
+                   input::text_span full_text, input::text_span text,
                    size_t first_line = 1, macro_args_t* macro_args = nullptr);
     // false if symbol name already defined, true otherwise
     bool define_const(input::files_t::const_iterator file, std::string name, std::shared_ptr<assembler::as_expr> expr);
     // false if symbol name already defined, true otherwise
     bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
+    // false if symbol name already defined, true otherwise
+    bool define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
+                      input::text_span replace, std::vector<std::string> params);
     static std::expected<std::shared_ptr<as_expr>, std::string> parse_expr(std::string_view s);
     input& in;
     output& out;
     bool verbose;
     std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
         symbols;
+    size_t macro_def_order = 0;
     size_t max_macro = 0; // for label$
     uint16_t cur_addr = 0; // current output address
     std::vector<phase2_t> phase2;
@@ -384,7 +390,7 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
                              std::shared_ptr<assembler::as_expr> expr)
 {
     if (auto it = symbols.find(file); it == symbols.end())
-        throw fatal_error("Parsed file not in assembler::symbols");
+        throw fatal_error("Parsed file not in assembler::symbols ($const definition)");
     else
         return it->second.emplace(std::move(name), const_t{.value = expr->eval(), .expr = std::move(expr)}).second;
 }
@@ -392,9 +398,25 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
 {
     if (auto it = symbols.find(file); it == symbols.end())
-        throw fatal_error("Parsed file not in assembler::symbols");
+        throw fatal_error("Parsed file not in assembler::symbols (label definition)");
     else
         return it->second.emplace(std::move(name), label_t{.value = addr}).second;
+}
+
+bool assembler::define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
+                             input::text_span replace, std::vector<std::string> params)
+{
+    if (auto it = symbols.find(file); it == symbols.end())
+        throw fatal_error("Parsed file not in assembler::symbols ($macro definition)");
+    else
+        return it->second.emplace(std::move(name),
+            macro_t{
+                .params = std::move(params),
+                .file = file,
+                .full_replace = full_replace,
+                .replace = replace,
+                .order = macro_def_order++,
+            }).second;
 }
 
 std::expected<std::shared_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view s)
@@ -578,7 +600,46 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 std::cerr << src_pos(current->first, line_num) << "Nested macro definition not allowed" << std::endl;
                 throw silent_error{};
             }
-            // TODO
+            if (parts.args.empty()) {
+                std::cerr << src_pos(current->first, line_num) << "Missing macro name in $macro" << std::endl;
+                throw silent_error{};
+            }
+            auto id = parser::identifier(parts.args[0], true);
+            if (!id.first || id.first->name_space) {
+                std::cerr << src_pos(current->first, line_num) <<
+                    "Expected identifier without namespace as the macro name in $macro" << std::endl;
+                throw silent_error{};
+            }
+            std::vector<std::string> params;
+            for (size_t i = 1; i < parts.args.size(); ++i) {
+                auto p = parser::identifier(parts.args[i], true);
+                if (!p.first || p.first->name_space) {
+                    std::cerr << src_pos(current->first, line_num) <<
+                        "Expected identifier without namespace as parameter " << i << " of $macro" << std::endl;
+                    throw silent_error{};
+                }
+                params.push_back(std::move(p.first->name));
+            }
+            for (auto [full_begin, text_begin] = std::pair{++full_it, ++text_it};
+                 full_it != full_text.end() && text_it != text.end();
+                 ++full_it, ++text_it)
+            {
+                if (auto parts = split(*text_it); parts.cmd == "$end_macro"sv) {
+                    if (!define_macro(current, id.first->name, {full_begin, full_it},
+                                      {text_begin, text_it}, std::move(params)))
+                    {
+                        std::cerr << src_pos(current->first, line_num) <<
+                            "Symbol \"" << id.first->name << "\" already defined" << std::endl;
+                        throw silent_error{};
+                    }
+                    break;
+                }
+            }
+            if (full_it == full_text.end() || text_it == text.end()) {
+                std::cerr << src_pos(current->first, line_num) <<
+                    "Missing $end_macro at the end of macro definition" << std::endl;
+                throw silent_error{};
+            }
         } else if (parts.cmd == "$use"sv) {
             if (parts.args.size() != 2)
                 throw fatal_error{"Invalid $use in assembler::run_file"};
