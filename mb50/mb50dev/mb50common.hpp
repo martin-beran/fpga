@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <expected>
 #include <optional>
+#include <ostream>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -61,6 +62,15 @@ struct ident_t {
     std::optional<std::string> name_space; // nullopt for unqualified, empty for local
     std::string name; // nonempty
 };
+
+std::ostream& operator<<(std::ostream& os, ident_t id)
+{
+    if (id.name_space)
+        os << *id.name_space << '.' << id.name;
+    else
+        os << id.name;
+    return os;
+}
 
 // Parses an identifier; macro defines replacement numbers for $ and $$ in names of labels and constants
 result_t<ident_t> identifier(std::string_view s, bool all,

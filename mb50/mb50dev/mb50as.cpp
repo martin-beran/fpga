@@ -7,7 +7,9 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
+#include <limits>
 #include <map>
+#include <ostream>
 #include <ranges>
 #include <stack>
 #include <tuple>
@@ -137,12 +139,14 @@ private:
     };
     using symbol_t = std::variant<label_t, const_t, macro_t>;
     using symbol_table_t = std::map<std::string, symbol_t>;
+    using global_symbol_table_t = std::map<std::string, symbol_t*>;
     using macro_args_t = std::map<std::string, std::shared_ptr<as_expr>>;
     void run_file(const input::files_t& files, input::files_t::const_iterator current);
     // macro_args != nullptr when expanding a macro; cur_macro is for label$
     void run_lines(const input::files_t& files, input::files_t::const_iterator current,
                    input::text_span full_text, input::text_span text,
-                   size_t first_line = 1, macro_args_t* macro_args = nullptr);
+                   size_t macro_idx = std::numeric_limits<decltype(macro_idx)>::max(),
+                   macro_args_t* macro_args = nullptr);
     // false if symbol name already defined, true otherwise
     bool define_const(input::files_t::const_iterator file, std::string name, std::shared_ptr<assembler::as_expr> expr);
     // false if symbol name already defined, true otherwise
@@ -150,12 +154,16 @@ private:
     // false if symbol name already defined, true otherwise
     bool define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
                       input::text_span replace, std::vector<std::string> params);
+    void define_global(symbol_table_t::iterator sym_it);
+    // bool = whether the symbol is defined; {nullptr, true} = unqualified name with multiple definitions
+    std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id);
     static std::expected<std::shared_ptr<as_expr>, std::string> parse_expr(std::string_view s);
     input& in;
     output& out;
     bool verbose;
     std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
         symbols;
+    global_symbol_table_t global_symbols;
     size_t macro_def_order = 0;
     size_t max_macro = 0; // for label$
     uint16_t cur_addr = 0; // current output address
@@ -392,7 +400,22 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($const definition)");
     else
-        return it->second.emplace(std::move(name), const_t{.value = expr->eval(), .expr = std::move(expr)}).second;
+        if (auto [sym_it, added] = it->second.emplace(std::move(name),
+                                                      const_t{.value = expr->eval(), .expr = std::move(expr)});
+            added)
+        {
+            define_global(sym_it);
+            return true;
+        } else
+            return false;
+}
+
+void assembler::define_global(symbol_table_t::iterator sym_it)
+{
+    if (auto gl_it = global_symbols.find(sym_it->first); gl_it != global_symbols.end())
+        gl_it->second = nullptr; // multiple definitions
+    else
+        global_symbols.emplace(sym_it->first, &sym_it->second);
 }
 
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
@@ -400,7 +423,11 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols (label definition)");
     else
-        return it->second.emplace(std::move(name), label_t{.value = addr}).second;
+        if (auto [sym_it, added] = it->second.emplace(std::move(name), label_t{.value = addr}); added) {
+            define_global(sym_it);
+            return true;
+        } else
+            return false;
 }
 
 bool assembler::define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
@@ -409,14 +436,46 @@ bool assembler::define_macro(input::files_t::const_iterator file, std::string na
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($macro definition)");
     else
-        return it->second.emplace(std::move(name),
-            macro_t{
-                .params = std::move(params),
-                .file = file,
-                .full_replace = full_replace,
-                .replace = replace,
-                .order = macro_def_order++,
-            }).second;
+        if (auto [sym_it, added] = it->second.emplace(std::move(name),
+                                                      macro_t{
+                                                          .params = std::move(params),
+                                                          .file = file,
+                                                          .full_replace = full_replace,
+                                                          .replace = replace,
+                                                          .order = macro_def_order++,
+                                                          });
+            added)
+        {
+            define_global(sym_it);
+            return true;
+        } else
+            return false;
+}
+
+std::pair<const assembler::symbol_t*, bool>
+assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_t& id)
+{
+    if (!id.name_space) {
+        // id: unqualified name (global)
+        if (auto it = global_symbols.find(id.name); it != global_symbols.end())
+            return {it->second, true};
+        else
+            return {nullptr, false};
+    } else if (!id.name_space->empty()) {
+        // namespace.id: qualified name
+        if (auto ns_it = file->second.name_spaces.find(*id.name_space); ns_it == file->second.name_spaces.end())
+            return {nullptr, false};
+        else
+            file = ns_it->second;
+    }
+    // .id: local name; or passthrough from namespace.id
+    if (auto sym_it = symbols.find(file); sym_it == symbols.end())
+        throw fatal_error{std::format("File \"{}\" does not have a symbol table", file->first.string())};
+    else
+        if (auto it = sym_it->second.find(id.name); it != sym_it->second.end())
+            return {&it->second, true};
+        else
+            return {nullptr, false};
 }
 
 std::expected<std::shared_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view s)
@@ -480,7 +539,7 @@ void assembler::run()
 
 void assembler::run_lines(const input::files_t& files, input::files_t::const_iterator current,
                           std::span<const std::string> full_text, std::span<const std::string> text,
-                          size_t first_line, macro_args_t* macro_args)
+                          size_t macro_idx, macro_args_t* macro_args)
 {
     size_t cur_macro = macro_args ? ++max_macro : 0; // for label$
     size_t last_macro = 0; // for label$$
@@ -489,7 +548,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
          ++full_it, ++text_it
     ) {
         // Add source line to text output
-        size_t line_num = size_t(full_it - current->second.full_text.begin()) + first_line;
+        size_t line_num = size_t(full_it - current->second.full_text.begin()) + 1;
         if (!full_it->empty() && full_it->front() != '#')
             out.add_src_line(current->first, line_num, *full_it);
         if (text_it->empty())
@@ -660,8 +719,49 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             std::cerr << src_pos(current->first, line_num) << "Unknown directive \"" << parts.cmd << '"' << std::endl;
             throw silent_error{};
         }
-        // Expand macros
-        // Generate instructions
+        if (auto id = parser::identifier(parts.cmd, true, {{cur_macro, last_macro}}); !id.first) {
+            std::cerr << src_pos(current->first, line_num) << id.first.error() << std::endl;
+            throw silent_error{};
+        } else {
+            // Expand macros
+            auto [symbol, defined] = find_symbol(current, *id.first);
+            if (!symbol && defined) {
+                std::cerr << src_pos(current->first, line_num) << "Multiple definitions of unqualified name \"" <<
+                    *id.first << '"' << std::endl;
+                throw silent_error{};
+            }
+            if (const macro_t* macro = std::get_if<macro_t>(symbol)) {
+                if (macro->order > macro_idx) {
+                    std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first <<
+                        "\" not defined before the current macro" << std::endl;
+                    throw silent_error{};
+                }
+                if (macro->params.size() != parts.args.size()) {
+                    std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first << "\" expects " <<
+                        macro->params.size() << " arguments, " << parts.args.size() << " passed" << std::endl;
+                    throw silent_error{};
+                }
+                macro_args_t args{};
+                for (size_t i = 0; i < parts.args.size(); ++i) {
+                    if (auto a = parse_expr(parts.args[i]); !a) {
+                        std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of macro: " <<
+                            a.error() << std::endl;
+                        throw silent_error{};
+                    } else
+                        args.emplace(macro->params[i], std::move(*a));
+                }
+                run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
+                continue;
+            }
+            // Generate instructions
+            if (!symbol && !id.first->name_space) {
+                // TODO
+            }
+            // Unknown name
+            std::cerr << src_pos(current->first, line_num) << "Name \"" << *id.first <<
+                "\" is not a known instruction or macro" << std::endl;
+            throw silent_error{};
+        }
     }
 }
                           
