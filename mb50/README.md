@@ -883,7 +883,7 @@ Exchanges values in source and destination registers. It does not modify flags.
     exchf0 dstr, srcr
     exchnf0 dstr, srcr
     exchf1, exchf2, exchf3, exchz, exchc, exchs, excho
-    exchf1, exchnf2, exchnf3 exchnz, exchnc, exchns, exchno
+    exchnf1, exchnf2, exchnf3 exchnz, exchnc, exchns, exchno
 
 Opcode: 0x8? __(not implemented)__
 

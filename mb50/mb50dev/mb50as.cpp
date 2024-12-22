@@ -92,44 +92,35 @@ public:
         std::string_view cmd;
         std::vector<std::string_view> args;
     };
-    assembler(input& in, output& out, bool verbose): in(in), out(out), verbose(verbose) {}
+    assembler(input& in, output& out, bool verbose);
     void run();
     static std::string remove_comment(std::string_view line);
     // Expects a line without comment
     static line_t split(std::string_view line);
 private:
-    // expression base
-    struct as_expr {
-        as_expr() = default;
-        as_expr(const as_expr&) = delete;
-        as_expr(as_expr&&) = delete;
-        as_expr& operator=(const as_expr&) = delete;
-        as_expr& operator=(as_expr&&) = delete;
-        virtual ~as_expr() = default;
-        virtual std::optional<uint16_t> eval() {
-            return std::nullopt;
-        }
-        // returns a sequence of bytes; after nullopt in the first phase, length 1 is expected for the second phase
-        virtual std::optional<std::vector<uint8_t>> eval_bytes() {
-            if (auto val = eval())
-                return {{uint8_t(*val % 256U)}};
-            else
-                return std::nullopt;
-        }
-    };
+    class expr_base;
+    class expr_reg;
+    class expr_addr;
     // second phase of expression evaluation
     struct phase2_t {
-        std::shared_ptr<as_expr> expr; // evaluate this expression
+        std::shared_ptr<expr_base> expr; // evaluate this expression
         uint16_t addr; // store value here
         bool word; // false = byte, true = word
     };
+    // label definition
     struct label_t {
         std::optional<uint16_t> value;
     };
+    // directive $const
     struct const_t {
         std::optional<uint16_t> value;
-        std::shared_ptr<as_expr> expr;
+        std::shared_ptr<expr_base> expr;
     };
+    // expression that must be always evaluated
+    struct var_t {
+        std::shared_ptr<expr_base> expr;
+    };
+    // macro definition
     struct macro_t {
         std::vector<std::string> params; // names of parameters of this macro
         input::files_t::const_iterator file; // file containing the macro definition
@@ -137,10 +128,15 @@ private:
         input::text_span replace; // replacement text: without comments and trailing whitespace
         size_t order; // ordering of macro definitions
     };
-    using symbol_t = std::variant<label_t, const_t, macro_t>;
+    using symbol_t = std::variant<label_t, const_t, var_t, macro_t>;
     using symbol_table_t = std::map<std::string, symbol_t>;
     using global_symbol_table_t = std::map<std::string, symbol_t*>;
-    using macro_args_t = std::map<std::string, std::shared_ptr<as_expr>>;
+    using macro_args_t = std::map<std::string, std::shared_ptr<expr_base>>;
+    struct instruction_t {
+        uint8_t opcode = 0x00; // the first (lower) byte of the instruction
+        bool dst_csr = false; // destination is CSR
+        bool src_csr = false; // source is CSR
+    };
     void run_file(const input::files_t& files, input::files_t::const_iterator current);
     // macro_args != nullptr when expanding a macro; cur_macro is for label$
     void run_lines(const input::files_t& files, input::files_t::const_iterator current,
@@ -148,7 +144,8 @@ private:
                    size_t macro_idx = std::numeric_limits<decltype(macro_idx)>::max(),
                    macro_args_t* macro_args = nullptr);
     // false if symbol name already defined, true otherwise
-    bool define_const(input::files_t::const_iterator file, std::string name, std::shared_ptr<assembler::as_expr> expr);
+    bool define_const(input::files_t::const_iterator file, std::string name,
+                      std::shared_ptr<assembler::expr_base> expr);
     // false if symbol name already defined, true otherwise
     bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
     // false if symbol name already defined, true otherwise
@@ -157,17 +154,67 @@ private:
     void define_global(symbol_table_t::iterator sym_it);
     // bool = whether the symbol is defined; {nullptr, true} = unqualified name with multiple definitions
     std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id);
-    static std::expected<std::shared_ptr<as_expr>, std::string> parse_expr(std::string_view s);
+    static std::expected<std::shared_ptr<expr_base>, std::string> parse_expr(std::string_view s);
     input& in;
     output& out;
     bool verbose;
     std::map<input::files_t::const_iterator, symbol_table_t, decltype([](auto&& a, auto&& b){ return &*a < &*b; })>
         symbols;
     global_symbol_table_t global_symbols;
+    symbol_table_t predef_symbols;
     size_t macro_def_order = 0;
     size_t max_macro = 0; // for label$
     uint16_t cur_addr = 0; // current output address
     std::vector<phase2_t> phase2;
+    std::map<std::string, instruction_t> opcodes;
+};
+
+// expression base
+class assembler::expr_base {
+public:
+    expr_base() = default;
+    expr_base(const expr_base&) = delete;
+    expr_base(expr_base&&) = delete;
+    expr_base& operator=(const expr_base&) = delete;
+    expr_base& operator=(expr_base&&) = delete;
+    virtual ~expr_base() = default;
+    virtual std::optional<uint16_t> eval() {
+        return std::nullopt;
+    }
+    // returns a sequence of bytes; after nullopt in the first phase, length 1 is expected for the second phase
+    virtual std::optional<std::vector<uint8_t>> eval_bytes() {
+        if (auto val = eval())
+            return {{uint8_t(*val % 256U)}};
+        else
+            return std::nullopt;
+    }
+    // returns a register index 0..15 and false = normal register, true = CSR
+    virtual std::optional<std::pair<uint8_t, bool>> eval_reg() {
+        return std::nullopt;
+    }
+};
+
+// register selector for an instruction
+class assembler::expr_reg: public assembler::expr_base {
+public:
+    expr_reg(uint8_t idx, bool csr): idx(idx), csr(csr) {}
+    std::optional<std::pair<uint8_t, bool>> eval_reg() override {
+        return {{decltype(idx){idx}, decltype(csr){csr}}};
+    }
+private:
+    uint8_t idx: 4;
+    bool csr: 1;
+};
+
+// the current address
+class assembler::expr_addr: public assembler::expr_base {
+public:
+    explicit expr_addr(assembler& as): addr(as.cur_addr) {}
+    std::optional<uint16_t> eval() override {
+        return addr;
+    }
+private:
+    const uint16_t& addr;
 };
 
 /*** src_pos *****************************************************************/
@@ -394,9 +441,90 @@ CONTENT BEGIN
 
 /*** assembler ***************************************************************/
 
-bool assembler::define_const(input::files_t::const_iterator file, std::string name,
-                             std::shared_ptr<assembler::as_expr> expr)
+assembler::assembler(input& in, output& out, bool verbose):
+    in(in), out(out), verbose(verbose),
+    predef_symbols{
+        {"sp", var_t{std::make_shared<expr_reg>(11, false)}},
+        {"ca", var_t{std::make_shared<expr_reg>(12, false)}},
+        {"ia", var_t{std::make_shared<expr_reg>(13, false)}},
+        {"f", var_t{std::make_shared<expr_reg>(14, false)}},
+        {"pc", var_t{std::make_shared<expr_reg>(15, false)}},
+        {"__addr", var_t{std::make_shared<expr_addr>(*this)}},
+    },
+    opcodes{
+        {"add", {.opcode = 0x01}},
+        {"and", {.opcode = 0x02}},
+        {"cmps", {.opcode = 0x1b}},
+        {"cmpu", {.opcode = 0x19}},
+        {"csrr", {.opcode = 0x03, .src_csr = true}},
+        {"csrw", {.opcode = 0x04, .dst_csr = true}},
+        //{"ddsto", {.opcode = 0x17}},
+        {"dec1", {.opcode = 0x05}},
+        {"dec2", {.opcode = 0x06}},
+        {"exch", {.opcode = 0x07}},
+        {"inc1", {.opcode = 0x08}},
+        {"inc2", {.opcode = 0x09}},
+        {"ill", {.opcode = 0x00}},
+        {"ld", {.opcode = 0x0a}},
+        {"ldb", {.opcode = 0x0b}},
+        {"ldis", {.opcode = 0x0c}},
+        //{"ldisx", {.opcode = 0x0d}},
+        //{"mulss", {.opcode = 0x1e}},
+        //{"mulsu", {.opcode = 0x1f}},
+        //{"mulus", {.opcode = 0x20}},
+        //{"muluu", {.opcode = 0x21}},
+        {"mv", {.opcode = 0x0e}},
+        {"neg", {.opcode = 0x0f}},
+        {"not", {.opcode = 0x10}},
+        {"or", {.opcode = 0x11}},
+        {"reti", {.opcode = 0x1c}},
+        {"rev", {.opcode = 0x1d}},
+        {"shl", {.opcode = 0x12}},
+        {"shr", {.opcode = 0x13}},
+        {"shra", {.opcode = 0x14}},
+        {"sto", {.opcode = 0x15}},
+        {"stob", {.opcode = 0x16}},
+        {"sub", {.opcode = 0x18}},
+        {"xor", {.opcode = 0x1a}},
+    }
 {
+    for (int i = 0; i <= 15; ++i) {
+        predef_symbols.emplace(std::format("r{}", i), var_t{std::make_shared<expr_reg>(uint8_t(i), false)});
+        predef_symbols.emplace(std::format("csr{}", i), var_t{std::make_shared<expr_reg>(uint8_t(i), true)});
+    }
+    for (const auto& [prefix, suffix, opcode]: {
+        //{"exch", "", 0x80},
+         std::tuple{"ld", "", 0x90},
+        {"ld", "is", 0xa0},
+        //{"ldx", "is", 0xb0},
+        {"mv", "", 0xc0},
+    }) {
+        for (const auto& [flag, f_code]: {
+            std::tuple{"f0", 0x00},
+            std::tuple{"f1", 0x01},
+            std::tuple{"f2", 0x02},
+            std::tuple{"f3", 0x03},
+            std::tuple{"z", 0x04},
+            std::tuple{"c", 0x05},
+            std::tuple{"s", 0x06},
+            std::tuple{"o", 0x07},
+        }) {
+            for (const auto& [neg, n_code]: {
+                std::tuple{"", 0x08},
+                std::tuple{"n", 0x00},
+            }) {
+                opcodes.emplace(std::format("{}{}{}{}", prefix, neg, flag, suffix),
+                            instruction_t{.opcode = uint8_t(unsigned(opcode) | unsigned(n_code) | unsigned(f_code))});
+            }
+        }
+    }
+}
+
+bool assembler::define_const(input::files_t::const_iterator file, std::string name,
+                             std::shared_ptr<assembler::expr_base> expr)
+{
+    if (predef_symbols.contains(name))
+        return false;
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($const definition)");
     else
@@ -420,6 +548,8 @@ void assembler::define_global(symbol_table_t::iterator sym_it)
 
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
 {
+    if (predef_symbols.contains(name))
+        return false;
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols (label definition)");
     else
@@ -433,6 +563,8 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
 bool assembler::define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
                              input::text_span replace, std::vector<std::string> params)
 {
+    if (predef_symbols.contains(name) || opcodes.contains(name))
+        return false;
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($macro definition)");
     else
@@ -457,6 +589,8 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
 {
     if (!id.name_space) {
         // id: unqualified name (global)
+        if (auto it = predef_symbols.find(id.name); it != predef_symbols.end())
+            return {&it->second, true};
         if (auto it = global_symbols.find(id.name); it != global_symbols.end())
             return {it->second, true};
         else
@@ -478,7 +612,7 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
             return {nullptr, false};
 }
 
-std::expected<std::shared_ptr<assembler::as_expr>, std::string> assembler::parse_expr(std::string_view s)
+std::expected<std::shared_ptr<assembler::expr_base>, std::string> assembler::parse_expr(std::string_view s)
 {
     (void)s;
     // TODO
@@ -755,7 +889,44 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             }
             // Generate instructions
             if (!symbol && !id.first->name_space) {
-                // TODO
+                if (parts.args.size() != 2) {
+                    std::cerr << src_pos(current->first, line_num) << "Instruction requires two arguments" << std::endl;
+                    throw silent_error{};
+                }
+                auto instr = opcodes.find(id.first->name);
+                if (instr == opcodes.end()) {
+                    std::cerr << src_pos(current->first, line_num) << "Unknown instruction \"" << id.first->name <<
+                        '"' << std::endl;
+                    throw silent_error{};
+                }
+                auto dst = parse_expr(parts.args[0]);
+                if (!dst) {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid destination register of instruction: " <<
+                        dst.error() << std::endl;
+                    throw silent_error{};
+                }
+                auto dst_reg = (*dst)->eval_reg();
+                if (!dst_reg || dst_reg->second != instr->second.dst_csr) {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid destination register of instruction" <<
+                        std::endl;
+                    throw silent_error{};
+                }
+                auto src = parse_expr(parts.args[1]);
+                if (!src) {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid source register of instruction: " <<
+                        src.error() << std::endl;
+                    throw silent_error{};
+                }
+                auto src_reg = (*src)->eval_reg();
+                if (!src_reg || src_reg->second != instr->second.src_csr) {
+                    std::cerr << src_pos(current->first, line_num) << "Invalid source register of instruction" <<
+                        std::endl;
+                    throw silent_error{};
+                }
+                std::array<uint8_t, 2> bytes{};
+                bytes[0] = instr->second.opcode;
+                bytes[1] = uint8_t(dst_reg->first << 4U) | (src_reg->first);
+                out.add_bytes(cur_addr, bytes, *full_it);
             }
             // Unknown name
             std::cerr << src_pos(current->first, line_num) << "Name \"" << *id.first <<
