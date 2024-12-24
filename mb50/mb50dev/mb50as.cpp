@@ -927,6 +927,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 bytes[0] = instr->second.opcode;
                 bytes[1] = uint8_t(dst_reg->first << 4U) | (src_reg->first);
                 out.add_bytes(cur_addr, bytes, *full_it);
+                cur_addr += 2;
             }
             // Unknown name
             std::cerr << src_pos(current->first, line_num) << "Name \"" << *id.first <<
