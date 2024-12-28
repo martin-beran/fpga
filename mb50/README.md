@@ -1434,19 +1434,18 @@ integers. Components of an expression:
   a hexadecimal constant (started by `0x`), or as a binary constant (started by
   `0b`). Groups of digits may be separated by an underscore to improve
   readability.
-- Unary operator `-` that computes two's complement
 - A single character constant, converted to a number with the higher
   byte containing zero and the lower byte containing the character code
 - An empty character constant `''`, equal to `'\0'`
 - A two-character constant, converted to a number with the lower byte
   containing the first character code and the higher byte containing the second
   character code
-- Binary operators with left associativity and the same meaning and precedence
-  as in C. From highest to lowest priority:
-    - `~` (bitwise NOT)
+- Unary and binary operators with left associativity and the same meaning and
+  precedence as in C. From highest to lowest priority:
+    - `~` (bitwise NOT), `-` (unary minus, computes two's complement)
     - `*`, `/`, `%` (multiplication, division, remainder)
     - `+`, `-` (addition, subtraction)
-    - `<<`, `<<` (left and right shifts)
+    - `<<`, `>>` (left and right shifts)
     - `&` (bitwise AND)
     - `^` (bitwise XOR)
     - `|` (bitwise OR)
@@ -1454,7 +1453,6 @@ integers. Components of an expression:
 - A special label `__addr`, which is replaced by the address of the current
   line. Its value is always equal to the value of any label on the current
   line.
-- A name of an instruction
 - A name of a register or CSR; such expression cannot consist of anything else
 - A name of a register alias, evaluated to the canonical register name
 - A name of a constant, evaluated to the constant value. A constant can be
