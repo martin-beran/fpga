@@ -677,8 +677,6 @@ the handler address.
 
 ### csr2...csr5
 
-__(not implemented)__
-
 These CSRs are intended as temporary storage for the interrupt handler. If used
 as such, any code executed with interrupts enabled outside the handler must not
 expect that any of these registers keeps its value between instructions.
