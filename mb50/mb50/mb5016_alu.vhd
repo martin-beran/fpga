@@ -35,6 +35,14 @@ package pkg_mb5016_alu is
 		OpInc1,
 		-- Increment by 2: OutA := InB + 2
 		OpInc2,
+		-- Multiplication of signed and signed: OutA := (InA * InB) % 0x1000; OutB := (InA * InB) / 0x1000
+		OpMulss,
+		-- Multiplication of signed and unsigned: OutA := (InA * InB) % 0x1000; OutB := (InA * InB) / 0x1000
+		OpMulsu,
+		-- Multiplication of unsigned and signed: OutA := (InA * InB) % 0x1000; OutB := (InA * InB) / 0x1000
+		OpMulus,
+		-- Multiplication of unsigned and unsigned: OutA := (InA * InB) % 0x1000; OutB := (InA * InB) / 0x1000
+		OpMuluu,
 		-- Pass data from InA to OutA, from InB to OutB: OutA := InA; OutB := InB
 		OpMv,
 		-- Instruction NOT: OutA := NOT InB
@@ -163,6 +171,67 @@ architecture main of mb5016_alu is
 			FS=>OutA(OutA'high), FO=>to_std_logic(InB = X"7fff" or InB = X"7ffe"));
 	end;
 
+	pure function f_mulss(InA, InB: word_t) return output_t is
+		variable OutAB: signed(31 downto 0);
+		variable FZ,FC, FO: std_logic := '0';
+	begin
+		OutAB := signed(std_logic_vector(InA)) * signed(std_logic_vector(InB));
+		if OutAB = X"0000_0000" then
+			FZ := '1';
+		end if;
+		if (OutAB(31 downto 16) /= X"0000" and OutAB(31) = '0') or
+			(OutAB(31 downto 16) /= X"ffff" and OutAB(31) = '1')
+		then
+			FC := '1';
+		end if;
+		if (OutAB(31 downto 15) /= X"0000" and OutAB(31) = '0') or
+			(OutAB(31 downto 15) /= X"ffff" and OutAB(31) = '1')
+		then
+			FO := '1';
+		end if;
+		return (OutA=>word_t(OutAB(15 downto 0)), OutB=>word_t(OutAB(31 downto 16)),
+			FZ=>FZ, FC=>FC, FS=>OutAB(31), FO=>FO);
+	end;
+
+	pure function f_mulsu(InA, InB: word_t) return output_t is
+		variable OutAB: signed(31 downto 0);
+		variable FZ,FC, FO: std_logic := '0';
+	begin
+		OutAB := to_signed(to_integer(signed(std_logic_vector(InA))) * to_integer(InB), OutAB'length);
+		if OutAB = X"0000_0000" then
+			FZ := '1';
+		end if;
+		if (OutAB(31 downto 16) /= X"0000" and OutAB(31) = '0') or
+			(OutAB(31 downto 16) /= X"ffff" and OutAB(31) = '1')
+		then
+			FC := '1';
+		end if;
+		if (OutAB(31 downto 15) /= X"0000" and OutAB(31) = '0') or
+			(OutAB(31 downto 15) /= X"ffff" and OutAB(31) = '1')
+		then
+			FO := '1';
+		end if;
+		return (OutA=>word_t(OutAB(15 downto 0)), OutB=>word_t(OutAB(31 downto 16)),
+			FZ=>FZ, FC=>FC, FS=>OutAB(31), FO=>FO);
+	end;
+
+	pure function f_muluu(InA, InB: word_t) return output_t is
+		variable OutAB: unsigned(31 downto 0);
+		variable FZ, FC, FO: std_logic := '0';
+	begin
+		OutAB := InA * InB;
+		if OutAB = X"0000_0000" then
+			FZ := '1';
+		end if;
+		if OutAB(31 downto 16) /= X"0000" then
+			FC := '1';
+		end if;
+		if OutAB(31 downto 15) /= X"0000" & '0' then
+			FO := '1';
+		end if;
+		return (OutA=>OutAB(15 downto 0), OutB=>OutAB(31 downto 16), FZ=>FZ, FC=>FC, FS=>'0', FO=>FO);
+	end;
+
 	pure function f_not(InB: word_t) return output_t is
 		variable OutA: word_t;
 	begin
@@ -245,6 +314,10 @@ begin
 		(InB, InA, '0', '0', '0', '0') when OpExch,
 		f_inc1(InB) when OpInc1,
 		f_inc2(InB) when OpInc2,
+		f_mulss(InA, InB) when OpMulss,
+		f_mulsu(InA, InB) when OpMulsu,
+		f_mulsu(InB, InA) when OpMulus,
+		f_muluu(InA, InB) when OpMuluu,
 		(InA, InB, '0', '0', '0', '0') when OpMv,
 		f_not(InB) when OpNot,
 		f_or(InA, InB) when OpOr,

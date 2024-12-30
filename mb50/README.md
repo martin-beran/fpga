@@ -1028,7 +1028,7 @@ increments the value in register `srcr` by 2. It does not modify flags.
 
     mulss dstr, srcr
 
-Opcode: 0x1e __(not implemented)__
+Opcode: 0x1e
 
 Multiplies signed values in registers `srcr` and `dstr` and yields a 32-bit
 signed result. The lower 16 bits of the result are stored into `dstr`, the upper
@@ -1042,7 +1042,7 @@ not fit in the range of signed 16 bit numbers).
 
     mulsu dstr, srcr
 
-Opcode: 0x1f __(not implemented)__
+Opcode: 0x1f
 
 Multiplies a signed value in register `dstr` and an unsigned value in `srcr`
 and yields a 32-bit signed result. The lower 16 bits of the result are stored
@@ -1053,11 +1053,11 @@ negative (copies the highest bit of a result from `srcr`); `o` if a signed
 overflow occurs (the result does not fit in the range of signed 16 bit
 numbers).
 
-#### MULUS (Multiply Unsigned and Unsigned)
+#### MULUS (Multiply Unsigned and Signed)
 
     mulus dstr, srcr
 
-Opcode: 0x20 __(not implemented)__
+Opcode: 0x20
 
 Multiplies an unsigned value in register `dstr` and a signed value in `srcr`
 and yields a 32-bit signed result. The lower 16 bits of the result are stored
@@ -1068,11 +1068,11 @@ negative (copies the highest bit of a result from `srcr`); `o` if a signed
 overflow occurs (the result does not fit in the range of signed 16 bit
 numbers).
 
-#### MULUU (Multiply Unsigned and unsigned)
+#### MULUU (Multiply Unsigned and Unsigned)
 
     muluu dstr, srcr
 
-Opcode: 0x21 __(not implemented)__
+Opcode: 0x21
 
 Multiplies unsigned values in registers `srcr` and `dstr` and yields a 32-bit
 unsigned result. The lower 16 bits of the result are stored into `dstr`, the

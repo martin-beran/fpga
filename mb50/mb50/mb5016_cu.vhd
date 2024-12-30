@@ -46,6 +46,10 @@ package pkg_mb5016_cu is
 	constant OpcodeLdnf: byte_t := X"90";
 	constant OpcodeLdnfis: byte_t := X"a0";
 	constant OpcodeLdxnfis: byte_t := X"b0";
+	constant OpcodeMulss: byte_t := X"1e";
+	constant OpcodeMulsu: byte_t := X"1f";
+	constant OpcodeMulus: byte_t := X"20";
+	constant OpcodeMuluu: byte_t := X"21";
 	constant OpcodeMv: byte_t := X"0e";
 	constant OpcodeMvnf: byte_t := X"c0";
 	constant OpcodeNeg: byte_t := X"0f";
@@ -173,6 +177,10 @@ begin
 				when OpcodeLdnf    => return ( true,     OpMv,  true,  true,  true, false, false, false, false);
 				when OpcodeLdnfis  => return ( true,   OpInc2,  true,  true,  true,  true, false, false, false);
 				when OpcodeLdxnfis => return (false,   OpInc2,  true,  true,  true,  true, false, false, false);
+				when OpcodeMulss   => return ( true,  OpMulss, false, false, false,  true,  true, false, false);
+				when OpcodeMulsu   => return ( true,  OpMulsu, false, false, false,  true,  true, false, false);
+				when OpcodeMulus   => return ( true,  OpMulus, false, false, false,  true,  true, false, false);
+				when OpcodeMuluu   => return ( true,  OpMuluu, false, false, false,  true,  true, false, false);
 				when OpcodeMv      => return ( true,   OpExch, false, false, false,  true, false, false, false);
 				when OpcodeMvnf    => return ( true,   OpExch,  true, false, false,  true, false, false, false);
 				when OpcodeNeg     => return (false,    OpNot, false, false, false,  true,  true, false, false);
