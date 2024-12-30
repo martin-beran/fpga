@@ -154,6 +154,7 @@ begin
 			DoRegWr, -- Write a register
 			DoRegWrLo,
 			DoRegWrHi,
+			DoRegWrSend,
 			DoMemRd, -- Read from memory
 			DoMemRdAddrLo,
 			DoMemRdAddrHi,
@@ -350,7 +351,7 @@ begin
 							reg_val(7 downto 0) := unsigned(rx_byte);
 						end if;
 					when DoRegWrHi =>
-						recv_byte(received, rx_byte, Ready);
+						recv_byte(received, rx_byte, DoRegWrSend);
 						if received then
 							reg_val(15 downto 8) := unsigned(rx_byte);
 							CpuRegIdx <= reg_idx;
@@ -358,6 +359,8 @@ begin
 							CpuRegWr <= '1';
 							CpuRegCsr <= reg_csr;
 						end if;
+					when DoRegWrSend =>
+						send_byte(RespRegWr);
 					when DoMemRd =>
 						recv_byte(received, rx_byte, DoMemRdAddrLo);
 						if received then

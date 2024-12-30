@@ -94,7 +94,7 @@ begin
 	);
 	csr: entity work.mb5016_csr port map (
 		Clk=>Clk, Rst=>Rst,
-		Idx=>reg_idx_b, RdData=>csr_rd_data, WrData=>reg_wr_data_a, Wr=>csr_wr,
+		Idx=>reg_idx_a, RdData=>csr_rd_data, WrData=>reg_wr_data_a, Wr=>csr_wr,
 		EnaCsr0H=>ena_csr0_h
 	);
 	alu: entity work.mb5016_alu port map (

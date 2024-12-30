@@ -11,7 +11,7 @@ ldis r0, pc
 $data_w 0x01
 ldis r1, pc
 $data_w BORDER_ADDR
-ldis r1, r0
+sto r1, r0
  # iteration counter
 ldis r0, pc
 $data_w 32
@@ -25,7 +25,7 @@ $data_w ATTR_ADDR
 loop:
     # break if r0 == 0
     and r0, r0
-    ldz pc, pc
+    ldzis pc, pc
     $data_w end
     # draw line segment (pixels)
     ldis r3, pc
@@ -36,6 +36,8 @@ loop:
     $data_w 0x70
     stob r2, r3
     # next iteration
+    inc1 r1, r1
+    inc1 r2, r2
     dec1 r0, r0
     ld pc, pc
     $data_w loop

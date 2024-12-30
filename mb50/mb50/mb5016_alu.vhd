@@ -311,6 +311,8 @@ begin
 		f_and(InA, InB) when OpAnd,
 		f_cmps(InA, InB) when OpCmps,
 		f_cmpu(InA, InB) when OpCmpu,
+		f_dec1(InB) when OpDec1,
+		f_dec2(InB) when OpDec2,
 		(InB, InA, '0', '0', '0', '0') when OpExch,
 		f_inc1(InB) when OpInc1,
 		f_inc2(InB) when OpInc2,

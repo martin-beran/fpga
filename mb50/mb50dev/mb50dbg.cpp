@@ -1290,7 +1290,6 @@ public:
         return args.size() > 2 ? std::optional{args[2]} : std::nullopt;
     }
 private:
-    std::span<const char*> args;
     bool _help = false;
 };
 

@@ -150,53 +150,59 @@ begin
 
 		type decoded_t is record
 			is_implemented: boolean; -- if true then all other elements are ignored
+			cond_op: byte_t; -- opcode; 4 lowest bits are 0 if conditional
 			alu_op: op_t; -- ignored for instructions that do not use ALU
 			is_condition, is_load1, is_load2, is_alu, is_flags, is_store1, is_store2: boolean;
 		end record;
 
 		pure function decode_opcode(opcode: byte_t) return decoded_t is
+			variable op: byte_t;
 		begin
-			case opcode is
-				when OpcodeAdd     => return ( true,    OpAdd, false, false, false,  true,  true, false, false);
-				when OpcodeAnd     => return ( true,    OpAnd, false, false, false,  true,  true, false, false);
-				when OpcodeCmps    => return ( true,   OpCmps, false, false, false,  true,  true, false, false);
-				when OpcodeCmpu    => return ( true,   OpCmpu, false, false, false,  true,  true, false, false);
-				when OpcodeCsrr    => return ( true,   OpExch, false, false, false,  true, false, false, false);
-				when OpcodeCsrw    => return ( true,   OpExch, false, false, false,  true, false, false, false);
-				when OpcodeDdsto   => return ( true,   OpDec2, false, false, false,  true, false,  true,  true);
-				when OpcodeDec1    => return ( true,   OpDec1, false, false, false,  true,  true, false, false);
-				when OpcodeDec2    => return ( true,   OpDec2, false, false, false,  true,  true, false, false);
-				when OpcodeExch    => return ( true,   OpExch, false, false, false,  true, false, false, false);
-				when OpcodeExchnf  => return (false,   OpExch,  true, false, false,  true, false, false, false);
-				when OpcodeInc1    => return ( true,   OpInc1, false, false, false,  true,  true, false, false);
-				when OpcodeInc2    => return ( true,   OpInc2, false, false, false,  true,  true, false, false);
-				when OpcodeIll     => return ( true,     OpMv, false, false, false, false, false, false, false);
-				when OpcodeLd      => return ( true,     OpMv, false,  true,  true, false, false, false, false);
-				when OpcodeLdb     => return ( true,     OpMv, false,  true, false, false, false, false, false);
-				when OpcodeLdis    => return ( true,   OpInc2, false,  true,  true,  true, false, false, false);
-				when OpcodeLdisx   => return (false,   OpInc2, false,  true,  true,  true, false, false, false);
-				when OpcodeLdnf    => return ( true,     OpMv,  true,  true,  true, false, false, false, false);
-				when OpcodeLdnfis  => return ( true,   OpInc2,  true,  true,  true,  true, false, false, false);
-				when OpcodeLdxnfis => return (false,   OpInc2,  true,  true,  true,  true, false, false, false);
-				when OpcodeMulss   => return ( true,  OpMulss, false, false, false,  true,  true, false, false);
-				when OpcodeMulsu   => return ( true,  OpMulsu, false, false, false,  true,  true, false, false);
-				when OpcodeMulus   => return ( true,  OpMulus, false, false, false,  true,  true, false, false);
-				when OpcodeMuluu   => return ( true,  OpMuluu, false, false, false,  true,  true, false, false);
-				when OpcodeMv      => return ( true,   OpExch, false, false, false,  true, false, false, false);
-				when OpcodeMvnf    => return ( true,   OpExch,  true, false, false,  true, false, false, false);
-				when OpcodeNeg     => return (false,    OpNot, false, false, false,  true,  true, false, false);
-				when OpcodeNot     => return ( true,    OpNot, false, false, false,  true,  true, false, false);
-				when OpcodeOr      => return ( true,     OpOr, false, false, false,  true,  true, false, false);
-				when OpcodeReti    => return ( true, OpRetiIe, false, false, false,  true, false, false, false);
-				when OpcodeRev     => return ( true,    OpRev, false, false, false,  true,  true, false, false);
-				when OpcodeShl     => return ( true,    OpShl, false, false, false,  true,  true, false, false);
-				when OpcodeShr     => return ( true,    OpShr, false, false, false,  true,  true, false, false);
-				when OpcodeShra    => return ( true,   OpShra, false, false, false,  true,  true, false, false);
-				when OpcodeSto     => return ( true,     OpMv, false, false, false, false, false,  true,  true);
-				when OpcodeStob    => return ( true,     OpMv, false, false, false, false, false,  true, false);
-				when OpcodeSub     => return ( true,    OpSub, false, false, false,  true,  true, false, false);
-				when OpcodeXor     => return ( true,    OpXor, false, false, false,  true,  true, false, false);
-				when others        => return (false,     OpMv, false, false, false, false, false, false, false);
+			op := opcode;
+			if op(7) = '1' then
+				op(3 downto 0) := "0000";
+			end if;
+			case op is
+				when OpcodeAdd     => return ( true, op,    OpAdd, false, false, false,  true,  true, false, false);
+				when OpcodeAnd     => return ( true, op,    OpAnd, false, false, false,  true,  true, false, false);
+				when OpcodeCmps    => return ( true, op,   OpCmps, false, false, false,  true,  true, false, false);
+				when OpcodeCmpu    => return ( true, op,   OpCmpu, false, false, false,  true,  true, false, false);
+				when OpcodeCsrr    => return ( true, op,   OpExch, false, false, false,  true, false, false, false);
+				when OpcodeCsrw    => return ( true, op,   OpExch, false, false, false,  true, false, false, false);
+				when OpcodeDdsto   => return ( true, op,   OpDec2, false, false, false,  true, false,  true,  true);
+				when OpcodeDec1    => return ( true, op,   OpDec1, false, false, false,  true,  true, false, false);
+				when OpcodeDec2    => return ( true, op,   OpDec2, false, false, false,  true,  true, false, false);
+				when OpcodeExch    => return ( true, op,   OpExch, false, false, false,  true, false, false, false);
+				when OpcodeExchnf  => return (false, op,   OpExch,  true, false, false,  true, false, false, false);
+				when OpcodeInc1    => return ( true, op,   OpInc1, false, false, false,  true,  true, false, false);
+				when OpcodeInc2    => return ( true, op,   OpInc2, false, false, false,  true,  true, false, false);
+				when OpcodeIll     => return ( true, op,     OpMv, false, false, false, false, false, false, false);
+				when OpcodeLd      => return ( true, op,     OpMv, false,  true,  true, false, false, false, false);
+				when OpcodeLdb     => return ( true, op,     OpMv, false,  true, false, false, false, false, false);
+				when OpcodeLdis    => return ( true, op,   OpInc2, false,  true,  true,  true, false, false, false);
+				when OpcodeLdisx   => return (false, op,   OpInc2, false,  true,  true,  true, false, false, false);
+				when OpcodeLdnf    => return ( true, op,     OpMv,  true,  true,  true, false, false, false, false);
+				when OpcodeLdnfis  => return ( true, op,   OpInc2,  true,  true,  true,  true, false, false, false);
+				when OpcodeLdxnfis => return (false, op,   OpInc2,  true,  true,  true,  true, false, false, false);
+				when OpcodeMulss   => return ( true, op,  OpMulss, false, false, false,  true,  true, false, false);
+				when OpcodeMulsu   => return ( true, op,  OpMulsu, false, false, false,  true,  true, false, false);
+				when OpcodeMulus   => return ( true, op,  OpMulus, false, false, false,  true,  true, false, false);
+				when OpcodeMuluu   => return ( true, op,  OpMuluu, false, false, false,  true,  true, false, false);
+				when OpcodeMv      => return ( true, op,   OpExch, false, false, false,  true, false, false, false);
+				when OpcodeMvnf    => return ( true, op,   OpExch,  true, false, false,  true, false, false, false);
+				when OpcodeNeg     => return (false, op,    OpNot, false, false, false,  true,  true, false, false);
+				when OpcodeNot     => return ( true, op,    OpNot, false, false, false,  true,  true, false, false);
+				when OpcodeOr      => return ( true, op,     OpOr, false, false, false,  true,  true, false, false);
+				when OpcodeReti    => return ( true, op, OpRetiIe, false, false, false,  true, false, false, false);
+				when OpcodeRev     => return ( true, op,    OpRev, false, false, false,  true,  true, false, false);
+				when OpcodeShl     => return ( true, op,    OpShl, false, false, false,  true,  true, false, false);
+				when OpcodeShr     => return ( true, op,    OpShr, false, false, false,  true,  true, false, false);
+				when OpcodeShra    => return ( true, op,   OpShra, false, false, false,  true,  true, false, false);
+				when OpcodeSto     => return ( true, op,     OpMv, false, false, false, false, false,  true,  true);
+				when OpcodeStob    => return ( true, op,     OpMv, false, false, false, false, false,  true, false);
+				when OpcodeSub     => return ( true, op,    OpSub, false, false, false,  true,  true, false, false);
+				when OpcodeXor     => return ( true, op,    OpXor, false, false, false,  true,  true, false, false);
+				when others        => return (false, op,     OpMv, false, false, false, false, false, false, false);
 			end case;
 		end function;
 
@@ -326,9 +332,9 @@ begin
 						end if;
 						if not decoded.is_implemented then
 							illegal_instruction(OpConstExcIInstr);
-						elsif opcode = OpcodeIll then
+						elsif decoded.cond_op = OpcodeIll then
 							illegal_instruction(OpConstExcIZero);
-						elsif not cond and opcode = OpcodeLdnfis then
+						elsif not cond and decoded.cond_op = OpcodeLdnfis then
 							inc_src_reg;
 							state <= Execute;
 						elsif cond and decoded.is_load1 then
@@ -349,7 +355,7 @@ begin
 							end if;
 							AluOp <= decoded.alu_op;
 							state <= Execute;
-							case opcode is
+							case decoded.cond_op is
 								when OpcodeCsrr =>
 									RegWrB <= '0';
 									CsrRd <= '1';
@@ -403,7 +409,7 @@ begin
 						else
 							DataBusRoute <= ToRegAL;
 						end if;
-						case opcode is
+						case decoded.cond_op is
 							when OpcodeLdis =>
 								state <= IncSrcReg;
 							when others =>
