@@ -620,7 +620,11 @@ target computer. It does not need a connected target computer.
 |:----:|:----------:|:--------|
 | `csr0` | read all bits, write bits 0–7 | Exception and interrupt information |
 | `csr1` | read, write | Address of the interrupt and exception handler |
-| `csr2`...`csr15` | none | Reserved |
+| `csr2` | read, write | Temporary storage the interrupt and exception handler |
+| `csr3` | read, write | Temporary storage the interrupt and exception handler |
+| `csr4` | read, write | Temporary storage the interrupt and exception handler |
+| `csr5` | read, write | Temporary storage the interrupt and exception handler |
+| `csr6`...`csr15` | none | Reserved |
 
 Reading and writing may be allowed for individual CSR bits.
 
@@ -671,7 +675,26 @@ must be available somewhere. It cannot be stored in a normal register, because
 all registers must be restored prior to the return. So, `csr1` is used to store
 the handler address.
 
-### csr2...csr15
+### csr2...csr5
+
+__(not implemented)__
+
+These CSRs are intended as temporary storage for the interrupt handler. If used
+as such, any code executed with interrupts enabled outside the handler must not
+expect that any of these registers keeps its value between instructions.
+
+_Rationale_: The interrupt handler must store values of registers and restore
+them before return. Until `ddsto` is implemented, we need an alternative way to
+store registers changing any register value. Emulating `ddsto` by multiple
+instructions modifies flags when decrementing. Using a "stodd" (first store,
+then decrement), instead of `ddsto` as a "push" operation, would require
+a native or software-emulated instruction `isld` instead of already existing
+`ldis` as a "pop" operation. Storing registers at some dedicated memory area
+needs to load the memory address, overriding the value of one register.
+Reserving CSRs as temporary registers allows to save unchanged flags and/or an
+address register.
+
+### csr6...csr15
 
 These CSRs are reserved for future use. They cannot be written and reading them
 always returns 0.
