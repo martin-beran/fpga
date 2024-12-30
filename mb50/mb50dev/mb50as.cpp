@@ -518,10 +518,10 @@ std::vector<input::files_t::iterator> input::read(files_t::iterator it)
     if (it->second.processed)
         return result;
     if (verbose)
-        std::cerr << "Reading file \"" << it->first << '"' << std::endl;
+        std::cerr << "Reading file \"" << it->first.string() << '"' << std::endl;
     it->second.processed = true;
     if (std::ifstream ifs{it->first}; !ifs) {
-        std::cerr << "Cannot read file \"" << it->first << '"' << std::endl;
+        std::cerr << "Cannot read file \"" << it->first.string() << '"' << std::endl;
         throw silent_error{};
     } else {
         file_t& f = it->second;
@@ -616,24 +616,24 @@ void output::write()
     sfs::path out_file = file;
     out_file.replace_extension(".bin");
     if (verbose)
-        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
-    ofs.open(file, std::ios_base::binary | std::ios_base::trunc);
+        std::cerr << "Writing file \"" << out_file.string() << '"' << std::endl;
+    ofs.open(out_file, std::ios_base::binary | std::ios_base::trunc);
     if (!ofs)
-        throw fatal_error(std::format("Cannot write binary output file \"{}\"", file.string()));
-    ofs << std::format("\n", start_addr);
+        throw fatal_error(std::format("Cannot write binary output file \"{}\"", out_file.string()));
+    ofs << std::format("{:04x}\n", start_addr);
     if (out_size > 0)
         ofs.write(reinterpret_cast<const char*>(out_bin.data() + start_addr), out_size);
     ofs.close();
     if (!ofs)
-        throw fatal_error(std::format("Error writing binary output file \"{}\"", file.string()));
+        throw fatal_error(std::format("Error writing binary output file \"{}\"", out_file.string()));
 
     out_file = file;
     out_file.replace_extension(".mif");
     if (verbose)
-        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
-    ofs.open(file, std::ios_base::binary | std::ios_base::trunc);
+        std::cerr << "Writing file \"" << out_file.string() << '"' << std::endl;
+    ofs.open(out_file, std::ios_base::binary | std::ios_base::trunc);
     if (!ofs)
-        throw fatal_error(std::format("Cannot write MIF output file \"{}\"", file.string()));
+        throw fatal_error(std::format("Cannot write MIF output file \"{}\"", out_file.string()));
     ofs << R"(-- mb50as generated Memory Initialization File (.mif)
 
 WIDTH=8;
@@ -649,27 +649,27 @@ CONTENT BEGIN
     ofs << "END;\n";
     ofs.close();
     if (!ofs)
-        throw fatal_error(std::format("Error writing MIF output file \"{}\"", file.string()));
+        throw fatal_error(std::format("Error writing MIF output file \"{}\"", out_file.string()));
 
     out_file = file;
     out_file.replace_extension(".out");
     if (verbose)
-        std::cerr << "Writing file \"" << file.string() << '"' << std::endl;
-    ofs.open(file, std::ios_base::trunc);
+        std::cerr << "Writing file \"" << out_file.string() << '"' << std::endl;
+    ofs.open(out_file, std::ios_base::trunc);
     if (!ofs)
-        throw fatal_error(std::format("Cannot write text output file \"{}\"", file.string()));
+        throw fatal_error(std::format("Cannot write text output file \"{}\"", out_file.string()));
     for (auto&&l: out_text) {
         ofs << l.text;
         std::string delim = " "s;
         for (auto b: l.bytes) {
-            ofs << delim << std::format("{:#02x}", b);
+            ofs << delim << std::format("{:#04x}", b);
             delim = ", "s;
         }
         ofs << '\n';
     }
     ofs.close();
     if (!ofs)
-        throw fatal_error(std::format("Error writing text output file \"{}\"", file.string()));
+        throw fatal_error(std::format("Error writing text output file \"{}\"", out_file.string()));
 }
 
 /*** assembler ***************************************************************/
@@ -851,7 +851,7 @@ assembler::parse_expr(std::string_view s, input::files_t::const_iterator file, m
     std::pair <parse_expr_t, std::string_view> expr = parse_expr0_or(s, file, macro_args, macro_id);
     if (!expr.first)
         return expr.first;
-    if (expr.second.find_first_not_of(whitespace_chars))
+    if (expr.second.find_first_not_of(whitespace_chars) != std::string_view::npos)
         return std::unexpected("Unexpected characters after expression");
     return expr.first;
 }
@@ -1235,8 +1235,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
         } else if (parts.cmd.front() == '$') {
             std::cerr << src_pos(current->first, line_num) << "Unknown directive \"" << parts.cmd << '"' << std::endl;
             throw silent_error{};
-        }
-        if (auto id = parser::identifier(parts.cmd, true, {{cur_macro, last_macro}}); !id.first) {
+        } else if (auto id = parser::identifier(parts.cmd, true, {{cur_macro, last_macro}}); !id.first) {
             std::cerr << src_pos(current->first, line_num) << id.first.error() << std::endl;
             throw silent_error{};
         } else {
@@ -1247,31 +1246,35 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     *id.first << '"' << std::endl;
                 throw silent_error{};
             }
-            if (const macro_t* macro = std::get_if<macro_t>(symbol)) {
-                if (macro->order > macro_idx) {
-                    std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first <<
-                        "\" not defined before the current macro" << std::endl;
-                    throw silent_error{};
-                }
-                if (macro->params.size() != parts.args.size()) {
-                    std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first << "\" expects " <<
-                        macro->params.size() << " arguments, " << parts.args.size() << " passed" << std::endl;
-                    throw silent_error{};
-                }
-                macro_args_t args{};
-                for (size_t i = 0; i < parts.args.size(); ++i) {
-                    if (auto a = parse_expr(parts.args[i], current, macro_args, {{cur_macro, last_macro}}); !a) {
-                        std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of macro: " <<
-                            a.error() << std::endl;
+            if (symbol) {
+                if (const macro_t* macro = std::get_if<macro_t>(symbol)) {
+                    if (macro->order > macro_idx) {
+                        std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first <<
+                            "\" not defined before the current macro" << std::endl;
                         throw silent_error{};
-                    } else
-                        args.emplace(macro->params[i], std::move(*a));
+                    }
+                    if (macro->params.size() != parts.args.size()) {
+                        std::cerr << src_pos(current->first, line_num) << "Macro \"" << *id.first << "\" expects " <<
+                            macro->params.size() << " arguments, " << parts.args.size() << " passed" << std::endl;
+                        throw silent_error{};
+                    }
+                    macro_args_t args{};
+                    for (size_t i = 0; i < parts.args.size(); ++i) {
+                        if (auto a = parse_expr(parts.args[i], current, macro_args, {{cur_macro, last_macro}}); !a) {
+                            std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i <<
+                                " of macro: " << a.error() << std::endl;
+                            throw silent_error{};
+                        } else
+                            args.emplace(macro->params[i], std::move(*a));
+                    }
+                    run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
+                } else {
+                    std::cerr << src_pos(current->first, line_num) << "Symbol \"" << *id.first << "\" is not a macro" <<
+                        std::endl;
+                    throw silent_error{};
                 }
-                run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
-                continue;
-            }
-            // Generate instructions
-            if (!symbol && !id.first->name_space) {
+            } else if (!id.first->name_space) {
+                // Generate instructions
                 if (parts.args.size() != 2) {
                     std::cerr << src_pos(current->first, line_num) << "Instruction requires two arguments" << std::endl;
                     throw silent_error{};
@@ -1311,11 +1314,12 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 bytes[1] = uint8_t(dst_reg->first << 4U) | (src_reg->first);
                 out.add_bytes(cur_addr, bytes, *full_it);
                 cur_addr += 2;
+            } else {
+                    // Unknown name
+                std::cerr << src_pos(current->first, line_num) << "Name \"" << *id.first <<
+                    "\" is not a known instruction or macro" << std::endl;
+                throw silent_error{};
             }
-            // Unknown name
-            std::cerr << src_pos(current->first, line_num) << "Name \"" << *id.first <<
-                "\" is not a known instruction or macro" << std::endl;
-            throw silent_error{};
         }
     }
 }
@@ -1323,10 +1327,10 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
 void assembler::run_file(const input::files_t& files, input::files_t::const_iterator current)
 {
     if (verbose)
-        std::cerr << "Compiling file \"" << current->first << '"' << std::endl;
+        std::cerr << "Compiling file \"" << current->first.string() << '"' << std::endl;
     run_lines(files, current, current->second.full_text, current->second.text);
     if (verbose)
-        std::cerr << "Done file \"" << current->first << '"' << std::endl;
+        std::cerr << "Done file \"" << current->first.string() << '"' << std::endl;
 }
 
 assembler::line_t assembler::split(std::string_view line)
@@ -1345,8 +1349,10 @@ assembler::line_t assembler::split(std::string_view line)
     std::string_view::iterator cmd_b{};
     if (colon_it != line.end() && *colon_it == ':') {
         cmd_b = colon_it + 1;
-    } else
+    } else {
         cmd_b = label_b; // no label, start at the first non-whitespace
+        label_e = label_b;
+    }
     // Find command (instruction or directive)
     while (cmd_b != line.end() && parser::whitespace(*cmd_b))
         ++cmd_b;
@@ -1418,7 +1424,7 @@ cmdline_args::cmdline_args(int argc, char* argv[]):
             throw invalid_cmdline_args{};
         if (args[1] == "-v"sv)
             _verbose = true;
-        else if (args.size() != 2)
+        if (args.size() != (_verbose ? 3 : 2))
             throw invalid_cmdline_args{};
     } catch (const invalid_cmdline_args&) {
         std::cerr << usage() << '\n';
@@ -1448,6 +1454,8 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     } catch (const fatal_error& e) {
         std::cerr << e.what() << std::endl;
+    } catch (const silent_error&) {
+        ; // already reported
     } catch (const std::exception& e) {
         std::cerr << "Unhandled exception: " << e.what() << std::endl;
     } catch (...) {

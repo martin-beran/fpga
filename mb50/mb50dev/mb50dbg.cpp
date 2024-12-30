@@ -1336,6 +1336,8 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     } catch (const fatal_error& e) {
         std::cerr << e.what() << std::endl;
+    } catch (const silent_error&) {
+        ; // already reported
     } catch (const std::exception& e) {
         std::cerr << "Unhandled exception: " << e.what() << std::endl;
     } catch (...) {
