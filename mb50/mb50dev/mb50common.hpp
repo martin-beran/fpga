@@ -2,13 +2,14 @@
 
 #include <cstdint>
 #include <expected>
+#include <format>
 #include <optional>
 #include <ostream>
+#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <vector>
 
 using namespace std::string_literals; // NOLINT
@@ -72,9 +73,31 @@ std::ostream& operator<<(std::ostream& os, ident_t id)
     return os;
 }
 
-// Parses an identifier; macro defines replacement numbers for $ and $$ in names of labels and constants
-result_t<ident_t> identifier(std::string_view s, bool all,
-                             std::optional<std::pair<size_t, size_t>> macro = std::nullopt);
+} // namespace parser
+
+template<> struct std::formatter<parser::ident_t, char> {
+    template<class ParseCtx> constexpr ParseCtx::iterator parse(ParseCtx& ctx) {
+        if (ctx.begin() == ctx.end() || *ctx.begin() == '}')
+            return ctx.begin();
+        throw std::format_error("Invalid format args for parser::ident_t");
+    }
+    template<class FmtCtx> FmtCtx::iterator format(const parser::ident_t& val, FmtCtx& ctx) const {
+        auto out = ctx.out();
+        if (val.name_space) {
+            out = std::ranges::copy(*val.name_space, out).out;
+            *out++ = '.';
+        }
+        return std::ranges::copy(val.name, out).out;
+    }
+};
+
+namespace parser {
+
+// Values of replacement numbers for $ and $$ in names of labels and constants
+using id_macro_t = std::optional<std::pair<size_t, size_t>>;
+
+// Parses an identifier
+result_t<ident_t> identifier(std::string_view s, bool all, id_macro_t macro = std::nullopt);
 
 // 8 or 16 bit number
 struct number_t {
@@ -162,7 +185,7 @@ result_t<std::vector<uint8_t>> bytes(std::string_view s, bool all)
     }
 }
 
-result_t<ident_t> identifier(std::string_view s, bool all, std::optional<std::pair<size_t, size_t>> macro)
+result_t<ident_t> identifier(std::string_view s, bool all, id_macro_t macro)
 {
     ident_t result{};
     for (size_t i = 0; i <= s.size(); ++i) {

@@ -11,7 +11,6 @@
 #include <limits>
 #include <map>
 #include <ostream>
-#include <ranges>
 #include <stack>
 #include <tuple>
 #include <utility>
@@ -101,6 +100,9 @@ public:
 private:
     class expr_base;
     class expr_number;
+    class expr_const;
+    class expr_label;
+    class expr_bytes;
     class expr_reg;
     class expr_addr;
     class expr_binop;
@@ -127,11 +129,6 @@ private:
     struct label_t {
         std::optional<uint16_t> value;
     };
-    // directive $const
-    struct const_t {
-        std::optional<uint16_t> value;
-        std::shared_ptr<expr_base> expr;
-    };
     // expression that must be always evaluated
     struct var_t {
         std::shared_ptr<expr_base> expr;
@@ -144,7 +141,7 @@ private:
         input::text_span replace; // replacement text: without comments and trailing whitespace
         size_t order; // ordering of macro definitions
     };
-    using symbol_t = std::variant<label_t, const_t, var_t, macro_t>;
+    using symbol_t = std::variant<label_t, var_t, macro_t>;
     using symbol_table_t = std::map<std::string, symbol_t>;
     using global_symbol_table_t = std::map<std::string, symbol_t*>;
     using macro_args_t = std::map<std::string, std::shared_ptr<expr_base>>;
@@ -152,7 +149,8 @@ private:
     using parse_fun_t =
         std::pair<assembler::parse_expr_t, std::string_view> (assembler::*)(std::string_view,
                                                                             input::files_t::const_iterator,
-                                                                            macro_args_t*);
+                                                                            macro_args_t*,
+                                                                            parser::id_macro_t);
     struct instruction_t {
         uint8_t opcode = 0x00; // the first (lower) byte of the instruction
         bool dst_csr = false; // destination is CSR
@@ -175,26 +173,36 @@ private:
     void define_global(symbol_table_t::iterator sym_it);
     // bool = whether the symbol is defined; {nullptr, true} = unqualified name with multiple definitions
     std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id);
-    parse_expr_t parse_expr(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+    parse_expr_t parse_expr(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                            parser::id_macro_t macro_id);
     template<parse_fun_t F, std::derived_from<expr_base> ...E>
         std::pair<assembler::parse_expr_t, std::string_view>
-        parse_expr_binary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr_binary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                          parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr_term(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr_term(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                        parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr_unary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr_unary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                         parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr0_or(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr0_or(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                       parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr1_xor(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr1_xor(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                        parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr2_and(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr2_and(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                        parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr3_shift(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr3_shift(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                          parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr4_additive(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr4_additive(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                             parser::id_macro_t macro_id);
     std::pair<parse_expr_t, std::string_view>
-        parse_expr5_multiplicative(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args);
+        parse_expr5_multiplicative(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                                   parser::id_macro_t macro_id);
     input& in;
     output& out;
     bool verbose;
@@ -236,6 +244,39 @@ public:
 
 // expression returing a number
 class assembler::expr_number: public assembler::expr_base {
+};
+
+// expression returning a constant number
+class assembler::expr_const: public assembler::expr_number {
+public:
+    explicit expr_const(uint16_t value): value(value) {}
+    std::optional<uint16_t> eval() override {
+        return value;
+    }
+private:
+    uint16_t value;
+};
+
+// expression returning a label
+class assembler::expr_label: public assembler::expr_number {
+public:
+    explicit expr_label(const label_t& label): label(label) {}
+    std::optional<uint16_t> eval() override {
+        return label.value;
+    }
+private:
+    const label_t& label;
+};
+
+// expression returning a constant sequence of bytes
+class assembler::expr_bytes: public assembler::expr_base {
+public:
+    explicit expr_bytes(std::vector<uint8_t> bytes): bytes(std::move(bytes)) {}
+    std::optional<std::vector<uint8_t>> eval_bytes() override {
+        return bytes;
+    }
+private:
+    std::vector<uint8_t> bytes;
 };
 
 // register selector for an instruction
@@ -720,8 +761,7 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($const definition)");
     else
-        if (auto [sym_it, added] = it->second.emplace(std::move(name),
-                                                      const_t{.value = expr->eval(), .expr = std::move(expr)});
+        if (auto [sym_it, added] = it->second.emplace(std::move(name), var_t{.expr = std::move(expr)});
             added)
         {
             define_global(sym_it);
@@ -805,9 +845,10 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
 }
 
 assembler::parse_expr_t
-assembler::parse_expr(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                      parser::id_macro_t macro_id)
 {
-    std::pair <parse_expr_t, std::string_view> expr = parse_expr0_or(s, file, macro_args);
+    std::pair <parse_expr_t, std::string_view> expr = parse_expr0_or(s, file, macro_args, macro_id);
     if (!expr.first)
         return expr.first;
     if (expr.second.find_first_not_of(whitespace_chars))
@@ -816,46 +857,53 @@ assembler::parse_expr(std::string_view s, input::files_t::const_iterator file, m
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr0_or(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr0_or(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                          parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr1_xor, expr_or>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr1_xor, expr_or>(s, file, macro_args, macro_id);
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr1_xor(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr1_xor(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                           parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr2_and, expr_xor>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr2_and, expr_xor>(s, file, macro_args, macro_id);
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr2_and(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr2_and(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                           parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr3_shift, expr_and>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr3_shift, expr_and>(s, file, macro_args, macro_id);
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr3_shift(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr3_shift(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                             parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr4_additive, expr_shl, expr_shr>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr4_additive, expr_shl, expr_shr>(s, file, macro_args, macro_id);
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr4_additive(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr4_additive(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                                parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr5_multiplicative, expr_add, expr_sub>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr5_multiplicative, expr_add, expr_sub>(s, file, macro_args, macro_id);
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr5_multiplicative(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr5_multiplicative(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                                      parser::id_macro_t macro_id)
 {
-    return parse_expr_binary<&assembler::parse_expr_unary, expr_mul, expr_div, expr_rem>(s, file, macro_args);
+    return parse_expr_binary<&assembler::parse_expr_unary, expr_mul, expr_div, expr_rem>(s, file, macro_args, macro_id);
 }
 
 template<assembler::parse_fun_t F, std::derived_from<assembler::expr_base> ...E>
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                             parser::id_macro_t macro_id)
 {
-    auto result = (this->*F)(s, file, macro_args);
+    auto result = (this->*F)(s, file, macro_args, macro_id);
     if (!result.first)
         return result;
     auto it = result.second.begin();
@@ -869,9 +917,11 @@ assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator 
         if (!dynamic_cast<expr_number*>(result.first->get())) {
             result =
                 {std::unexpected(std::format("Unexpected '{}' after non-numeric expression", *it)), result.second};
-        } else if (auto right = (this->*F)({it  + T::op.size(),  result.second.end()}, file, macro_args); !right.first)
+        } else if (auto right = (this->*F)({it  + T::op.size(),  result.second.end()}, file, macro_args, macro_id);
+                   !right.first)
+        {
             result = std::move(right);
-        else if (!dynamic_cast<expr_number*>(right.first->get()))
+        } else if (!dynamic_cast<expr_number*>(right.first->get()))
             result = {std::unexpected(std::format("Unexpected non-numeric expression after '{}'", *it)), right.second};
         else
             result = {std::make_shared<T>(std::move(*result.first), std::move(*right.first)), right.second};
@@ -882,7 +932,8 @@ assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator 
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                           parser::id_macro_t macro_id)
 {
     auto it = s.begin();
     while (parser::whitespace(*it))
@@ -891,7 +942,7 @@ assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator fi
     if (s.empty())
         return {std::unexpected("Empty term in expression"), s};
     if (*it == '(') {
-        auto inner = parse_expr0_or(s.substr(1), file, macro_args);
+        auto inner = parse_expr0_or(s.substr(1), file, macro_args, macro_id);
         if (!inner.first)
             return inner;
         it = inner.second.begin();
@@ -901,12 +952,31 @@ assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator fi
             return {std::unexpected("Missing ')' after subexpression"), s};
         return {inner.first, {++it, inner.second.end()}};
     }
-    // TODO
-    return {std::unexpected("Not implemented"), s};
+    if (auto ident = parser::identifier(s, false, macro_id); ident.first) {
+        auto [symbol, defined] = find_symbol(file, *ident.first);
+        if (!symbol && defined)
+            return {std::unexpected(std::format("Multiple definitions of unqualified name \"{}\"", *ident.first)), s};
+        if (!symbol)
+            return {std::unexpected(std::format("Undefined symbol \"{}\"", *ident.first)), s};
+        if (auto label = std::get_if<label_t>(symbol))
+            return {{std::make_shared<expr_label>(*label)}, ident.second};
+        else if (auto var = std::get_if<var_t>(symbol))
+            return {{var->expr}, ident.second};
+        else if (std::get_if<macro_t>(symbol))
+            return {std::unexpected(std::format("Reference to macro \"{}\" in expression", *ident.first)), s};
+        else
+            throw fatal_error{"Unexpected type of symbol in expression"};
+    }
+    if (auto number = parser::number_unsigned(s, false); number.first)
+        return {{std::make_shared<expr_const>(number.first->val)}, number.second};
+    if (auto bytes = parser::bytes(s, false); bytes.first)
+        return {{std::make_shared<expr_bytes>(*bytes.first)}, bytes.second};
+    return {std::unexpected("Expected symbol, constant, or parenthesized subexpression in expression"), s};
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
-assembler::parse_expr_unary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args)
+assembler::parse_expr_unary(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
+                            parser::id_macro_t macro_id)
 {
     auto it = s.begin();
     while (parser::whitespace(*it))
@@ -915,7 +985,7 @@ assembler::parse_expr_unary(std::string_view s, input::files_t::const_iterator f
     if (s.empty())
         return {std::unexpected("Empty (sub)expression"), s};
     if (*it == '~' || *it == '-') {
-        auto inner = parse_expr_term(s.substr(1), file, macro_args);
+        auto inner = parse_expr_term(s.substr(1), file, macro_args, macro_id);
         if (!inner.first)
             return inner;
         if (!dynamic_cast<expr_number*>(inner.first->get()))
@@ -929,7 +999,7 @@ assembler::parse_expr_unary(std::string_view s, input::files_t::const_iterator f
             std::unreachable();
         }
     } else
-        return parse_expr_term(s, file, macro_args);
+        return parse_expr_term(s, file, macro_args, macro_id);
 }
 
 std::string assembler::remove_comment(std::string_view line)
@@ -1024,7 +1094,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 std::cerr << src_pos(current->first, line_num) << "$addr requires one argument" << std::endl;
                 throw silent_error{};
             }
-            if (auto e = parse_expr(parts.args[0], current, macro_args); !e) {
+            if (auto e = parse_expr(parts.args[0], current, macro_args, {{cur_macro, last_macro}}); !e) {
                 std::cerr << src_pos(current->first, line_num) << "Invalid argument: " << e.error() << std::endl;
                 throw silent_error{};
             } else {
@@ -1048,7 +1118,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     "Expected identifier without namespace as the first argument of $const" << std::endl;
                 throw silent_error{};
             }
-            auto e = parse_expr(parts.args[1], current, macro_args);
+            auto e = parse_expr(parts.args[1], current, macro_args, {{cur_macro, last_macro}});
             if (!e) {
                 std::cerr << src_pos(current->first, line_num) << "Invalid expression in $const: " << e.error() <<
                     std::endl;
@@ -1064,7 +1134,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             auto start_addr = cur_addr;
             for (size_t i = 0; auto&& a: parts.args) {
                 ++i;
-                if (auto b = parse_expr(a, current, macro_args); !b) {
+                if (auto b = parse_expr(a, current, macro_args, {{cur_macro, last_macro}}); !b) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_b: " <<
                         b.error() << std::endl;
                     throw silent_error{};
@@ -1084,7 +1154,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             auto start_addr = cur_addr;
             for (size_t i = 0; auto&& a: parts.args) {
                 ++i;
-                if (auto w = parse_expr(a, current, macro_args); !w) {
+                if (auto w = parse_expr(a, current, macro_args, {{cur_macro, last_macro}}); !w) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of $data_w: " <<
                         w.error() << std::endl;
                     throw silent_error{};
@@ -1190,7 +1260,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 }
                 macro_args_t args{};
                 for (size_t i = 0; i < parts.args.size(); ++i) {
-                    if (auto a = parse_expr(parts.args[i], current, macro_args); !a) {
+                    if (auto a = parse_expr(parts.args[i], current, macro_args, {{cur_macro, last_macro}}); !a) {
                         std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i << " of macro: " <<
                             a.error() << std::endl;
                         throw silent_error{};
@@ -1212,7 +1282,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         '"' << std::endl;
                     throw silent_error{};
                 }
-                auto dst = parse_expr(parts.args[0], current, macro_args);
+                auto dst = parse_expr(parts.args[0], current, macro_args, {{cur_macro, last_macro}});
                 if (!dst) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid destination register of instruction: " <<
                         dst.error() << std::endl;
@@ -1224,7 +1294,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         std::endl;
                     throw silent_error{};
                 }
-                auto src = parse_expr(parts.args[1], current, macro_args);
+                auto src = parse_expr(parts.args[1], current, macro_args, {{cur_macro, last_macro}});
                 if (!src) {
                     std::cerr << src_pos(current->first, line_num) << "Invalid source register of instruction: " <<
                         src.error() << std::endl;
