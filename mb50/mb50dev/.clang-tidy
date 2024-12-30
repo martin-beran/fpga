@@ -2,6 +2,7 @@
 Checks: -*,
         boost-*,
         bugprone-*,
+        -bugprone-assignment-in-if-condition,
         -bugprone-branch-clone,
         -bugprone-easily-swappable-parameters,
         cert-*,

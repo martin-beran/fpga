@@ -126,8 +126,22 @@ private:
         bool word; // false = byte, true = word
     };
     // label definition
-    struct label_t {
-        std::optional<uint16_t> value;
+    class label_t {
+    public:
+        explicit label_t(std::optional<uint16_t> v = std::nullopt): _value(v) {}
+        std::optional<uint16_t> value() const {
+            return _value;
+        }
+        bool set(uint16_t v) const {
+            if (_value)
+                return false;
+            else {
+                _value = v;
+                return true;
+            }
+        }
+    private:
+        mutable std::optional<uint16_t> _value;
     };
     // expression that must be always evaluated
     struct var_t {
@@ -166,13 +180,14 @@ private:
     bool define_const(input::files_t::const_iterator file, std::string name,
                       std::shared_ptr<assembler::expr_base> expr);
     // false if symbol name already defined, true otherwise
-    bool define_label(input::files_t::const_iterator file, std::string name, uint16_t addr);
+    bool define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr);
     // false if symbol name already defined, true otherwise
     bool define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
                       input::text_span replace, std::vector<std::string> params);
     void define_global(symbol_table_t::iterator sym_it);
     // bool = whether the symbol is defined; {nullptr, true} = unqualified name with multiple definitions
-    std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id);
+    std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id,
+                                                 bool def_as_label = false);
     parse_expr_t parse_expr(std::string_view s, input::files_t::const_iterator file, macro_args_t* macro_args,
                             parser::id_macro_t macro_id);
     template<parse_fun_t F, std::derived_from<expr_base> ...E>
@@ -240,6 +255,9 @@ public:
     virtual std::optional<std::pair<uint8_t, bool>> eval_reg() {
         return std::nullopt;
     }
+    [[nodiscard]] virtual std::string eval_reg_str() const {
+        return "?";
+    }
 };
 
 // expression returing a number
@@ -262,7 +280,7 @@ class assembler::expr_label: public assembler::expr_number {
 public:
     explicit expr_label(const label_t& label): label(label) {}
     std::optional<uint16_t> eval() override {
-        return label.value;
+        return label.value();
     }
 private:
     const label_t& label;
@@ -285,6 +303,9 @@ public:
     expr_reg(uint8_t idx, bool csr): idx(idx), csr(csr) {}
     std::optional<std::pair<uint8_t, bool>> eval_reg() override {
         return {{decltype(idx){idx}, decltype(csr){csr}}};
+    }
+    [[nodiscard]] std::string eval_reg_str() const override {
+        return std::format("{}r{}", csr ? "csr" : "", uint8_t(idx));
     }
 private:
     uint8_t idx: 4;
@@ -778,18 +799,24 @@ void assembler::define_global(symbol_table_t::iterator sym_it)
         global_symbols.emplace(sym_it->first, &sym_it->second);
 }
 
-bool assembler::define_label(input::files_t::const_iterator file, std::string name, uint16_t addr)
+bool assembler::define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr)
 {
     if (predef_symbols.contains(name))
         return false;
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols (label definition)");
     else
-        if (auto [sym_it, added] = it->second.emplace(std::move(name), label_t{.value = addr}); added) {
+        if (auto [sym_it, added] = it->second.emplace(std::move(name), label_t{addr}); added) {
+            // not defined, define with unknown or known value
             define_global(sym_it);
             return true;
         } else
-            return false;
+            if (auto label = std::get_if<label_t>(&sym_it->second); label && addr && !label->value()) {
+                // already defined with unknown value, set value
+                label->set(*addr);
+                return true;
+            } else
+                return false;
 }
 
 bool assembler::define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
@@ -817,7 +844,7 @@ bool assembler::define_macro(input::files_t::const_iterator file, std::string na
 }
 
 std::pair<const assembler::symbol_t*, bool>
-assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_t& id)
+assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_t& id, bool def_as_label)
 {
     if (!id.name_space) {
         // id: unqualified name (global)
@@ -826,7 +853,12 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
         if (auto it = global_symbols.find(id.name); it != global_symbols.end())
             return {it->second, true};
         else
-            return {nullptr, false};
+            if (def_as_label && define_label(file, id.name, std::nullopt) &&
+                (it = global_symbols.find(id.name)) != global_symbols.end())
+            {
+                return {it->second, true};
+            } else
+                return {nullptr, false};
     } else if (!id.name_space->empty()) {
         // namespace.id: qualified name
         if (auto ns_it = file->second.name_spaces.find(*id.name_space); ns_it == file->second.name_spaces.end())
@@ -841,7 +873,12 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
         if (auto it = sym_it->second.find(id.name); it != sym_it->second.end())
             return {&it->second, true};
         else
-            return {nullptr, false};
+            if (def_as_label && define_label(file, id.name, std::nullopt) &&
+                (it = sym_it->second.find(id.name)) != sym_it->second.end())
+            {
+                return {&it->second, true};
+            } else
+                return {nullptr, false};
 }
 
 assembler::parse_expr_t
@@ -912,7 +949,7 @@ assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator 
     if (it == result.second.end())
         return result;
     auto branch = [&]<class T>(T*) -> bool {
-        if (std::string_view(it, result.second.end()).starts_with(T::op))
+        if (!std::string_view(it, result.second.end()).starts_with(T::op))
             return false;
         if (!dynamic_cast<expr_number*>(result.first->get())) {
             result =
@@ -953,7 +990,7 @@ assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator fi
         return {inner.first, {++it, inner.second.end()}};
     }
     if (auto ident = parser::identifier(s, false, macro_id); ident.first) {
-        auto [symbol, defined] = find_symbol(file, *ident.first);
+        auto [symbol, defined] = find_symbol(file, *ident.first, true);
         if (!symbol && defined)
             return {std::unexpected(std::format("Multiple definitions of unqualified name \"{}\"", *ident.first)), s};
         if (!symbol)
@@ -1041,6 +1078,7 @@ void assembler::run()
     if (verbose)
         std::cerr << "Begin compilation" << std::endl;
     auto [files, top] = in.files();
+    symbols.emplace(std::piecewise_construct, std::forward_as_tuple(top), std::forward_as_tuple());
     run_file(files, top);
     if (verbose)
         std::cerr << "End compilation" << std::endl;
@@ -1312,7 +1350,8 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 std::array<uint8_t, 2> bytes{};
                 bytes[0] = instr->second.opcode;
                 bytes[1] = uint8_t(dst_reg->first << 4U) | (src_reg->first);
-                out.add_bytes(cur_addr, bytes, *full_it);
+                out.add_bytes(cur_addr, bytes,
+                              std::format("{} {}, {}", id.first->name, (*dst)->eval_reg_str(), (*src)->eval_reg_str()));
                 cur_addr += 2;
             } else {
                     // Unknown name
