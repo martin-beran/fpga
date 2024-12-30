@@ -44,6 +44,18 @@ engineering.
 
 -------------------------------------------------------------------------------
 
+## Directory structure
+
+- `mb50/` – VHDL sources of MB50 computer hardware, Quartus Prime project
+- `mb50dev/` – C++ sources of MB50 development tools for Linux (debugger and
+  assembler)
+- `mb50sw/` – MB50 assembly language sources of various software for MB50
+    - `app/` – applications
+    - `sys/` – system software
+    - `test/` – programs for debugging/testing MB50 and the development tools
+
+-------------------------------------------------------------------------------
+
 ## Design
 
 ### MB50 system architecture overview
