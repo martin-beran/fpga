@@ -691,7 +691,7 @@ assembler::assembler(input& in, output& out, bool verbose):
         {"cmpu", {.opcode = 0x19}},
         {"csrr", {.opcode = 0x03, .src_csr = true}},
         {"csrw", {.opcode = 0x04, .dst_csr = true}},
-        //{"ddsto", {.opcode = 0x17}},
+        {"ddsto", {.opcode = 0x17}},
         {"dec1", {.opcode = 0x05}},
         {"dec2", {.opcode = 0x06}},
         {"exch", {.opcode = 0x07}},

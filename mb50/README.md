@@ -682,12 +682,9 @@ as such, any code executed with interrupts enabled outside the handler must not
 expect that any of these registers keeps its value between instructions.
 
 _Rationale_: The interrupt handler must store values of registers and restore
-them before return. Until `ddsto` is implemented, we need an alternative way to
-store registers changing any register value. Emulating `ddsto` by multiple
-instructions modifies flags when decrementing. Using a "stodd" (first store,
-then decrement), instead of `ddsto` as a "push" operation, would require
-a native or software-emulated instruction `isld` instead of already existing
-`ldis` as a "pop" operation. Storing registers at some dedicated memory area
+them before return. These CSRs provide an alternative to instruction `ddsto`
+for storing registers without changing any register value. Storing registers at
+some dedicated memory area (instead on the stack handled by `ldis` and `ddsto`)
 needs to load the memory address, overriding the value of one register.
 Reserving CSRs as temporary registers allows to save unchanged flags and/or an
 address register.
@@ -856,16 +853,11 @@ the CSR that are not writable are unchanged. It does not modify flags.
 
     ddsto dstr, srcr
 
-Opcode: 0x17 __(not implemented)__
+Opcode: 0x17
 
 Decrements the value in register `dstr` by 2 and then writes the value in
 register `srcr` (one word, two bytes) to memory at the address in register
 `dstr`. It does not modify flags.
-
-It can be replaced by the sequence of instructions
-
-    dec2 dstr, dstr
-    sto dstr, srcr
 
 #### DEC1 (Decrement by 1)
 

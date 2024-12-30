@@ -142,6 +142,7 @@ begin
 			Loaded1, -- 1st byte loaded
 			IncSrcReg, -- Increment source register by 2 after a load
 			Store2, -- Store the second byte of a register to memory
+			DdstoStore, -- Store after decrement in instruction DDSTO
 			RetiPc, -- Set register PC in instruction RETI
 			RetiIa -- Set register IA in instruction RETI
 		);
@@ -162,7 +163,7 @@ begin
 				when OpcodeCmpu    => return ( true,   OpCmpu, false, false, false,  true,  true, false, false);
 				when OpcodeCsrr    => return ( true,   OpExch, false, false, false,  true, false, false, false);
 				when OpcodeCsrw    => return ( true,   OpExch, false, false, false,  true, false, false, false);
-				when OpcodeDdsto   => return (false,     OpMv, false, false, false,  true, false,  true,  true);
+				when OpcodeDdsto   => return ( true,   OpDec2, false, false, false,  true, false,  true,  true);
 				when OpcodeDec1    => return ( true,   OpDec1, false, false, false,  true,  true, false, false);
 				when OpcodeDec2    => return ( true,   OpDec2, false, false, false,  true,  true, false, false);
 				when OpcodeExch    => return ( true,   OpExch, false, false, false,  true, false, false, false);
@@ -341,30 +342,30 @@ begin
 							RegIdxB <= src_reg;
 							RegWrA <= '1';
 							RegWrB <= '1';
-							RegWrFlags <= (others=>'1');
+							if decoded.is_flags then
+								RegWrFlags <= (others=>'1');
+							else
+								RegWrFlags <= (others=>'0');
+							end if;
 							AluOp <= decoded.alu_op;
 							state <= Execute;
 							case opcode is
 								when OpcodeCsrr =>
 									RegWrB <= '0';
 									CsrRd <= '1';
-									RegWrFlags <= (others=>'0');
 								when OpcodeCsrw =>
 									RegWrA <= '0';
 									RegWrB <= '0';
 									CsrWr <= '1';
-									RegWrFlags <= (others=>'0');
-								when OpcodeExch =>
-									RegWrFlags <= (others=>'0');
-								when OpcodeLdis =>
-									RegWrFlags <= (others=>'0');
+								when OpcodeDdsto =>
+									RegIdxA <= dst_reg;
+									RegWrB <= '0';
+									state <= DdstoStore;
 								when OpcodeMv | OpcodeMvnf =>
 									RegWrB <= '0';
-									RegWrFlags <= (others=>'0');
 								when OpcodeReti =>
 									RegIdxA <= to_reg_idx(reg_idx_f);
 									RegIdxB <= to_reg_idx(reg_idx_f);
-									RegWrFlags <= (others=>'0');
 									state <= RetiPc;
 								when others =>
 									null;
@@ -414,6 +415,9 @@ begin
 					when Store2 =>
 						store('1', FromRegBH);
 						state <= Execute;
+					when DdstoStore =>
+						store('0', FromRegBL);
+						state <= Store2;
 					when RetiPc =>
 						RegIdxA <= to_reg_idx(reg_idx_pc);
 						RegIdxB <= to_reg_idx(reg_idx_ia);
