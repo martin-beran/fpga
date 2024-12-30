@@ -356,6 +356,8 @@ begin
 									RegWrFlags <= (others=>'0');
 								when OpcodeExch =>
 									RegWrFlags <= (others=>'0');
+								when OpcodeLdis =>
+									RegWrFlags <= (others=>'0');
 								when OpcodeMv | OpcodeMvnf =>
 									RegWrB <= '0';
 									RegWrFlags <= (others=>'0');
