@@ -1851,7 +1851,7 @@ Build with Clang 19 and libc++:
     - [x] Design the development environment
         - [x] Assembler
         - [x] Debugger
-- [ ] Implementation
+- [x] Implementation
     - [x] On FPGA
         - [x] CPU
         - [x] Memory
@@ -1859,13 +1859,13 @@ Build with Clang 19 and libc++:
         - [x] VGA display
         - [x] PS/2 keyboard
         - [x] System clock
-    - [ ] Development environment for a host computer
+    - [x] Development environment for a host computer
         - [x] Debugger
             - [x] Serial communication with the target computer
             - [x] CLI
-        - [ ] Assembler
-            - [ ] Generic processing
-            - [ ] Instruction set
+        - [x] Assembler
+            - [x] Generic processing
+            - [x] Instruction set
 
 -------------------------------------------------------------------------------
 
