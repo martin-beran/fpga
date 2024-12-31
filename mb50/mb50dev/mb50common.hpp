@@ -60,7 +60,7 @@ result_t<bool> whitespace(std::string_view s, bool all = true);
 
 // An identifier with an optional namespace
 struct ident_t {
-    std::optional<std::string> name_space; // nullopt for unqualified, empty for local
+    std::optional<std::string> name_space; // nullopt for local, empty for unqualified (global)
     std::string name; // nonempty
 };
 

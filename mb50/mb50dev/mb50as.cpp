@@ -846,27 +846,31 @@ bool assembler::define_macro(input::files_t::const_iterator file, std::string na
 std::pair<const assembler::symbol_t*, bool>
 assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_t& id, bool def_as_label)
 {
-    if (!id.name_space) {
-        // id: unqualified name (global)
+    if (id.name_space) {
+        if (id.name_space->empty()) {
+            // .id: unqualified name (global)
+            if (auto it = global_symbols.find(id.name); it != global_symbols.end())
+                return {it->second, true};
+            else
+                if (def_as_label && define_label(file, id.name, std::nullopt) &&
+                    (it = global_symbols.find(id.name)) != global_symbols.end())
+                {
+                    return {it->second, true};
+                } else
+                    return {nullptr, false};
+        } else {
+            // namespace.id: qualified name
+            if (auto ns_it = file->second.name_spaces.find(*id.name_space); ns_it == file->second.name_spaces.end())
+                return {nullptr, false};
+            else
+                file = ns_it->second;
+        }
+    } else {
+        // id: predefined name
         if (auto it = predef_symbols.find(id.name); it != predef_symbols.end())
             return {&it->second, true};
-        if (auto it = global_symbols.find(id.name); it != global_symbols.end())
-            return {it->second, true};
-        else
-            if (def_as_label && define_label(file, id.name, std::nullopt) &&
-                (it = global_symbols.find(id.name)) != global_symbols.end())
-            {
-                return {it->second, true};
-            } else
-                return {nullptr, false};
-    } else if (!id.name_space->empty()) {
-        // namespace.id: qualified name
-        if (auto ns_it = file->second.name_spaces.find(*id.name_space); ns_it == file->second.name_spaces.end())
-            return {nullptr, false};
-        else
-            file = ns_it->second;
     }
-    // .id: local name; or passthrough from namespace.id
+    // id: local name; namespace.id: qualified name
     if (auto sym_it = symbols.find(file); sym_it == symbols.end())
         throw fatal_error{std::format("File \"{}\" does not have a symbol table", file->first.string())};
     else

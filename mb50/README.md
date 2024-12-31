@@ -1395,13 +1395,19 @@ register names are implicitly defined in each source file. It is an error to
 define a single name (implicitly or explicitly) multiple times in the same
 file. A name can be:
 
-- _unqualified_ – a single identifier; it refers to the global definition of
-  the name; it is an error if there are multiple definition of the name in the
-  whole program
+- _unqualified_ – an identifier prefixed by a period (`.id`); it refers to the
+  global definition of the name; it is an error if there are multiple
+  definition of the name in the whole program
 - _qualified_ – two identifiers separated by a period (`namespace.id`); it
   refers to the definition of `id` in a specific `namespace`
-- _local_ – an identifier prefixed by a period (`.id`); it refers to the
-  definition of `id` in the current source file
+- _local_ – a single identifier; it refers to the definition of `id` in the
+  current source file
+
+_Rationale:_ In the previous version, meaning of local and unqualified (global)
+identifiers was switched – global names were without the leading period. It is
+expected that the majority of references will be in the same file as
+a definition, therefore it is more convenient to write local references as
+plain names.
 
 Syntax of the assembler source is line-based. Empty lines and lines containing
 only whitespace and comments are ignored. Otherwise, a line can contain:
