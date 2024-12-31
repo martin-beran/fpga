@@ -837,7 +837,7 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
             return true;
         } else
             if (auto label = std::get_if<label_t>(sym_it->second.get()); label && addr &&
-                (!label->value() || label->value() == addr))
+                (!label->value() || *label->value() == *addr)) // NOLINT(bugprone-unchecked-optional-access)
             {
                 // already defined with unknown value, set value
                 label->set(*addr);
@@ -1117,7 +1117,7 @@ void assembler::run()
     bool undef = false;
     for (auto&& t: symbols)
         for (auto&& s: t.second)
-            if (auto l = std::get_if<label_t>(s.second.get()); !l->value()) {
+            if (auto l = std::get_if<label_t>(s.second.get()); l && !l->value()) {
                 if (!undef) {
                     std::cerr << "Undefined labels:" << std::endl;
                     undef = true;
