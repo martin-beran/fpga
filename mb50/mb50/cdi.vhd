@@ -294,6 +294,8 @@ begin
 						CpuRegRd <= '1';
 						send_byte(std_logic_vector(CpuRegDataRd(7 downto 0)), SendStatus3);
 					when SendStatus3 =>
+						CpuRegIdx <= to_reg_idx(reg_idx_pc);
+						CpuRegRd <= '1';
 						send_byte(std_logic_vector(CpuRegDataRd(15 downto 8)));
 					when DoStep =>
 						CpuRun <= '1';

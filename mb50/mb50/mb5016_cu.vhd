@@ -389,10 +389,10 @@ begin
 					when Execute =>
 						state <= Init;
 					when Load2 =>
+						RegIdxA <= dst_reg;
+						RegWrA <= '1';
+						DataBusRoute <= ToRegAL;
 						if decoded.is_load2 then
-							RegIdxA <= dst_reg;
-							RegWrA <= '1';
-							DataBusRoute <= ToRegAL;
 							RegIdxB <= src_reg;
 							AddrBusRoute <= AddrRegB;
 							AddrBusAdd <= '1';
@@ -404,11 +404,7 @@ begin
 					when Loaded1 =>
 						RegIdxA <= dst_reg;
 						RegWrA <= '1';
-						if decoded.is_load2 then
-							DataBusRoute <= ToRegAH;
-						else
-							DataBusRoute <= ToRegAL;
-						end if;
+						DataBusRoute <= ToRegAH;
 						case decoded.cond_op is
 							when OpcodeLdis =>
 								state <= IncSrcReg;

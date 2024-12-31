@@ -1092,6 +1092,7 @@ std::string assembler::remove_comment(std::string_view line)
                 in_str = true;
             break;
         case '\\':
+            result.push_back(*it);
             if (it + 1 != line.end())
                 ++it;
             break;

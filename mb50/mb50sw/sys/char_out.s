@@ -2,7 +2,17 @@
 
 # Character definitions
 
-ascii_0x21:
+ascii_0x20:
+# 32 0x20 space
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00000000
+
 # 33 0x21 !
 $data_b 0b00000000
 $data_b 0b00010000
