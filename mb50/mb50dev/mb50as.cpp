@@ -156,8 +156,8 @@ private:
         size_t order; // ordering of macro definitions
     };
     using symbol_t = std::variant<label_t, var_t, macro_t>;
-    using symbol_table_t = std::map<std::string, symbol_t>;
-    using global_symbol_table_t = std::map<std::string, symbol_t*>;
+    using symbol_table_t = std::map<std::string, std::shared_ptr<symbol_t>>;
+    using global_symbol_table_t = std::map<std::string, std::shared_ptr<symbol_t>>;
     using macro_args_t = std::map<std::string, std::shared_ptr<expr_base>>;
     using parse_expr_t = std::expected<std::shared_ptr<expr_base>, std::string>;
     using parse_fun_t =
@@ -180,11 +180,11 @@ private:
     bool define_const(input::files_t::const_iterator file, std::string name,
                       std::shared_ptr<assembler::expr_base> expr);
     // false if symbol name already defined, true otherwise
-    bool define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr);
+    bool define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr, bool global);
     // false if symbol name already defined, true otherwise
     bool define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
                       input::text_span replace, std::vector<std::string> params);
-    void define_global(symbol_table_t::iterator sym_it);
+    void define_global(std::string name, std::shared_ptr<symbol_t> sym, bool multi);
     // bool = whether the symbol is defined; {nullptr, true} = unqualified name with multiple definitions
     std::pair<const symbol_t*, bool> find_symbol(input::files_t::const_iterator file, const parser::ident_t& id,
                                                  bool def_as_label = false);
@@ -698,12 +698,12 @@ CONTENT BEGIN
 assembler::assembler(input& in, output& out, bool verbose):
     in(in), out(out), verbose(verbose),
     predef_symbols{
-        {"sp", var_t{std::make_shared<expr_reg>(11, false)}},
-        {"ca", var_t{std::make_shared<expr_reg>(12, false)}},
-        {"ia", var_t{std::make_shared<expr_reg>(13, false)}},
-        {"f", var_t{std::make_shared<expr_reg>(14, false)}},
-        {"pc", var_t{std::make_shared<expr_reg>(15, false)}},
-        {"__addr", var_t{std::make_shared<expr_addr>(*this)}},
+        {"sp", std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(11, false)})},
+        {"ca", std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(12, false)})},
+        {"ia", std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(13, false)})},
+        {"f", std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(14, false)})},
+        {"pc", std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(15, false)})},
+        {"__addr", std::make_shared<symbol_t>(var_t{std::make_shared<expr_addr>(*this)})},
     },
     opcodes{
         {"add", {.opcode = 0x01}},
@@ -743,8 +743,10 @@ assembler::assembler(input& in, output& out, bool verbose):
     }
 {
     for (int i = 0; i <= 15; ++i) {
-        predef_symbols.emplace(std::format("r{}", i), var_t{std::make_shared<expr_reg>(uint8_t(i), false)});
-        predef_symbols.emplace(std::format("csr{}", i), var_t{std::make_shared<expr_reg>(uint8_t(i), true)});
+        predef_symbols.emplace(std::format("r{}", i),
+                               std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(uint8_t(i), false)}));
+        predef_symbols.emplace(std::format("csr{}", i),
+                               std::make_shared<symbol_t>(var_t{std::make_shared<expr_reg>(uint8_t(i), true)}));
     }
     for (const auto& [prefix, suffix, opcode]: {
         //{"exch", "", 0x80},
@@ -782,41 +784,67 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols ($const definition)");
     else
-        if (auto [sym_it, added] = it->second.emplace(std::move(name), var_t{.expr = std::move(expr)});
+        if (auto [sym_it, added] = it->second.emplace(std::move(name),
+                                                      std::make_shared<symbol_t>(var_t{.expr = std::move(expr)}));
             added)
         {
-            define_global(sym_it);
+            define_global(sym_it->first, sym_it->second, false);
             return true;
         } else
             return false;
 }
 
-void assembler::define_global(symbol_table_t::iterator sym_it)
+void assembler::define_global(std::string name, std::shared_ptr<symbol_t> symbol, bool multi)
 {
-    if (auto gl_it = global_symbols.find(sym_it->first); gl_it != global_symbols.end())
-        gl_it->second = nullptr; // multiple definitions
-    else
-        global_symbols.emplace(sym_it->first, &sym_it->second);
+    if (auto gl_it = global_symbols.find(name); gl_it != global_symbols.end()) {
+        if (!multi)
+            gl_it->second = nullptr; // multiple definitions
+    } else
+        global_symbols.emplace(std::move(name), std::move(symbol));
 }
 
-bool assembler::define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr)
+bool assembler::define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr,
+                             bool global)
 {
     if (predef_symbols.contains(name))
         return false;
+    if (addr && global)
+        throw fatal_error{"Cannot define global label with address"};
+    if (!addr && global) {
+        define_global(name, std::make_shared<symbol_t>(label_t{}), true);
+        return true;
+    }
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols (label definition)");
-    else
-        if (auto [sym_it, added] = it->second.emplace(std::move(name), label_t{addr}); added) {
+    else {
+        std::shared_ptr<symbol_t> symbol{};
+        if (auto gl_it = global_symbols.find(name); gl_it != global_symbols.end() && gl_it->second) {
+            if (auto label = std::get_if<label_t>(gl_it->second.get())) {
+                symbol = gl_it->second;
+                if (addr) {
+                    if (label->value())
+                        gl_it->second = nullptr;
+                    else
+                        label->set(*addr);
+                }
+            } else
+                gl_it->second = nullptr;
+        } else
+            symbol = std::make_shared<symbol_t>(label_t{addr});
+        if (auto [sym_it, added] = it->second.emplace(std::move(name), symbol); added) {
             // not defined, define with unknown or known value
-            define_global(sym_it);
+            define_global(sym_it->first, sym_it->second, !addr);
             return true;
         } else
-            if (auto label = std::get_if<label_t>(&sym_it->second); label && addr && !label->value()) {
+            if (auto label = std::get_if<label_t>(sym_it->second.get()); label && addr &&
+                (!label->value() || label->value() == addr))
+            {
                 // already defined with unknown value, set value
                 label->set(*addr);
                 return true;
             } else
                 return false;
+    }
 }
 
 bool assembler::define_macro(input::files_t::const_iterator file, std::string name, input::text_span full_replace,
@@ -828,16 +856,16 @@ bool assembler::define_macro(input::files_t::const_iterator file, std::string na
         throw fatal_error("Parsed file not in assembler::symbols ($macro definition)");
     else
         if (auto [sym_it, added] = it->second.emplace(std::move(name),
-                                                      macro_t{
+                                                      std::make_shared<symbol_t>(macro_t{
                                                           .params = std::move(params),
                                                           .file = file,
                                                           .full_replace = full_replace,
                                                           .replace = replace,
                                                           .order = macro_def_order++,
-                                                          });
+                                                      }));
             added)
         {
-            define_global(sym_it);
+            define_global(sym_it->first, sym_it->second, false);
             return true;
         } else
             return false;
@@ -850,12 +878,12 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
         if (id.name_space->empty()) {
             // .id: unqualified name (global)
             if (auto it = global_symbols.find(id.name); it != global_symbols.end())
-                return {it->second, true};
+                return {it->second.get(), true};
             else
-                if (def_as_label && define_label(file, id.name, std::nullopt) &&
+                if (def_as_label && define_label(file, id.name, std::nullopt, true) &&
                     (it = global_symbols.find(id.name)) != global_symbols.end())
                 {
-                    return {it->second, true};
+                    return {it->second.get(), true};
                 } else
                     return {nullptr, false};
         } else {
@@ -868,19 +896,19 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
     } else {
         // id: predefined name
         if (auto it = predef_symbols.find(id.name); it != predef_symbols.end())
-            return {&it->second, true};
+            return {it->second.get(), true};
     }
     // id: local name; namespace.id: qualified name
     if (auto sym_it = symbols.find(file); sym_it == symbols.end())
         throw fatal_error{std::format("File \"{}\" does not have a symbol table", file->first.string())};
     else
         if (auto it = sym_it->second.find(id.name); it != sym_it->second.end())
-            return {&it->second, true};
+            return {it->second.get(), true};
         else
-            if (def_as_label && define_label(file, id.name, std::nullopt) &&
+            if (def_as_label && define_label(file, id.name, std::nullopt, false) &&
                 (it = sym_it->second.find(id.name)) != sym_it->second.end())
             {
-                return {&it->second, true};
+                return {it->second.get(), true};
             } else
                 return {nullptr, false};
 }
@@ -1086,6 +1114,20 @@ void assembler::run()
     run_file(files, top);
     if (verbose)
         std::cerr << "End compilation" << std::endl;
+    bool undef = false;
+    for (auto&& t: symbols)
+        for (auto&& s: t.second)
+            if (auto l = std::get_if<label_t>(s.second.get()); !l->value()) {
+                if (!undef) {
+                    std::cerr << "Undefined labels:" << std::endl;
+                    undef = true;
+                }
+                std::cerr << t.first->first.string() << ": " << s.first << std::endl;
+            }
+    if (undef) {
+        std::cerr << "Cannot resolve labels in the second phase" << std::endl;
+        throw silent_error{};
+    }
     for (auto&& p: phase2)
         if (auto v = p.expr->eval()) {
             if (p.word)
@@ -1122,7 +1164,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     "Expected identifier without namespace as the label" << std::endl;
                 throw silent_error{};
             }
-            if (!define_label(current, std::string(id.first->name), cur_addr)) {
+            if (!define_label(current, std::string(id.first->name), cur_addr, false)) {
                 std::cerr << src_pos(current->first, line_num) << "Symbol \"" << id.first->name <<
                     "\" already defined" << std::endl;
                 throw silent_error{};
