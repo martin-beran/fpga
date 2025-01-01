@@ -1,6 +1,7 @@
-# Output of ASCII characters
+# The system font for displaying ASCII characters
 
-# Character definitions
+# This file contains 8x8 pixel bitmaps of printable ASCII characters (codes
+# 0x20 to 0x7e)
 
 ascii_0x20:
 # 32 0x20 space
@@ -25,8 +26,8 @@ $data_b 0b00000000
 
 # 34 0x22 "
 $data_b 0b00000000
-$data_b 0b00101000
-$data_b 0b00101000
+$data_b 0b00100100
+$data_b 0b00100100
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
@@ -35,22 +36,22 @@ $data_b 0b00000000
 
 # 35 0x23 #
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00101000
-$data_b 0b01111100
-$data_b 0b00101000
-$data_b 0b01111100
-$data_b 0b00101000
+$data_b 0b00100100
+$data_b 0b01111110
+$data_b 0b00100100
+$data_b 0b00100100
+$data_b 0b01111110
+$data_b 0b00100100
 $data_b 0b00000000
 
 # 36 0x24 $
 $data_b 0b00000000
 $data_b 0b00010000
-$data_b 0b00111000
+$data_b 0b01111100
 $data_b 0b01010000
-$data_b 0b00111000
+$data_b 0b01111100
 $data_b 0b00010100
-$data_b 0b00111000
+$data_b 0b01111100
 $data_b 0b00010000
 
 # 37 0x25 %
@@ -68,14 +69,14 @@ $data_b 0b00000000
 $data_b 0b00010000
 $data_b 0b00101000
 $data_b 0b00010000
-$data_b 0b00101100
+$data_b 0b00101010
 $data_b 0b01000100
 $data_b 0b00111010
 $data_b 0b00000000
 
 # 39 0x27 '
 $data_b 0b00000000
-$data_b 0b00010000
+$data_b 0b00001000
 $data_b 0b00010000
 $data_b 0b00000000
 $data_b 0b00000000
@@ -85,32 +86,32 @@ $data_b 0b00000000
 
 # 40 0x28 (
 $data_b 0b00000000
+$data_b 0b00001000
 $data_b 0b00010000
-$data_b 0b00100000
-$data_b 0b00100000
-$data_b 0b00100000
-$data_b 0b00100000
 $data_b 0b00010000
+$data_b 0b00010000
+$data_b 0b00010000
+$data_b 0b00001000
 $data_b 0b00000000
 
 # 41 0x29 )
 $data_b 0b00000000
-$data_b 0b00100000
 $data_b 0b00010000
+$data_b 0b00001000
+$data_b 0b00001000
+$data_b 0b00001000
+$data_b 0b00001000
 $data_b 0b00010000
-$data_b 0b00010000
-$data_b 0b00010000
-$data_b 0b00100000
 $data_b 0b00000000
 
 # 42 0x2a *
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00100100
-$data_b 0b00011000
-$data_b 0b01111110
-$data_b 0b00011000
-$data_b 0b00100100
+$data_b 0b00101000
+$data_b 0b00010000
+$data_b 0b01111100
+$data_b 0b00010000
+$data_b 0b00101000
 $data_b 0b00000000
 
 # 43 0x2b +
@@ -165,112 +166,112 @@ $data_b 0b00000000
 
 # 48 0x30 0
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b01010100
-$data_b 0b01010100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b00111100
+$data_b 0b01000110
+$data_b 0b01001010
+$data_b 0b01010010
+$data_b 0b01100010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 49 0x31 1
 $data_b 0b00000000
-$data_b 0b00010000
 $data_b 0b00110000
 $data_b 0b01010000
 $data_b 0b00010000
 $data_b 0b00010000
-$data_b 0b00111000
+$data_b 0b00010000
+$data_b 0b01111100
 $data_b 0b00000000
 
 # 50 0x32 2
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b00000100
-$data_b 0b00011000
-$data_b 0b00100000
-$data_b 0b01111100
+$data_b 0b00111100
+$data_b 0b01000010
+$data_b 0b00000010
+$data_b 0b00111100
+$data_b 0b01000000
+$data_b 0b01111110
 $data_b 0b00000000
 
 # 51 0x33 3
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b00011000
-$data_b 0b00000100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b00111100
+$data_b 0b01000010
+$data_b 0b00001100
+$data_b 0b00000010
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 52 0x34 4
 $data_b 0b00000000
-$data_b 0b00000100
-$data_b 0b00010100
-$data_b 0b00100100
+$data_b 0b00001000
+$data_b 0b00011000
+$data_b 0b00101000
+$data_b 0b01001000
 $data_b 0b01111110
-$data_b 0b00000100
-$data_b 0b00000100
+$data_b 0b00001000
 $data_b 0b00000000
 
 # 53 0x35 5
 $data_b 0b00000000
-$data_b 0b01111100
+$data_b 0b01111110
 $data_b 0b01000000
-$data_b 0b01111000
-$data_b 0b00000100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b01111100
+$data_b 0b00000010
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 54 0x36 6
 $data_b 0b00000000
 $data_b 0b00111100
 $data_b 0b01000000
-$data_b 0b01111000
-$data_b 0b01000100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b01111100
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 55 0x37 7
 $data_b 0b00000000
-$data_b 0b01111100
+$data_b 0b01111110
+$data_b 0b00000010
 $data_b 0b00000100
 $data_b 0b00001000
 $data_b 0b00010000
-$data_b 0b00100000
-$data_b 0b01000000
+$data_b 0b00010000
 $data_b 0b00000000
 
 # 56 0x38 8
 $data_b 0b00000000
-$data_b 0b00011000
-$data_b 0b00100100
-$data_b 0b00011000
-$data_b 0b00100100
+$data_b 0b00111100
+$data_b 0b01000010
+$data_b 0b00111100
+$data_b 0b01000010
 $data_b 0b01000010
 $data_b 0b00111100
 $data_b 0b00000000
 
 # 57 0x39 9
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b01000100
 $data_b 0b00111100
-$data_b 0b00000100
-$data_b 0b00111000
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b00111110
+$data_b 0b00000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 58 0x3a :
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00110000
-$data_b 0b00110000
 $data_b 0b00000000
-$data_b 0b00110000
-$data_b 0b00110000
+$data_b 0b00010000
+$data_b 0b00000000
+$data_b 0b00000000
+$data_b 0b00010000
 $data_b 0b00000000
 
 # 59 0x3b ;
@@ -286,98 +287,98 @@ $data_b 0b00100000
 # 60 0x3c <
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00001100
-$data_b 0b00110000
-$data_b 0b01000000
-$data_b 0b00110000
-$data_b 0b00001100
+$data_b 0b00001000
+$data_b 0b00010000
+$data_b 0b00100000
+$data_b 0b00010000
+$data_b 0b00001000
 $data_b 0b00000000
 
 # 61 0x3d =
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b01111110
+$data_b 0b01111100
 $data_b 0b00000000
-$data_b 0b01111110
+$data_b 0b01111100
 $data_b 0b00000000
 $data_b 0b00000000
 
 # 62 0x3e >
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b01100000
-$data_b 0b00011000
-$data_b 0b00000100
-$data_b 0b00011000
-$data_b 0b01100000
+$data_b 0b00100000
+$data_b 0b00010000
+$data_b 0b00001000
+$data_b 0b00010000
+$data_b 0b00100000
 $data_b 0b00000000
 
 # 63 0x3f ?
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b01000010
+$data_b 0b00000100
 $data_b 0b00001000
-$data_b 0b00010000
 $data_b 0b00000000
-$data_b 0b00010000
+$data_b 0b00001000
 $data_b 0b00000000
 
 # 64 0x40 @
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b01001100
-$data_b 0b01001100
+$data_b 0b00111100
+$data_b 0b01001010
+$data_b 0b01010110
+$data_b 0b01011110
 $data_b 0b01000000
 $data_b 0b00111100
 $data_b 0b00000000
 
 # 65 0x41 A
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
-$data_b 0b01000100
-$data_b 0b01111100
-$data_b 0b01000100
-$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b01111110
+$data_b 0b01000010
+$data_b 0b01000010
 $data_b 0b00000000
 
 # 66 0x42 B
 $data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b01110000
+$data_b 0b01111100
+$data_b 0b01000010
+$data_b 0b01111100
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b01111100
 $data_b 0b00000000
 
 # 67 0x43 C
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b01000010
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 68 0x44 D
 $data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b01001000
+$data_b 0b01111000
 $data_b 0b01000100
+$data_b 0b01000010
+$data_b 0b01000010
 $data_b 0b01000100
-$data_b 0b01001000
-$data_b 0b01110000
+$data_b 0b01111000
 $data_b 0b00000000
 
 # 69 0x45 E
 $data_b 0b00000000
 $data_b 0b01111110
 $data_b 0b01000000
-$data_b 0b01110000
+$data_b 0b01111100
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01111110
@@ -387,7 +388,7 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b01111110
 $data_b 0b01000000
-$data_b 0b01110000
+$data_b 0b01111100
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
@@ -395,12 +396,12 @@ $data_b 0b00000000
 
 # 71 0x47 G
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b01000010
 $data_b 0b01000000
-$data_b 0b01011100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b01001110
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 72 0x48 H
@@ -415,32 +416,32 @@ $data_b 0b00000000
 
 # 73 0x49 I
 $data_b 0b00000000
-$data_b 0b00111000
+$data_b 0b01111100
 $data_b 0b00010000
 $data_b 0b00010000
 $data_b 0b00010000
 $data_b 0b00010000
-$data_b 0b00111000
+$data_b 0b01111100
 $data_b 0b00000000
 
 # 74 0x4a J
 $data_b 0b00000000
-$data_b 0b00000100
-$data_b 0b00000100
-$data_b 0b00000100
-$data_b 0b00000100
-$data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b00000010
+$data_b 0b00000010
+$data_b 0b00000010
+$data_b 0b00000010
+$data_b 0b01000010
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 75 0x4b K
 $data_b 0b00000000
+$data_b 0b01000100
 $data_b 0b01001000
-$data_b 0b01010000
-$data_b 0b01100000
-$data_b 0b01010000
+$data_b 0b01110000
 $data_b 0b01001000
 $data_b 0b01000100
+$data_b 0b01000010
 $data_b 0b00000000
 
 # 76 0x4c L
@@ -450,17 +451,17 @@ $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01111100
+$data_b 0b01111110
 $data_b 0b00000000
 
 # 77 0x4d M
 $data_b 0b00000000
-$data_b 0b01000100
-$data_b 0b01101100
-$data_b 0b01010100
-$data_b 0b01000100
-$data_b 0b01000100
-$data_b 0b01000100
+$data_b 0b01000010
+$data_b 0b01100110
+$data_b 0b01011010
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b01000010
 $data_b 0b00000000
 
 # 78 0x4e N
@@ -485,10 +486,10 @@ $data_b 0b00000000
 
 # 80 0x50 P
 $data_b 0b00000000
-$data_b 0b01111000
-$data_b 0b01000100
-$data_b 0b01000100
-$data_b 0b01111000
+$data_b 0b01111100
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b01111100
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
@@ -498,34 +499,34 @@ $data_b 0b00000000
 $data_b 0b00111100
 $data_b 0b01000010
 $data_b 0b01000010
-$data_b 0b01001010
+$data_b 0b01010010
 $data_b 0b01001010
 $data_b 0b00111100
 $data_b 0b00000000
 
 # 82 0x52 R
 $data_b 0b00000000
-$data_b 0b01111000
+$data_b 0b01111100
+$data_b 0b01000010
+$data_b 0b01000010
+$data_b 0b01111100
 $data_b 0b01000100
-$data_b 0b01000100
-$data_b 0b01111000
-$data_b 0b01010000
-$data_b 0b01001100
+$data_b 0b01000010
 $data_b 0b00000000
 
 # 83 0x53 S
 $data_b 0b00000000
 $data_b 0b00111100
-$data_b 0b01000010
-$data_b 0b00110000
-$data_b 0b00001100
+$data_b 0b01000000
+$data_b 0b00111100
+$data_b 0b00000010
 $data_b 0b01000010
 $data_b 0b00111100
 $data_b 0b00000000
 
 # 84 0x54 T
 $data_b 0b00000000
-$data_b 0b01111100
+$data_b 0b11111110
 $data_b 0b00010000
 $data_b 0b00010000
 $data_b 0b00010000
@@ -558,7 +559,7 @@ $data_b 0b00000000
 $data_b 0b01000010
 $data_b 0b01000010
 $data_b 0b01000010
-$data_b 0b01011010
+$data_b 0b01000010
 $data_b 0b01011010
 $data_b 0b00100100
 $data_b 0b00000000
@@ -575,7 +576,7 @@ $data_b 0b00000000
 
 # 89 0x59 Y
 $data_b 0b00000000
-$data_b 0b01000100
+$data_b 0b10000010
 $data_b 0b01000100
 $data_b 0b00101000
 $data_b 0b00010000
@@ -595,12 +596,12 @@ $data_b 0b00000000
 
 # 91 0x5b [
 $data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01110000
+$data_b 0b00111000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00111000
 $data_b 0b00000000
 
 # 92 0x5c \
@@ -615,19 +616,19 @@ $data_b 0b00000000
 
 # 93 0x5d ]
 $data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b00010000
-$data_b 0b00010000
-$data_b 0b00010000
-$data_b 0b00010000
-$data_b 0b01110000
+$data_b 0b00111000
+$data_b 0b00001000
+$data_b 0b00001000
+$data_b 0b00001000
+$data_b 0b00001000
+$data_b 0b00111000
 $data_b 0b00000000
 
 # 94 0x5e ^
 $data_b 0b00000000
-$data_b 0b00011000
-$data_b 0b00100100
-$data_b 0b00000000
+$data_b 0b00010000
+$data_b 0b00101000
+$data_b 0b01000100
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
@@ -641,12 +642,12 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b11111110
+$data_b 0b11111111
 
 # 96 0x60 `
 $data_b 0b00000000
-$data_b 0b00100000
 $data_b 0b00010000
+$data_b 0b00001000
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
@@ -656,28 +657,28 @@ $data_b 0b00000000
 # 97 0x61 a
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b01111000
+$data_b 0b00111000
 $data_b 0b00000100
-$data_b 0b00111000
+$data_b 0b00111100
 $data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 98 0x62 b
 $data_b 0b00000000
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01110000
+$data_b 0b01111000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01111000
 $data_b 0b00000000
 
 # 99 0x63 c
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b00111000
+$data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b00111000
@@ -685,12 +686,12 @@ $data_b 0b00000000
 
 # 100 0x64 d
 $data_b 0b00000000
-$data_b 0b00001000
-$data_b 0b00001000
-$data_b 0b00001000
-$data_b 0b00111000
-$data_b 0b01001000
-$data_b 0b00111000
+$data_b 0b00000100
+$data_b 0b00000100
+$data_b 0b00111100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 101 0x65 e
@@ -698,28 +699,28 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00111000
 $data_b 0b01000100
-$data_b 0b01111100
+$data_b 0b01111000
 $data_b 0b01000000
-$data_b 0b00111000
+$data_b 0b00111100
 $data_b 0b00000000
 
 # 102 0x66 f
 $data_b 0b00000000
+$data_b 0b00011000
+$data_b 0b00100000
 $data_b 0b00110000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01100000
-$data_b 0b01000000
-$data_b 0b01000000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
 $data_b 0b00000000
 
 # 103 0x67 g
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00111000
+$data_b 0b00111100
 $data_b 0b01000100
-$data_b 0b00111000
+$data_b 0b01000100
+$data_b 0b00111100
 $data_b 0b00000100
 $data_b 0b00111000
 
@@ -728,16 +729,16 @@ $data_b 0b00000000
 $data_b 0b01000000
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b00001000
+$data_b 0b01111000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00000000
 
 # 105 0x69 i
 $data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b00010000
 $data_b 0b00000000
+$data_b 0b00110000
 $data_b 0b00010000
 $data_b 0b00010000
 $data_b 0b00111000
@@ -745,39 +746,39 @@ $data_b 0b00000000
 
 # 106 0x6a j
 $data_b 0b00000000
+$data_b 0b00000100
 $data_b 0b00000000
-$data_b 0b00001000
-$data_b 0b00000000
-$data_b 0b00001000
-$data_b 0b00001000
-$data_b 0b01001000
-$data_b 0b00110000
+$data_b 0b00000100
+$data_b 0b00000100
+$data_b 0b00000100
+$data_b 0b00100100
+$data_b 0b00011000
 
 # 107 0x6b k
 $data_b 0b00000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01010000
-$data_b 0b01100000
-$data_b 0b01010000
-$data_b 0b01001000
+$data_b 0b00100000
+$data_b 0b00101000
+$data_b 0b00110000
+$data_b 0b00110000
+$data_b 0b00101000
+$data_b 0b00100100
 $data_b 0b00000000
 
 # 108 0x6c l
 $data_b 0b00000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01000000
-$data_b 0b01000000
 $data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00011000
 $data_b 0b00000000
 
 # 109 0x6d m
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b01101000
+$data_b 0b01010100
 $data_b 0b01010100
 $data_b 0b01010100
 $data_b 0b01010100
@@ -786,51 +787,51 @@ $data_b 0b00000000
 # 110 0x6e n
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b01001000
+$data_b 0b01111000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01000100
 $data_b 0b00000000
 
 # 111 0x6f o
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00110000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b00110000
+$data_b 0b00111000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00111000
 $data_b 0b00000000
 
 # 112 0x70 p
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b01110000
-$data_b 0b01001000
-$data_b 0b01110000
+$data_b 0b01111000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01111000
+$data_b 0b01000000
 $data_b 0b01000000
 
 # 113 0x71 q
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b01001000
-$data_b 0b00111000
-$data_b 0b00001000
+$data_b 0b00111100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b00000100
+$data_b 0b00000110
 
 # 114 0x72 r
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b01011000
-$data_b 0b01100000
-$data_b 0b01000000
-$data_b 0b01000000
+$data_b 0b00011100
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00100000
 $data_b 0b00000000
 
 # 115 0x73 s
@@ -838,47 +839,47 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00111000
 $data_b 0b01000000
-$data_b 0b00110000
-$data_b 0b00001000
-$data_b 0b01110000
+$data_b 0b00111000
+$data_b 0b00000100
+$data_b 0b01111000
 $data_b 0b00000000
 
 # 116 0x74 t
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00100000
 $data_b 0b00100000
 $data_b 0b01110000
 $data_b 0b00100000
-$data_b 0b00110000
+$data_b 0b00100000
+$data_b 0b00100000
+$data_b 0b00011000
 $data_b 0b00000000
 
 # 117 0x75 u
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b01001000
-$data_b 0b00110000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00111000
 $data_b 0b00000000
 
 # 118 0x76 v
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b01000100
 $data_b 0b01000100
 $data_b 0b00101000
-$data_b 0b00110000
+$data_b 0b00101000
+$data_b 0b00010000
 $data_b 0b00000000
 
 # 119 0x77 w
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b01000100
-$data_b 0b01000100
+$data_b 0b01010100
+$data_b 0b01010100
 $data_b 0b01010100
 $data_b 0b00101000
 $data_b 0b00000000
@@ -896,31 +897,31 @@ $data_b 0b00000000
 # 121 0x79 y
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00000000
-$data_b 0b00000000
 $data_b 0b01000100
-$data_b 0b00101000
-$data_b 0b00010000
-$data_b 0b00100000
+$data_b 0b01000100
+$data_b 0b01000100
+$data_b 0b00111100
+$data_b 0b00000100
+$data_b 0b00111000
 
 # 122 0x7a z
-$data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b01111100
 $data_b 0b00001000
 $data_b 0b00010000
+$data_b 0b00100000
 $data_b 0b01111100
 $data_b 0b00000000
 
 # 123 0x7b {
 $data_b 0b00000000
-$data_b 0b00111000
-$data_b 0b00100000
+$data_b 0b00011100
+$data_b 0b00010000
 $data_b 0b01100000
-$data_b 0b00100000
-$data_b 0b00100000
-$data_b 0b00011000
+$data_b 0b00010000
+$data_b 0b00010000
+$data_b 0b00011100
 $data_b 0b00000000
 
 # 124 0x7c |
@@ -937,7 +938,7 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b01110000
 $data_b 0b00010000
-$data_b 0b00011000
+$data_b 0b00001100
 $data_b 0b00010000
 $data_b 0b00010000
 $data_b 0b01110000
@@ -945,10 +946,10 @@ $data_b 0b00000000
 
 # 126 0x7e ~
 $data_b 0b00000000
+$data_b 0b00010100
+$data_b 0b00101000
 $data_b 0b00000000
 $data_b 0b00000000
-$data_b 0b00100000
-$data_b 0b01010100
-$data_b 0b00001000
+$data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
