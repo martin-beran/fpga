@@ -1,6 +1,6 @@
 # A classical "Hello World!" program
 
-$use init, ../sys/init.s
+$use start, ../sys/start.s
 $use font, ../sys/font.s
 
 # Addresses in video RAM

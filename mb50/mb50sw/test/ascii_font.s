@@ -1,6 +1,6 @@
 # Font demo - display all printable ASCII characters
 
-$use init, ../sys/init.s
+$use start, ../sys/start.s
 $use font, ../sys/font.s
 
 # Addresses in video RAM
