@@ -1471,8 +1471,10 @@ integers. Components of an expression:
 - A two-character constant, converted to a number with the lower byte
   containing the first character code and the higher byte containing the second
   character code
-- Unary and binary operators with left associativity and the same meaning and
-  precedence as in C. From highest to lowest priority:
+- Unary and binary operators with no associativity (parentheses must be used if
+  more than two subexpressions are connected by operators with the same
+  precedence) and the same meaning and precedence as in C. From highest to
+  lowest priority:
     - `~` (bitwise NOT), `-` (unary minus, computes two's complement)
     - `*`, `/`, `%` (multiplication, division, remainder)
     - `+`, `-` (addition, subtraction)
@@ -1843,47 +1845,42 @@ Build with Clang 19 and libc++:
 
 -------------------------------------------------------------------------------
 
-## ToDo
+## Programming
 
-- [x] Project structure
-    - [x] Structure of documentation
-    - [x] Directory structure
-- [x] Building instructions
-    - [x] MB50 system
-    - [x] MB50DEV development environment
-- [x] Design
-    - [x] Specify overall system design including rationale
-    - [x] Specify CPU ISA
-        - [x] Define the register set
-        - [x] Define program execution, including CPU initialization, reset, and
-          interrupt handling
-        - [x] Define individual instructions (name, operands, description,
-          mnemonic, detailed semantics)
-    - [x] Specify external signals and buses of the CPU, including memory, I/O
-      devices, and control/debugging interfaces
-    - [x] Design the CPU microarchitecture
-        - [x] Control Unit (CU)
-        - [x] Arithmetic-Logic Unit (ALU)
-        - [x] Registers (architectural and microarchitectural)
-        - [x] Internal interconnection of CPU parts and external interfaces
-    - [x] Design the development environment
-        - [x] Assembler
-        - [x] Debugger
-- [x] Implementation
-    - [x] On FPGA
-        - [x] CPU
-        - [x] Memory
-        - [x] Serial CDI
-        - [x] VGA display
-        - [x] PS/2 keyboard
-        - [x] System clock
-    - [x] Development environment for a host computer
-        - [x] Debugger
-            - [x] Serial communication with the target computer
-            - [x] CLI
-        - [x] Assembler
-            - [x] Generic processing
-            - [x] Instruction set
+### Assembler coding style
+
+- Assembler code is generally lowercase. Constants and macro parameters are
+  written in uppercase.
+- Each subroutine is documented by a comment block containing a description and
+  lists of input, output, and modified registers, Registers `ca`, `f`, and
+  output registers need not be listed as modified, as their modification is
+  expected implicitly. Input registers that can be modified must be listed in
+  `Modified`.
+
+        # Short description
+        # Optional detailed description
+        # In:
+        # r0 = description of a parameter passed in r0
+        # r1 = ...
+        # Out:
+        # r0 = description of a value returned in r0
+        # r1 = ...
+        # Modifies: r0, r1, ...
+
+- Input and output registers of a subroutine should be allocated in the order
+  `r0`, `r1`, ...
+- Working registers of a subroutine that are not restored before return should
+  be allocated in the order `r10`, `r9`, ...
+
+### System software
+
+- `sys/`
+    - `constants.s` – System parameters and useful constants
+    - `font.s` – A 8x8 bitmap font containing printable ASCII characters
+    - `init.s` – System initialization code
+    - `macros.s` – Standard set of macros
+    - `start.s` – Jump over included files to the main entry point
+    - `stdlib.s` – Standard library of subroutines
 
 -------------------------------------------------------------------------------
 

@@ -12,6 +12,7 @@
 #include <map>
 #include <ostream>
 #include <stack>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -829,7 +830,8 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
                 }
             } else
                 gl_it->second = nullptr;
-        } else
+        }
+        if (!symbol)
             symbol = std::make_shared<symbol_t>(label_t{addr});
         if (auto [sym_it, added] = it->second.emplace(std::move(name), symbol); added) {
             // not defined, define with unknown or known value
@@ -1022,9 +1024,15 @@ assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator fi
         return {inner.first, {++it, inner.second.end()}};
     }
     if (auto ident = parser::identifier(s, false, macro_id); ident.first) {
+        if (auto ma = macro_args && !ident.first->name_space ?
+            std::optional{macro_args->find(ident.first->name)} : std::nullopt; ma && *ma != macro_args->end())
+        {
+            return {(*ma)->second, ident.second};
+        }
         auto [symbol, defined] = find_symbol(file, *ident.first, true);
         if (!symbol && defined)
-            return {std::unexpected(std::format("Multiple definitions of unqualified name \"{}\"", *ident.first)), s};
+            return {std::unexpected(std::format("Multiple definitions of unqualified value name \"{}\"",
+                                                *ident.first)), s};
         if (!symbol)
             return {std::unexpected(std::format("Undefined symbol \"{}\"", *ident.first)), s};
         if (auto label = std::get_if<label_t>(symbol))
@@ -1125,7 +1133,16 @@ void assembler::run()
                 }
                 std::cerr << t.first->first.string() << ": " << s.first << std::endl;
             }
-    if (undef) {
+    bool undef_gl = false;
+    for (auto&& s: global_symbols)
+        if (auto l = std::get_if<label_t>(s.second.get()); l && !l->value()) {
+            if (!undef_gl) {
+                std::cerr << "Undefined unqualified (global) labels:" << std::endl;
+                undef_gl = true;
+            }
+            std::cerr << '.' << s.first << std::endl;
+        }
+    if (undef || undef_gl) {
         std::cerr << "Cannot resolve labels in the second phase" << std::endl;
         throw silent_error{};
     }
@@ -1327,7 +1344,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             // Expand macros
             auto [symbol, defined] = find_symbol(current, *id.first);
             if (!symbol && defined) {
-                std::cerr << src_pos(current->first, line_num) << "Multiple definitions of unqualified name \"" <<
+                std::cerr << src_pos(current->first, line_num) << "Multiple definitions of unqualified macro name \"" <<
                     *id.first << '"' << std::endl;
                 throw silent_error{};
             }
@@ -1352,7 +1369,12 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         } else
                             args.emplace(macro->params[i], std::move(*a));
                     }
-                    run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
+                    try {
+                        run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
+                    } catch (const silent_error&) {
+                        std::cerr << src_pos(current->first, line_num) << "Error in macro expansion" << std::endl;
+                        throw;
+                    }
                 } else {
                     std::cerr << src_pos(current->first, line_num) << "Symbol \"" << *id.first << "\" is not a macro" <<
                         std::endl;
