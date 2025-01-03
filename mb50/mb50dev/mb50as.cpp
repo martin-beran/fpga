@@ -130,7 +130,8 @@ private:
     // label definition
     class label_t {
     public:
-        explicit label_t(std::optional<uint16_t> v = std::nullopt): _value(v) {}
+        explicit label_t(std::optional<uint16_t> v = std::nullopt): _value(v), _fixed(!v) {}
+        label_t(std::optional<uint16_t> v, bool fixed): _value(v), _fixed(fixed) {}
         std::optional<uint16_t> value() const {
             return _value;
         }
@@ -142,8 +143,15 @@ private:
                 return true;
             }
         }
+        bool fixed() const {
+            return _fixed;
+        }
+        void fix() const {
+            _fixed = true;
+        }
     private:
         mutable std::optional<uint16_t> _value;
+        mutable bool _fixed = false;
     };
     // expression that must be always evaluated
     struct var_t {
@@ -813,39 +821,49 @@ void assembler::define_global(std::string name, std::shared_ptr<symbol_t> symbol
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr,
                              bool global)
 {
-    std::println("DEBUG: define label {} {:#06x}", name, addr.value_or(0xffff));
+    std::println("DEBUG: define label {} {:#06x} in {}", name, addr.value_or(0xffff), file->first.string());
     if (predef_symbols.contains(name))
         return false;
     if (addr && global)
         throw fatal_error{"Cannot define global label with address"};
     if (!addr && global) {
-        define_global(name, std::make_shared<symbol_t>(label_t{}), true);
+        // caller ensures that name does not exist in global_symbols
+        define_global(name, std::make_shared<symbol_t>(label_t{}), false);
         std::println("DEBUG: define_global 1");
         return true;
     }
+    // local or qualified reference, or definition
     if (auto it = symbols.find(file); it == symbols.end())
         throw fatal_error("Parsed file not in assembler::symbols (label definition)");
     else {
         std::shared_ptr<symbol_t> symbol{};
-        if (auto gl_it = global_symbols.find(name); gl_it != global_symbols.end() && gl_it->second) {
-            if (auto label = std::get_if<label_t>(gl_it->second.get())) {
+        label_t* label = nullptr;
+        auto gl_it = global_symbols.find(name);
+        if (gl_it != global_symbols.end() && gl_it->second) {
+            label = std::get_if<label_t>(gl_it->second.get());
+            if (label) {
+                // globally defined as label
                 if (global)
                     symbol = gl_it->second;
                 if (addr) {
-                    if (label->value())
-                        gl_it->second = nullptr;
-                    else
+                    if (label->value()) {
+                        if (label->fixed()) {
+                            std::println("DEBUG: fixed");
+                            return false; // already defined and referenced, cannot undefine
+                        }
+                        gl_it->second = nullptr; // multiple definitions of this label
+                    } else
                         label->set(*addr);
                 }
             } else
-                gl_it->second = nullptr;
+                gl_it->second = nullptr; // globally defined as not a label
         }
         if (!symbol)
-            symbol = std::make_shared<symbol_t>(label_t{addr});
+            symbol = std::make_shared<symbol_t>(label_t{addr, false}); // not yet referenced as global label
         std::println("DEBUG: define label {} {:#06x} {}", name, addr.value_or(0xffff), static_cast<const void*>(symbol.get()));
         if (auto [sym_it, added] = it->second.emplace(std::move(name), symbol); added) {
-            // not defined, define with unknown or known value
-            define_global(sym_it->first, sym_it->second, !addr);
+            if (gl_it == global_symbols.end())
+                define_global(sym_it->first, sym_it->second, !addr); // not defined, define with unknown or known value
             std::println("DEBUG: define_global 2");
             return true;
         } else
@@ -855,8 +873,10 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
                 // already defined with unknown value, set value
                 label->set(*addr);
                 return true;
-            } else
+            } else {
+                std::println("DEBUG: redefined in {}", file->first.string());
                 return false;
+            }
     }
 }
 
@@ -890,9 +910,11 @@ assembler::find_symbol(input::files_t::const_iterator file, const parser::ident_
     if (id.name_space) {
         if (id.name_space->empty()) {
             // .id: unqualified name (global)
-            if (auto it = global_symbols.find(id.name); it != global_symbols.end())
+            if (auto it = global_symbols.find(id.name); it != global_symbols.end()) {
+                if (auto label = std::get_if<label_t>(it->second.get()))
+                    label->fix(); // referenced global label, it must not become undefined
                 return {it->second.get(), true};
-            else
+            } else
                 if (def_as_label && define_label(file, id.name, std::nullopt, true) &&
                     (it = global_symbols.find(id.name)) != global_symbols.end())
                 {
