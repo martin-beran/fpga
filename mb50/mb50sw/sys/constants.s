@@ -10,6 +10,7 @@ $const HZ,            100 # System clock frequency in Hz
 $const KBD_ADDR,   0xffe0 # Address of the first keyboard controller register
 $const MEM_MAX,    0x752f # Address of the last byte of memory
 $const VIDEO_ADDR, 0x5a00 # Video RAM start address
+$const STACK_BOTTOM, VIDEO_ADDR # The address of the bottom of the stack
 
 ### Video parameters ##########################################################
 
@@ -46,6 +47,7 @@ $const FG_WHITE,   0b0111_0000
 
 # Blinking
 $const BLINK_ON, 0b1000_0000 # enable
+$const BLINK_OFF, 0b0000_0000 # disable
 $const BLINK_1HZ, 30 # blinking frequency 1 Hz
 
 ### Keyboard parameters #######################################################

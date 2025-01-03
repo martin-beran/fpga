@@ -1871,6 +1871,25 @@ Build with Clang 19 and libc++:
   `r0`, `r1`, ...
 - Working registers of a subroutine that are not restored before return should
   be allocated in the order `r10`, `r9`, ...
+- The stack grows from higher to lower addresses. Instruction `ddsto` is used
+  to push values to the stack, `ldis` is used to pop from the stack. Register
+  `sp` points to the value at the top of the stack. The stack is located
+  immediately below the video RAM.
+- The standard system software uses unqualified references to its own symbols,
+  therefore these symbols must not be redefined in user code. Otherwise,
+  compilation would fail with error `"Symbol ... already defined"`.
+- Any program that uses the system software should start with something like:
+
+        $use init, ../sys/init.s
+        # $use directives for any additional initialization modules
+        $use start, ../sys/start.s
+        # Code between here and main: is not executed before a jump to main:
+        $use constants, ../sys/constants.s
+        $use macros, ../sys/macros.s
+        $use stdlib, ../sys/stdlib.s
+        # $use directives for any additional library modules
+        main:
+        # User code starts here
 
 ### System software
 

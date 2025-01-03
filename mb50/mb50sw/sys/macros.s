@@ -25,6 +25,9 @@ $macro jmp, ADDR
     $data_w ADDR
 $end_macro
 
+# Do not execute any code in this file.
+.jmp skip_this_file
+
 # Conditional jump to a constant address
 # ADDR = the target address
 $macro jmpf0, ADDR
@@ -197,3 +200,243 @@ $end_macro
 $macro retno
     mvno pc, ca
 $end_macro
+
+### Operations with stack #####################################################
+
+# Push a register to the stack.
+# REG = the pushed register
+$macro push, REG
+    ddsto sp, REG
+$end_macro
+
+# Pop a register from the stack.
+# REG = the popped register
+$macro pop, REG
+    ldis REG, sp
+$end_macro
+
+# Save registers to the stack.
+# Macro saveN saves registers `ca` and from rN to r10.
+# In order to reduce code size, saving of more than 2 general purpose registers
+# is implemented by a subroutine, because a call takes 4 B, which is the same
+# as 2 push (ddsto) instructions. Register `ca` must be saved before calling
+# the subroutine, therefore it is always saved directly by the macro.
+$macro save10
+    push ca
+    push r10
+$end_macro
+
+$macro save9
+    push ca
+    push r10
+    push r9
+$end_macro
+
+$macro save8
+    push ca
+    call save8_10
+$end_macro
+
+$macro save7
+    push ca
+    call save7_10
+$end_macro
+
+$macro save6
+    push ca
+    call save6_10
+$end_macro
+
+$macro save5
+    push ca
+    call save5_10
+$end_macro
+
+$macro save4
+    push ca
+    call save4_10
+$end_macro
+
+$macro save3
+    push ca
+    call save3_10
+$end_macro
+
+$macro save2
+    push ca
+    call save2_10
+$end_macro
+
+$macro save1
+    push ca
+    call save1_10
+$end_macro
+
+$macro save0
+    push ca
+    call save0_10
+$end_macro
+
+save0_10: push r0
+save1_10: push r1
+save2_10: push r2
+save3_10: push r3
+save4_10: push r4
+save5_10: push r5
+save6_10: push r6
+save7_10: push r7
+save8_10: push r8
+save9_10: push r9
+save10_10: push r10
+ret
+
+# Restore registers from the stack.
+# Macro restoreN restores registers from r10 to rN and `ca`.
+$macro restore10
+    pop r10
+    pop ca
+$end_macro
+
+$macro restore9
+    pop r9
+    pop r10
+    pop ca
+$end_macro
+
+$macro restore8
+    call restore8_10
+    pop ca
+$end_macro
+
+$macro restore7
+    call restore7_10
+    pop ca
+$end_macro
+
+$macro restore6
+    call restore6_10
+    pop ca
+$end_macro
+
+$macro restore5
+    call restore5_10
+    pop ca
+$end_macro
+
+$macro restore4
+    call restore4_10
+    pop ca
+$end_macro
+
+$macro restore3
+    call restore3_10
+    pop ca
+$end_macro
+
+$macro restore2
+    call restore2_10
+    pop ca
+$end_macro
+
+$macro restore1
+    call restore1_10
+    pop ca
+$end_macro
+
+$macro restore0
+    call restore0_10
+    pop ca
+$end_macro
+
+restore0_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+pop r4
+pop r3
+pop r2
+pop r1
+pop r0
+ret
+
+restore1_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+pop r4
+pop r3
+pop r2
+pop r1
+ret
+
+restore2_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+pop r4
+pop r3
+pop r2
+ret
+
+restore3_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+pop r4
+pop r3
+ret
+
+restore4_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+pop r4
+ret
+
+restore5_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+pop r5
+ret
+
+restore6_10:
+pop r10
+pop r9
+pop r8
+pop r7
+pop r6
+ret
+
+restore7_10:
+pop r10
+pop r9
+pop r8
+pop r7
+ret
+
+restore8_10:
+pop r10
+pop r9
+pop r8
+ret
+
+# Keep this label at the end of this file.
+skip_this_file:

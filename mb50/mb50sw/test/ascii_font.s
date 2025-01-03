@@ -8,20 +8,20 @@ $use font, ../sys/font.s
 # Main program entry point
 main:
 .set r0, .BG_BLACK | .FG_BLACK
-.call clear_screen
+.call .clear_screen
  # Set black on white/yellow checkered pattern
 .set r0, .VIDEO_ATTR_ADDR
 .set r1, 32 / 2
 .set r2, .BG_WHITE + (.BG_YELLOW << 8)
-.call memset_w
+.call .memset_w
 .set r0, .VIDEO_ATTR_ADDR + 32
 .set r1, 32 / 2
 .set r2, .BG_YELLOW + (.BG_WHITE << 8)
-.call memset_w
+.call .memset_w
 .set r0, .VIDEO_ATTR_ADDR + 2 * 32
 .set r1, 32 / 2
 .set r2, .BG_WHITE + (.BG_YELLOW << 8)
-.call memset_w
+.call .memset_w
  # Draw characters
 .set r0, ' ' # r0 = current character
 .set r1, .VIDEO_ADDR # r1 = current position in video RAM

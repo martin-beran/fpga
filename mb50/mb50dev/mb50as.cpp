@@ -15,6 +15,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <variant>
 
 namespace sfs = std::filesystem;
 
@@ -156,7 +157,10 @@ private:
         input::text_span replace; // replacement text: without comments and trailing whitespace
         size_t order; // ordering of macro definitions
     };
-    using symbol_t = std::variant<label_t, var_t, macro_t>;
+    //using symbol_t = std::variant<label_t, var_t, macro_t>;
+    struct symbol_t: std::variant<label_t, var_t, macro_t> {
+        ~symbol_t() { std::println("DEBUG: symbol_t deleted {}", static_cast<const void*>(this)); }
+    };
     using symbol_table_t = std::map<std::string, std::shared_ptr<symbol_t>>;
     using global_symbol_table_t = std::map<std::string, std::shared_ptr<symbol_t>>;
     using macro_args_t = std::map<std::string, std::shared_ptr<expr_base>>;
@@ -797,6 +801,8 @@ bool assembler::define_const(input::files_t::const_iterator file, std::string na
 
 void assembler::define_global(std::string name, std::shared_ptr<symbol_t> symbol, bool multi)
 {
+    if (std::get_if<label_t>(symbol.get()))
+        std::println("DEBUG: define global label {} {}", name, static_cast<const void*>(symbol.get()));
     if (auto gl_it = global_symbols.find(name); gl_it != global_symbols.end()) {
         if (!multi)
             gl_it->second = nullptr; // multiple definitions
@@ -807,12 +813,14 @@ void assembler::define_global(std::string name, std::shared_ptr<symbol_t> symbol
 bool assembler::define_label(input::files_t::const_iterator file, std::string name, std::optional<uint16_t> addr,
                              bool global)
 {
+    std::println("DEBUG: define label {} {:#06x}", name, addr.value_or(0xffff));
     if (predef_symbols.contains(name))
         return false;
     if (addr && global)
         throw fatal_error{"Cannot define global label with address"};
     if (!addr && global) {
         define_global(name, std::make_shared<symbol_t>(label_t{}), true);
+        std::println("DEBUG: define_global 1");
         return true;
     }
     if (auto it = symbols.find(file); it == symbols.end())
@@ -821,7 +829,8 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
         std::shared_ptr<symbol_t> symbol{};
         if (auto gl_it = global_symbols.find(name); gl_it != global_symbols.end() && gl_it->second) {
             if (auto label = std::get_if<label_t>(gl_it->second.get())) {
-                symbol = gl_it->second;
+                if (global)
+                    symbol = gl_it->second;
                 if (addr) {
                     if (label->value())
                         gl_it->second = nullptr;
@@ -833,13 +842,15 @@ bool assembler::define_label(input::files_t::const_iterator file, std::string na
         }
         if (!symbol)
             symbol = std::make_shared<symbol_t>(label_t{addr});
+        std::println("DEBUG: define label {} {:#06x} {}", name, addr.value_or(0xffff), static_cast<const void*>(symbol.get()));
         if (auto [sym_it, added] = it->second.emplace(std::move(name), symbol); added) {
             // not defined, define with unknown or known value
             define_global(sym_it->first, sym_it->second, !addr);
+            std::println("DEBUG: define_global 2");
             return true;
         } else
             if (auto label = std::get_if<label_t>(sym_it->second.get()); label && addr &&
-                (!label->value() || *label->value() == *addr)) // NOLINT(bugprone-unchecked-optional-access)
+                (!label->value() || label->value().value_or(0) == *addr)) // clang-tidy warns for *label->value()
             {
                 // already defined with unknown value, set value
                 label->set(*addr);
@@ -1148,6 +1159,7 @@ void assembler::run()
     }
     for (auto&& p: phase2)
         if (auto v = p.expr->eval()) {
+                std::println("DEBUG: phase2 addr={:#06x} value={:#06x}", p.addr, *v);
             if (p.word)
                 out.set_word(p.addr, *v);
             else
@@ -1267,6 +1279,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     } else {
                         bytes.push_back(0);
                         bytes.push_back(0);
+                        std::println("DEBUG: phase2 addr={:#06x} expr={}", cur_addr, static_cast<const void*>((*w).get()));
                         phase2.push_back({.expr = std::move(*w), .addr = cur_addr, .word = true});
                     }
                     cur_addr += 2;

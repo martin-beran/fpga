@@ -3,6 +3,9 @@
 $use constants, constants.s
 $use macros, macros.s
 
+# Do not execute any code in this file.
+.jmp skip_this_file
+
 ### Operations on memory ranges ###############################################
 
 # Store a byte to a range of memory addresses.
@@ -59,3 +62,6 @@ clear_screen_px:
     dec1 r10, r10
     .jmpnz clear_screen_px
 .ret
+
+# Keep this label at the end of this file.
+skip_this_file:
