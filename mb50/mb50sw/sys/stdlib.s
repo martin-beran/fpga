@@ -40,6 +40,10 @@ dec1 r1, r1
 
 ### Display output ############################################################
 
+# Display coordinates are:
+# X = left to right, 0-255 (pixels), 0-31 (characters and attributes)
+# Y = top to bottom, 0-191 (pixels), 0-23 (characters and attributes)
+
 # Clear screen and set attributes
 # In:
 # r0 = the attribute value to use for the whole screen
@@ -63,5 +67,23 @@ clear_screen_px:
     .jmpnz clear_screen_px
 .ret
 
-# Keep this label at the end of this file.
+# Set attribute
+# In:
+# R0 = coordinate X
+# R1 = coordinate Y
+# R2 = the attribute value in the lower byte
+# Out:
+# Modifies: r10, r9
+set_attr:
+mv r10, r1
+.set r9, 5
+shl r10, r9
+add r10, r0
+.set r9, .VIDEO_ATTR_ADDR
+add r10, r9
+stob r10, r2
+.ret
+
+### Keep this label at the end of this file ###################################
+
 skip_this_file:

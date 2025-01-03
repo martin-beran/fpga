@@ -8,13 +8,15 @@ $use macros, macros.s
 $use stdlib, stdlib.s
 
 init:
+ # Disable interrupts
+.set0 f
  # Initialize the stack
 .set sp, .STACK_BOTTOM
  # Initialize screen
 .set r0, .BG_WHITE | .FG_BLACK
-.call clear_screen
-.set r0, .BG_BLACK | ((BLINK_1HZ | BLINK_OFF) << 8)
-.set r1, VIDEO_BORDER_ADDR
+.call .clear_screen
+.set r0, .BG_BLACK | ((.BLINK_1HZ | .BLINK_OFF) << 8)
+.set r1, .VIDEO_BORDER_ADDR
 sto r1, r0
 
 # TODO

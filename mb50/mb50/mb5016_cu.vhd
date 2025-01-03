@@ -364,7 +364,7 @@ begin
 									RegWrB <= '0';
 									CsrWr <= '1';
 								when OpcodeDdsto =>
-									RegIdxA <= dst_reg;
+									RegIdxB <= dst_reg;
 									RegWrB <= '0';
 									state <= DdstoStore;
 								when OpcodeMv | OpcodeMvnf =>

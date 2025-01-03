@@ -1,5 +1,6 @@
 # Font demo - display all printable ASCII characters
 
+$use init, ../sys/init.s
 $use start, ../sys/start.s
 $use macros, ../sys/macros.s
 $use stdlib, ../sys/stdlib.s
@@ -7,6 +8,7 @@ $use font, ../sys/font.s
 
 # Main program entry point
 main:
+ # Set black background
 .set r0, .BG_BLACK | .FG_BLACK
 .call .clear_screen
  # Set black on white/yellow checkered pattern
@@ -60,6 +62,23 @@ char_loop:
     add r1, r3
     eol: .jmp char_loop
 char_end:
-
-# End of program
+ # Show blinking colors
+#ill r0, r0 # break
+.set r0, 12 # r0 = x
+.set r1, 12 # r1 = y
+.set r10, .BG_WHITE
+.set r9, .FG_BLACK | .BLINK_ON
+colors_loop:
+    mv r2, r10
+    or r2, r9
+    .save9
+    .call .set_attr
+    .restore9
+    inc1 r0, r0
+    dec1 r10, r10
+    .set r8, 0x10
+    add r9, r8
+    .testz r10
+    .jmpnz colors_loop
+ # End of program
 ill r0, r0 # halt
