@@ -1383,7 +1383,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     macro_args_t args{};
                     for (size_t i = 0; i < parts.args.size(); ++i) {
                         if (auto a = parse_expr(parts.args[i], current, macro_args, {{cur_macro, last_macro}}); !a) {
-                            std::cerr << src_pos(current->first, line_num) << "Invalid argument " << i <<
+                            std::cerr << src_pos(current->first, line_num) << "Invalid argument " << (i + 1) <<
                                 " of macro: " << a.error() << std::endl;
                             throw silent_error{};
                         } else

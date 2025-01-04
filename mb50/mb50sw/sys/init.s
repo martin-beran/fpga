@@ -7,6 +7,15 @@ $use constants, constants.s
 $use macros, macros.s
 $use stdlib, stdlib.s
 
+.jmp init
+
+boot_msg:
+$data_b "Computer MB50\n\n"
+$data_b "CPU: MB5016\n\n"
+$data_b "Author: Martin Beran\n"
+$data_b "E-mail: martin@mber.cz\n"
+$data_b "GitHub: https://github.com/martin-beran/fpga/tree/master/mb50\0"
+
 init:
  # Disable interrupts
 .set0 f
@@ -15,8 +24,13 @@ init:
  # Initialize screen
 .set r0, .BG_WHITE | .FG_BLACK
 .call .clear_screen
-.set r0, .BG_BLACK | ((.BLINK_1HZ | .BLINK_OFF) << 8)
+.set r0, .BG_WHITE | ((.BLINK_1HZ | .BLINK_OFF) << 8)
 .set r1, .VIDEO_BORDER_ADDR
 sto r1, r0
+# Display boot message
+.set r0, 9
+.set0 r1
+.set r2, boot_msg
+.call .putstr0
 
 # TODO

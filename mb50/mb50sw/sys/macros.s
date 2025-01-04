@@ -1,5 +1,12 @@
 # Standard set of macros
 
+### No operation ##############################################################
+
+# An instruction that does nothing
+$macro nop
+    mv r0, r0
+$end_macro
+
 ### Store a constant to a register ############################################
 
 # Set a register to a constant value.
@@ -26,7 +33,7 @@ $macro jmp, ADDR
 $end_macro
 
 # Do not execute any code in this file.
-.jmp skip_this_file
+.jmp _skip_this_file
 
 # Conditional jump to a constant address
 # ADDR = the target address
@@ -234,60 +241,60 @@ $end_macro
 
 $macro save8
     push ca
-    call save8_10
+    call _save8_10
 $end_macro
 
 $macro save7
     push ca
-    call save7_10
+    call _save7_10
 $end_macro
 
 $macro save6
     push ca
-    call save6_10
+    call _save6_10
 $end_macro
 
 $macro save5
     push ca
-    call save5_10
+    call _save5_10
 $end_macro
 
 $macro save4
     push ca
-    call save4_10
+    call _save4_10
 $end_macro
 
 $macro save3
     push ca
-    call save3_10
+    call _save3_10
 $end_macro
 
 $macro save2
     push ca
-    call save2_10
+    call _save2_10
 $end_macro
 
 $macro save1
     push ca
-    call save1_10
+    call _save1_10
 $end_macro
 
 $macro save0
     push ca
-    call save0_10
+    call _save0_10
 $end_macro
 
-save0_10: push r0
-save1_10: push r1
-save2_10: push r2
-save3_10: push r3
-save4_10: push r4
-save5_10: push r5
-save6_10: push r6
-save7_10: push r7
-save8_10: push r8
-save9_10: push r9
-save10_10: push r10
+_save0_10: push r0
+_save1_10: push r1
+_save2_10: push r2
+_save3_10: push r3
+_save4_10: push r4
+_save5_10: push r5
+_save6_10: push r6
+_save7_10: push r7
+_save8_10: push r8
+_save9_10: push r9
+_save10_10: push r10
 ret
 
 # Restore registers from the stack.
@@ -304,51 +311,51 @@ $macro restore9
 $end_macro
 
 $macro restore8
-    call restore8_10
+    call _restore8_10
     pop ca
 $end_macro
 
 $macro restore7
-    call restore7_10
+    call _restore7_10
     pop ca
 $end_macro
 
 $macro restore6
-    call restore6_10
+    call _restore6_10
     pop ca
 $end_macro
 
 $macro restore5
-    call restore5_10
+    call _restore5_10
     pop ca
 $end_macro
 
 $macro restore4
-    call restore4_10
+    call _restore4_10
     pop ca
 $end_macro
 
 $macro restore3
-    call restore3_10
+    call _restore3_10
     pop ca
 $end_macro
 
 $macro restore2
-    call restore2_10
+    call _restore2_10
     pop ca
 $end_macro
 
 $macro restore1
-    call restore1_10
+    call _restore1_10
     pop ca
 $end_macro
 
 $macro restore0
-    call restore0_10
+    call _restore0_10
     pop ca
 $end_macro
 
-restore0_10:
+_restore0_10:
 pop r10
 pop r9
 pop r8
@@ -362,7 +369,7 @@ pop r1
 pop r0
 ret
 
-restore1_10:
+_restore1_10:
 pop r10
 pop r9
 pop r8
@@ -375,7 +382,7 @@ pop r2
 pop r1
 ret
 
-restore2_10:
+_restore2_10:
 pop r10
 pop r9
 pop r8
@@ -387,7 +394,7 @@ pop r3
 pop r2
 ret
 
-restore3_10:
+_restore3_10:
 pop r10
 pop r9
 pop r8
@@ -398,7 +405,7 @@ pop r4
 pop r3
 ret
 
-restore4_10:
+_restore4_10:
 pop r10
 pop r9
 pop r8
@@ -408,7 +415,7 @@ pop r5
 pop r4
 ret
 
-restore5_10:
+_restore5_10:
 pop r10
 pop r9
 pop r8
@@ -417,7 +424,7 @@ pop r6
 pop r5
 ret
 
-restore6_10:
+_restore6_10:
 pop r10
 pop r9
 pop r8
@@ -425,14 +432,14 @@ pop r7
 pop r6
 ret
 
-restore7_10:
+_restore7_10:
 pop r10
 pop r9
 pop r8
 pop r7
 ret
 
-restore8_10:
+_restore8_10:
 pop r10
 pop r9
 pop r8
@@ -440,4 +447,4 @@ ret
 
 ### Keep this label at the end of this file ###################################
 
-skip_this_file:
+_skip_this_file:

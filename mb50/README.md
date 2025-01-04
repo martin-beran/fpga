@@ -1851,6 +1851,9 @@ Build with Clang 19 and libc++:
 
 - Assembler code is generally lowercase. Constants and macro parameters are
   written in uppercase.
+- Symbols (constants, macros, and labels) logically private to a single source
+  file should start with an underscore, unless the file is the main program,
+  not intended to be `$use`d in other files.
 - Each subroutine is documented by a comment block containing a description and
   lists of input, output, and modified registers, Registers `ca`, `f`, and
   output registers need not be listed as modified, as their modification is
@@ -1888,6 +1891,7 @@ Build with Clang 19 and libc++:
         $use macros, ../sys/macros.s
         $use stdlib, ../sys/stdlib.s
         # $use directives for any additional library modules
+
         main:
         # User code starts here
 

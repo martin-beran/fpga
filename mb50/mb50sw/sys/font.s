@@ -3,6 +3,9 @@
 # This file contains 8x8 pixel bitmaps of printable ASCII characters (codes
 # 0x20 to 0x7e)
 
+# Do not execute any code in this file.
+.jmp _skip_this_file
+
 ascii_0x20:
 # 32 0x20 space
 $data_b 0b00000000
@@ -728,8 +731,8 @@ $data_b 0b00111000
 $data_b 0b00000000
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01000000
 $data_b 0b01111000
+$data_b 0b01000100
 $data_b 0b01000100
 $data_b 0b01000100
 $data_b 0b00000000
@@ -953,3 +956,7 @@ $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
 $data_b 0b00000000
+
+### Keep this label at the end of this file ###################################
+
+_skip_this_file:

@@ -377,10 +377,10 @@ result_t<number_t> str_char(std::string_view s, bool all, char quote)
             case 't':
                 c = '\t';
                 break;
-            case '\n':
+            case 'n':
                 c = '\n';
                 break;
-            case '\r':
+            case 'r':
                 c = '\r';
                 break;
             case '"':

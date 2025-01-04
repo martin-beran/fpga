@@ -11,6 +11,9 @@ main:
  # Set black background
 .set r0, .BG_BLACK | .FG_BLACK
 .call .clear_screen
+.set r0, .BG_BLACK
+.set r1, .VIDEO_BORDER_ADDR
+stob r1, r0
  # Set black on white/yellow checkered pattern
 .set r0, .VIDEO_ATTR_ADDR
 .set r1, 32 / 2
@@ -63,7 +66,6 @@ char_loop:
     eol: .jmp char_loop
 char_end:
  # Show blinking colors
-#ill r0, r0 # break
 .set r0, 12 # r0 = x
 .set r1, 12 # r1 = y
 .set r10, .BG_WHITE
