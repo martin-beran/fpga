@@ -20,10 +20,10 @@ $const VIDEO_PX_W,  256 # Horizontal resolution (width in pixels)
 $const VIDEO_PX_H,  192 # Vertical resolution (height in pixels)
 $const VIDEO_ATTR_W, 32 # Horizontal resolution (characters and attributes)
 $const VIDEO_ATTR_H, 24 # Vertical resolution (characters and attributes)
-$const VIDEO_PX_ADDR,     VIDEO_ADDR                                    # Pixels start address
-$const VIDEO_ATTR_ADDR,   VIDEO_PX_ADDR + (VIDEO_PX_W * VIDEO_PX_H) / 8 # Attributes start address
-$const VIDEO_BORDER_ADDR, VIDEO_ATTR_ADDR + VIDEO_ATTR_W * VIDEO_ATTR_H # Border color address
-$const VIDEO_BLINK_ADDR,  VIDEO_BORDER_ADDR + 1                         # Blinking period address
+$const VIDEO_PX_ADDR,     VIDEO_ADDR                                    # Pixels start address (0x5a00)
+$const VIDEO_ATTR_ADDR,   VIDEO_PX_ADDR + (VIDEO_PX_W * VIDEO_PX_H) / 8 # Attributes start address (0x7200)
+$const VIDEO_BORDER_ADDR, VIDEO_ATTR_ADDR + VIDEO_ATTR_W * VIDEO_ATTR_H # Border color address (0x7500)
+$const VIDEO_BLINK_ADDR,  VIDEO_BORDER_ADDR + 1                         # Blinking period address (0x7501)
 
 # Background and border colors
 $const BG_BLACK,   0b0000_0000

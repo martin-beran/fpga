@@ -117,13 +117,95 @@ $macro jmpno, ADDR
     $data_w ADDR
 $end_macro
 
-### Tests #####################################################################
+### Comparisons ###############################################################
 
 # Test if a register contains 0.
 # REG = the tested register
 # flag z=1 iff REG==0
 $macro testz, REG
     and REG, REG
+$end_macro
+
+# Jump if REG == 0.
+# REG = the tested register
+# ADDR = the target address
+$macro jmp0, REG, ADDR
+    testz, REG
+    .jmpz ADDR
+$end_macro
+
+# Jump if REG != 0.
+# REG = the tested register
+# ADDR = the target address
+$macro jmpn0, REG, ADDR
+    testz, REG
+    .jmpnz ADDR
+$end_macro
+
+# Jump if REG1 == REG2.
+# REG1 = first register
+# REG2 = second register
+# ADDR = the target address
+$macro jmpeq, REG1, REG2, ADDR
+    cmpu REG1, REG2
+    jmpz ADDR
+$end_macro
+
+# Jump if REG1 != REG2.
+# REG1 = first register
+# REG2 = second register
+# ADDR = the target address
+$macro jmpne, REG1, REG2, ADDR
+    cmpu REG1, REG2
+    jmpnz ADDR
+$end_macro
+
+# Compare registers as unsigned values: < lt, <= le, > gt, >= ge
+# REG1 = first register
+# REG2 = second register
+# ADDR = the target address
+$macro jmpltu, REG1, REG2, ADDR
+    cmpu REG1, REG2
+    jmps ADDR
+$end_macro
+
+$macro jmpleu, REG1, REG2, ADDR
+    cmpu REG1, REG2
+    jmpc ADDR
+$end_macro
+
+$macro jmpgtu, REG1, REG2, ADDR
+    cmpu REG2, REG1
+    jmps ADDR
+$end_macro
+
+$macro jmpgeu, REG1, REG2, ADDR
+    cmpu REG2, REG1
+    jmpc ADDR
+$end_macro
+
+# Compare registers as signed values: < lt, <= le, > gt, >= ge
+# REG1 = first register
+# REG2 = second register
+# ADDR = the target address
+$macro jmplts, REG1, REG2, ADDR
+    cmps REG1, REG2
+    jmps ADDR
+$end_macro
+
+$macro jmples, REG1, REG2, ADDR
+    cmps REG1, REG2
+    jmpc ADDR
+$end_macro
+
+$macro jmpgts, REG1, REG2, ADDR
+    cmps REG2, REG1
+    jmps ADDR
+$end_macro
+
+$macro jmpges, REG1, REG2, ADDR
+    cmps REG2, REG1
+    jmpc ADDR
 $end_macro
 
 ### Calls and returns #########################################################
@@ -220,6 +302,28 @@ $end_macro
 # REG = the popped register
 $macro pop, REG
     ldis REG, sp
+$end_macro
+
+# Save all registers to the stack.
+$macro save_all
+    push ca
+    call _save0_10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+$end_macro
+
+# Restore all registers from the stack.
+$macro restore_all
+    pop r0 # do not change pc
+    pop r14
+    pop r13
+    pop r12
+    pop r0 # do not change sp
+    call _restore0_10
+    pop ca
 $end_macro
 
 # Save registers to the stack.

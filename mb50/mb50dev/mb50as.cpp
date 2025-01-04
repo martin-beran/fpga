@@ -254,6 +254,10 @@ public:
     virtual std::optional<uint16_t> eval() {
         return std::nullopt;
     }
+    // this function provides special handling of symbol __addr
+    virtual std::shared_ptr<expr_base> fixed_clone(std::shared_ptr<expr_base> obj) {
+        return obj;
+    }
     // returns a sequence of bytes; after nullopt in the first phase, length 1 is expected for the second phase
     virtual std::optional<std::vector<uint8_t>> eval_bytes() {
         if (auto val = eval())
@@ -328,6 +332,9 @@ public:
     explicit expr_addr(assembler& as): addr(as.cur_addr) {}
     std::optional<uint16_t> eval() override {
         return addr;
+    }
+    std::shared_ptr<expr_base> fixed_clone(std::shared_ptr<expr_base>) override {
+        return std::make_shared<expr_const>(addr);
     }
 private:
     const uint16_t& addr;
@@ -1058,7 +1065,7 @@ assembler::parse_expr_term(std::string_view s, input::files_t::const_iterator fi
         if (auto label = std::get_if<label_t>(symbol))
             return {{std::make_shared<expr_label>(*label)}, ident.second};
         else if (auto var = std::get_if<var_t>(symbol))
-            return {{var->expr}, ident.second};
+            return {{var->expr->fixed_clone(var->expr)}, ident.second};
         else if (std::get_if<macro_t>(symbol))
             return {std::unexpected(std::format("Reference to macro \"{}\" in expression", *ident.first)), s};
         else

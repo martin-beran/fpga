@@ -179,6 +179,219 @@ ldb r2, r6
 inc1 r6, r6
 .jmp _char_loop
 
+# Display a string of specified length.
+# In:
+# R0 = coordinate X (0..32) of the 1st character
+# R1 = coordinate Y (0..23) of the 1st character
+# R2 = address of the string
+# R3 = length of the string
+# Out:
+# R0 = coordinate X for the next character
+# R1 = coordinate Y for the next character
+# Modifies: r2, r3, r6, r7, r8, r9, r10
+putstr_len:
+mv r6, r2
+_char_loop1:
+.testz r3
+.retz
+.set0 r2
+ldb r2, r6
+.push ca
+.call putchar
+.pop ca
+inc1 r6, r6
+dec1 r3, r3
+.jmp _char_loop1
+
+# Display a single hexadecimal digit.
+# In:
+# R0 = coordinate X (0..32) of the 1st character
+# R1 = coordinate Y (0..23) of the 1st character
+# R2 = value to be displayed in the lowest 4 bits
+# Out:
+# R0 = coordinate X for the next character
+# R1 = coordinate Y for the next character
+# Modifies: r2, r7, r8, r9, r10
+print_hex_digit:
+.set r10, 0x000f
+and r2, r10
+.set r10, 10
+.jmpltu r2, r10, _lt_a
+.set r10, 'a' - ('9' + 1)
+add r2, r10
+_lt_a:
+.set r10, '0'
+add r2, r10
+.jmp putchar
+
+# Display a single byte as two hexadecimal digits.
+# In:
+# R0 = coordinate X (0..32) of the 1st character
+# R1 = coordinate Y (0..23) of the 1st character
+# R2 = value to be displayed in the lower byte
+# Out:
+# R0 = coordinate X for the next character
+# R1 = coordinate Y for the next character
+# Modifies: r2, r6, r7, r8, r9, r10
+print_byte:
+.push ca
+mv r6, r2
+.set r10, 4
+shr r2, r10
+.call print_hex_digit
+mv r2, r6
+.call print_hex_digit
+.pop ca
+.ret
+
+# Display a word (two bytes) as four hexadecimal digits.
+# In:
+# R0 = coordinate X (0..32) of the 1st character
+# R1 = coordinate Y (0..23) of the 1st character
+# R2 = value to be displayed
+# Out:
+# R0 = coordinate X for the next character
+# R1 = coordinate Y for the next character
+# Modifies: r2, r6, r7, r8, r9, r10
+print_word:
+.push ca
+mv r6, r2
+.set r10, 12
+shr r2, r10
+.call print_hex_digit
+mv r2, r6
+.set r10, 8
+shr r2, r10
+.call print_hex_digit
+mv r2, r6
+.set r10, 4
+shr r2, r10
+.call print_hex_digit
+mv r2, r6
+shr r2, r10
+.call print_hex_digit
+.pop ca
+.ret
+
+# Diagnostics #################################################################
+
+_title_r: $data_b "Registers:\0"
+_title_csr: $data_b "CSRs:\0"
+_delimiter: $data_b ": \0"
+_title_r11: $data_b "sp\0"
+_title_r12: $data_b "ca\0"
+_title_r13: $data_b "ia\0"
+_title_r14: $data_b "f\0"
+_title_r15: $data_b "pc\0"
+
+_csrr0: csrr r2, csr0
+mv pc, r10
+_csrr1: csrr r2, csr1
+mv pc, r10
+csrr r2, csr2
+mv pc, r10
+csrr r2, csr3
+mv pc, r10
+csrr r2, csr4
+mv pc, r10
+csrr r2, csr5
+mv pc, r10
+csrr r2, csr6
+mv pc, r10
+csrr r2, csr7
+mv pc, r10
+csrr r2, csr8
+mv pc, r10
+csrr r2, csr9
+mv pc, r10
+csrr r2, csr10
+mv pc, r10
+csrr r2, csr11
+mv pc, r10
+csrr r2, csr12
+mv pc, r10
+csrr r2, csr13
+mv pc, r10
+csrr r2, csr14
+mv pc, r10
+csrr r2, csr15
+mv pc, r10
+
+# Displays values of registers and CSRs.
+# Note that values of PC do not make much sense.
+# In:
+# Out:
+# Modifies:
+display_registers:
+.save_all
+.set r0, .BG_WHITE | .FG_BLACK
+.call .clear_screen
+.set r0, 5
+.set r1, 0
+.set r2, _title_r
+.call putstr0
+.set r0, 21
+.set r2, _title_csr
+.call putstr0
+.set r0, 2
+.set r1, 13
+.set r2, _title_r11
+.call putstr0
+.set r0, 2
+.set r1, 14
+.set r2, _title_r12
+.call putstr0
+.set r0, 2
+.set r1, 15
+.set r2, _title_r13
+.call putstr0
+.set r0, 2
+.set r1, 16
+.set r2, _title_r14
+.call putstr0
+.set r0, 2
+.set r1, 17
+.set r2, _title_r15
+.call putstr0
+.set r5, 0 # r5 = register index
+.set r4, 15 * 2 # r4 = offset of register index from sp
+.set r1, 2
+_loop_reg:
+    .set r0, 5
+    mv r2, r5
+    .call print_hex_digit
+    .set r2, _delimiter
+    .call putstr0
+    mv r10, sp
+    add r10, r4
+    ld r2, r10
+    .call print_word
+    inc1 r1, r1
+    inc1 r5, r5
+    dec2 r4, r4
+    .set r10, 15
+    .jmpleu r5, r10, _loop_reg
+.set r5, 0 # r5 = CSR index
+.set r4, _csrr0 # r4 = subroutine to read a CSR
+.set r1, 2
+_loop_csr:
+    .set r0, 21
+    mv r2, r5
+    .call print_hex_digit
+    .set r2, _delimiter
+    .call putstr0
+    mv r10, r4
+    exch pc, r10
+    .call print_word
+    inc1 r1, r1
+    inc1 r5, r5
+    .set r10, _csrr1 - _csrr0
+    add r4, r10
+    .set r10, 15
+    .jmpleu r5, r10, _loop_csr
+.restore_all
+.ret
+
 ### Keep this label at the end of this file ###################################
 
 _skip_this_file:

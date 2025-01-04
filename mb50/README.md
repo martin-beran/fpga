@@ -50,9 +50,12 @@ engineering.
 - `mb50dev/` – C++ sources of MB50 development tools for Linux (debugger and
   assembler)
 - `mb50sw/` – MB50 assembly language sources of various software for MB50
-    - `app/` – applications
-    - `sys/` – system software
+    - `app/` – applications (usually using the system software and following
+      the assembler coding style)
+    - `sys/` – system software (system initialization, interrupt handling,
+      device drivers, standard library)
     - `test/` – programs for debugging/testing MB50 and the development tools
+      (usually not fully following the assembler coding style)
 
 -------------------------------------------------------------------------------
 

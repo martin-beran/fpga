@@ -22,9 +22,9 @@ init:
  # Initialize the stack
 .set sp, .STACK_BOTTOM
  # Initialize screen
-.set r0, .BG_WHITE | .FG_BLACK
+.set r0, (.BG_WHITE | .FG_BLACK) | .BLINK_OFF
 .call .clear_screen
-.set r0, .BG_WHITE | ((.BLINK_1HZ | .BLINK_OFF) << 8)
+.set r0, .BG_WHITE | (.BLINK_1HZ << 8)
 .set r1, .VIDEO_BORDER_ADDR
 sto r1, r0
 # Display boot message
