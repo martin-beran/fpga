@@ -118,8 +118,8 @@ begin
 	-- Registers are controlled by CU and are connected to ALU, address bus, and data bus.
 	-- CU or CDI selects between ordinary registers and CSRs
 	-- CDI can access registers via interface A while the CPU is stopped
-	alu_rd_data_a <= reg_rd_data_a;
-	alu_rd_data_b <= csr_rd_data when cu_csr_rd = '1' else reg_rd_data_b;
+	alu_rd_data_a <= csr_rd_data when cu_csr_rd = '1' else reg_rd_data_a;
+	alu_rd_data_b <= reg_rd_data_b;
 	reg_idx_a <= cu_reg_idx_a when cpu_running = '1' else RegIdx;
 	reg_wr_data_a <=
 		RegDataWr when cpu_running /= '1' else

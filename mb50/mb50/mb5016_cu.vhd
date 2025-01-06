@@ -97,7 +97,7 @@ entity mb5016_cu is
 		RegWrA: out std_logic;
 		-- Write to the second register argument of an instruction
 		RegWrB: out std_logic;
-		-- Read the second (destination) argument of an instruction from a CSR
+		-- Read the second (source) argument of an instruction from a CSR
 		CsrRd: out std_logic;
 		-- Use a CSR for writing the first (result) argument of an instruction
 		CsrWr: out std_logic;
@@ -347,7 +347,6 @@ begin
 							RegIdxA <= dst_reg;
 							RegIdxB <= src_reg;
 							RegWrA <= '1';
-							RegWrB <= '1';
 							if decoded.is_flags then
 								RegWrFlags <= (others=>'1');
 							else
@@ -356,22 +355,26 @@ begin
 							AluOp <= decoded.alu_op;
 							state <= Execute;
 							case decoded.cond_op is
+								when OpcodeCmpu | OpcodeCmps =>
+									RegWrA <= '0';
 								when OpcodeCsrr =>
-									RegWrB <= '0';
+									-- CSRs are indexed by RegIdxA
+									RegIdxA <= src_reg;
+									RegIdxB <= dst_reg;
+									RegWrA <= '0';
 									CsrRd <= '1';
 								when OpcodeCsrw =>
 									RegWrA <= '0';
-									RegWrB <= '0';
 									CsrWr <= '1';
 								when OpcodeDdsto =>
 									RegIdxB <= dst_reg;
-									RegWrB <= '0';
 									state <= DdstoStore;
-								when OpcodeMv | OpcodeMvnf =>
-									RegWrB <= '0';
+								when OpcodeExch | OpcodeMulss | OpcodeMulsu | OpcodeMulus | OpcodeMuluu =>
+									RegWrB <= '1';
 								when OpcodeReti =>
 									RegIdxA <= to_reg_idx(reg_idx_f);
 									RegIdxB <= to_reg_idx(reg_idx_f);
+									RegWrB <= '1';
 									state <= RetiPc;
 								when others =>
 									null;
@@ -427,9 +430,9 @@ begin
 						AluOp <= OpExch;
 						state <= RetiIa;
 					when RetiIa =>
-						RegIdxA <= to_reg_idx(reg_idx_ia);
-						RegIdxB <= to_reg_idx(1);
-						RegWrA <= '1';
+						RegIdxB <= to_reg_idx(reg_idx_ia);
+						RegIdxA <= to_reg_idx(1);
+						RegWrB <= '1';
 						CsrRd <= '1';
 						AluOp <= OpExch;
 						state <= Execute;

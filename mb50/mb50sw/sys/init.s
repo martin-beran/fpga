@@ -6,6 +6,7 @@
 $use constants, constants.s
 $use macros, macros.s
 $use stdlib, stdlib.s
+$use interrupts, interrupts.s
 
 .jmp init
 
@@ -27,10 +28,13 @@ init:
 .set r0, .BG_WHITE | (.BLINK_1HZ << 8)
 .set r1, .VIDEO_BORDER_ADDR
 sto r1, r0
+# Initialize interrupt handling
+.call .intr_init
+
+### Initialization done #######################################################
+
 # Display boot message
 .set r0, 9
 .set0 r1
 .set r2, boot_msg
 .call .putstr0
-
-# TODO

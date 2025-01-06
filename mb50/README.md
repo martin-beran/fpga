@@ -1904,6 +1904,7 @@ Build with Clang 19 and libc++:
     - `constants.s` – System parameters and useful constants
     - `font.s` – A 8x8 bitmap font containing printable ASCII characters
     - `init.s` – System initialization code
+    - `interrupts.s` – Interrupt handling
     - `macros.s` – Standard set of macros
     - `start.s` – Jump over included files to the main entry point
     - `stdlib.s` – Standard library of subroutines

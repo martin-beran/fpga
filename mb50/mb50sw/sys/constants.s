@@ -1,5 +1,20 @@
 # System parameters and other useful constants
 
+### Bits in register f ########################################################
+
+$const flag_bit_f0,   0b0000_0000_0000_0001
+$const flag_bit_f1,   0b0000_0000_0000_0010
+$const flag_bit_f2,   0b0000_0000_0000_0100
+$const flag_bit_f3,   0b0000_0000_0000_1000
+$const flag_bit_z,    0b0000_0000_0001_0000
+$const flag_bit_c,    0b0000_0000_0010_0000
+$const flag_bit_s,    0b0000_0000_0100_0000
+$const flag_bit_o,    0b0000_0000_1000_0000
+$const flag_bit_ie,   0b0000_0001_0000_0000
+$const flag_bit_exc,  0b0000_0010_0000_0000
+$const flag_bit_iclk, 0b0000_0100_0000_0000
+$const flag_bit_ikbd, 0b0000_1000_0000_0000
+
 ### System parameters #########################################################
 
 # See section "System parameters" in README.md for details.

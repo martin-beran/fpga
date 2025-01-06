@@ -7,7 +7,7 @@ $macro nop
     mv r0, r0
 $end_macro
 
-### Store a constant to a register ############################################
+### Set od load a value to a register #########################################
 
 # Set a register to a constant value.
 # REG = the target register
@@ -21,6 +21,22 @@ $end_macro
 # REG = the target register
 $macro set0, REG
     xor REG, REG
+$end_macro
+
+# Load a word to a register from an constant address.
+# REG = the target register
+# ADDR = load from this address
+$macro lda, REG, ADDR
+    set REG, ADDR
+    ld REG, REG
+$end_macro
+
+# Load a byte to the lower byte of a register from an constant address.
+# REG = the target register
+# ADDR = load from this address
+$macro ldba, REG, ADDR
+    set REG, ADDR
+    ldb REG, REG
 $end_macro
 
 ### Jumps #####################################################################
@@ -319,6 +335,24 @@ $end_macro
 $macro restore_all
     pop r0 # do not change pc
     pop r14
+    pop r13
+    pop r12
+    pop r0 # do not change sp
+    call _restore0_10
+    pop ca
+$end_macro
+
+# Restore all registers in an interrupt handler.
+# It does not change the upper byte of register f, because new pending
+# interrupts must be correctly recorded during execution of an interrupt handler.
+$macro restore_all_intr
+    pop r0 # do not change pc
+    pop r0 # saved f
+    .set r1, 0x00ff
+    and r0, r1 # clear upper byte of r0
+    not r1, r1 # 0xff00
+    and f, r1
+    or f, r0 # No instruction potentially modifying f allowed until reti
     pop r13
     pop r12
     pop r0 # do not change sp
