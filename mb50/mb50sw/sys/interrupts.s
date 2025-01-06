@@ -3,6 +3,7 @@
 $use constants, constants.s
 $use macros, macros.s
 $use stdlib, stdlib.s
+$use dev_clk, dev_clk.s
 
 # Do not execute any code in this file.
 .jmp _skip_this_file
@@ -20,7 +21,7 @@ $use stdlib, stdlib.s
 addr_intr_hnd_exc: $data_w default_intr_hnd_exc
 
 # Handler for interrupt bit iclk (C, system clock)
-addr_intr_hnd_iclk: $data_w noop_intr_hnd
+addr_intr_hnd_iclk: $data_w .dev_clk_intr_hnd
 
 # Handler for interrupt bit ikbd (K keyboard)
 addr_intr_hnd_ikbd: $data_w noop_intr_hnd
