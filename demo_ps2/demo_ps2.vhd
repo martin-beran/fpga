@@ -5,10 +5,6 @@
 --     button2 => CapsLock, LED2
 --     button3 => ScrollLock, LED3
 
--- TODO: This is the first version of the demo project, intended for debugging
--- the demo itself. It uses UART instead of PS/2. After the PS/2 controller
--- implementation is finished, it will replace UART.
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
