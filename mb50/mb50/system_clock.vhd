@@ -28,10 +28,11 @@ begin
 		if Rst = '1' then
 			counter := 0;
 			v := to_word(0);
+			Intr <= '0';
 		elsif rising_edge(Clk) then
 			Intr <= '0';
 			counter := counter + 1;
-			if counter = HZ / CPU_HZ then
+			if counter = CPU_HZ / HZ then
 				counter := 0;
 				v := v + 1;
 				Intr <= '1';
