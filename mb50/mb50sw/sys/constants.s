@@ -2,18 +2,18 @@
 
 ### Bits in register f ########################################################
 
-$const flag_bit_f0,   0b0000_0000_0000_0001
-$const flag_bit_f1,   0b0000_0000_0000_0010
-$const flag_bit_f2,   0b0000_0000_0000_0100
-$const flag_bit_f3,   0b0000_0000_0000_1000
-$const flag_bit_z,    0b0000_0000_0001_0000
-$const flag_bit_c,    0b0000_0000_0010_0000
-$const flag_bit_s,    0b0000_0000_0100_0000
-$const flag_bit_o,    0b0000_0000_1000_0000
-$const flag_bit_ie,   0b0000_0001_0000_0000
-$const flag_bit_exc,  0b0000_0010_0000_0000
-$const flag_bit_iclk, 0b0000_0100_0000_0000
-$const flag_bit_ikbd, 0b0000_1000_0000_0000
+$const FLAG_BIT_F0,   0b0000_0000_0000_0001
+$const FLAG_BIT_F1,   0b0000_0000_0000_0010
+$const FLAG_BIT_F2,   0b0000_0000_0000_0100
+$const FLAG_BIT_F3,   0b0000_0000_0000_1000
+$const FLAG_BIT_Z,    0b0000_0000_0001_0000
+$const FLAG_BIT_C,    0b0000_0000_0010_0000
+$const FLAG_BIT_S,    0b0000_0000_0100_0000
+$const FLAG_BIT_O,    0b0000_0000_1000_0000
+$const FLAG_BIT_IE,   0b0000_0001_0000_0000
+$const FLAG_BIT_EXC,  0b0000_0010_0000_0000
+$const FLAG_BIT_ICLK, 0b0000_0100_0000_0000
+$const FLAG_BIT_IKBD, 0b0000_1000_0000_0000
 
 ### System parameters #########################################################
 
@@ -72,3 +72,6 @@ $const BLINK_1HZ, 30 # blinking frequency 1 Hz
 $const KBD_TXD,   KBD_ADDR     # Transmitted data
 $const KBD_RXD,   KBD_ADDR + 1 # Received data
 $const KBD_READY, KBD_ADDR + 2 # Received or ready to transmit data
+
+$const KBD_BIT_TX_RDY, 0b0000_0010 # Ready to transmit
+$const KBD_BIT_RX_RDY, 0b0000_0001 # Received byte available

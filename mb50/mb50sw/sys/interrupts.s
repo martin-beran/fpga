@@ -4,6 +4,7 @@ $use constants, constants.s
 $use macros, macros.s
 $use stdlib, stdlib.s
 $use dev_clk, dev_clk.s
+$use dev_kbd, dev_kbd.s
 
 # Do not execute any code in this file.
 .jmp _skip_this_file
@@ -24,7 +25,7 @@ addr_intr_hnd_exc: $data_w default_intr_hnd_exc
 addr_intr_hnd_iclk: $data_w .dev_clk_intr_hnd
 
 # Handler for interrupt bit ikbd (K keyboard)
-addr_intr_hnd_ikbd: $data_w noop_intr_hnd
+addr_intr_hnd_ikbd: $data_w .dev_kbd_intr_hnd
 
 # The main interrupt handler
 $macro _handle_intr_bit, BIT, HANDLER
@@ -39,9 +40,9 @@ $end_macro
 
 intr_hnd:
 .save_all
-_handle_intr_bit .flag_bit_exc, addr_intr_hnd_exc
-_handle_intr_bit .flag_bit_iclk, addr_intr_hnd_iclk
-_handle_intr_bit .flag_bit_ikbd, addr_intr_hnd_ikbd
+_handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
+_handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
+_handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
 .restore_all_intr
 reti pc, pc
 
@@ -71,7 +72,7 @@ intr_init:
 .set ia, intr_hnd
 csrw csr1, ia
  # enable interrupts
-.set r10, .flag_bit_ie
+.set r10, .FLAG_BIT_IE
 or f, r10
 .ret
 

@@ -31,14 +31,6 @@ $macro lda, REG, ADDR
     ld REG, REG
 $end_macro
 
-# Load a byte to the lower byte of a register from an constant address.
-# REG = the target register
-# ADDR = load from this address
-$macro ldba, REG, ADDR
-    set REG, ADDR
-    ldb REG, REG
-$end_macro
-
 ### Jumps #####################################################################
 
 # Unconditional jump to a constant address
