@@ -37,6 +37,8 @@ _wait_ack:
     ldb r10, r9
     .testz r10
     .jmpz _wait_ack
+    .set r9, 0xfa
+    .jmpne r10, r9, _wait_txr
 _wait_txr1:
     .set r10, .KBD_READY
     ldb r10, r10 # upper byte ignored

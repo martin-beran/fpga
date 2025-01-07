@@ -16,8 +16,6 @@ title_kbd_rxd: $data_b  "Received:   \0"
 
 cnt_iclk: $data_w 0
 cnt_ikbd: $data_w 0
-kbd_cnt: $data_w 0
-kbd_prev: $data_w 0
 
 orig_hnd_iclk: $data_w 0
 hnd_iclk:
@@ -115,18 +113,4 @@ forever:
     .call .putstr0
     .lda r2, .kbd_rx_buf
     .call .print_word
-    # Control keyboard LEDs
-    .lda r10, .kbd_rx_buf
-    .set r9, kbd_prev
-    ld r8, r9
-    .jmpeq r10, r8, kbd_unchanged
-    sto r9, r10
-    .set r9, kbd_cnt
-    ld r0, r9
-    inc1 r0, r0
-    sto r9, r0
-    .set r9, 3
-    shr r0, r9
-    #.call .kbd_set_leds
-    kbd_unchanged:
     .jmp forever
