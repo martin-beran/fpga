@@ -69,10 +69,6 @@ begin
 		'0' when Rst /= '0' else
 		'0' when CpuAddrBus > MEM_MAX else
 		CpuWr;
-	Ps2TxD <=
-		(others=>'0') when Rst /= '0' else
-		std_logic_vector(CpuDataBusWr) when CpuAddrBus = KBD_ADDR else
-		(others=>'0');
 	Ps2TxStart <=
 		'0' when Rst /= '0' else
 		CpuWr when CpuAddrBus = KBD_ADDR else
@@ -81,14 +77,21 @@ begin
 		'0' when Rst /= '0' else
 		CpuWr when CpuAddrBus = KBD_ADDR + 1 else
 		'0';
-	save_addr: process (Clk, Rst) is
+	save_values: process (Clk, Rst) is
+		variable saved_ps2_txd: std_logic_vector(7 downto 0) := (others => '0');
 	begin
 		if Rst = '1' then
 			addr_reg <= (others=>'0');
+			Ps2TxD <= (others=>'0');
 		elsif rising_edge(Clk) then
 			if CpuRd = '1' then
 				addr_reg <= CpuAddrBus;
 			end if;
+			if CpuAddrBus = KBD_ADDR and CpuWr = '1' then
+				-- Value of Ps2TxD must be kept in the next clock cycle
+				saved_ps2_txd := std_logic_vector(CpuDataBusWr);
+			end if;
+			Ps2TxD <= saved_ps2_txd;
 		end if;
 	end process;
 end architecture;

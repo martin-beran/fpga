@@ -14,7 +14,7 @@ package pkg_ps2 is
 			Ps2Clk: inout std_logic;
 			-- PS/2 data
 			Ps2Data: inout std_logic;
-			-- data byte to tramsmit (read when TXStart = 1)
+			-- data byte to tramsmit (read when TXStart = 1); must be valid at least 1 clock cycle after TxStart = 1
 			TxD: in std_logic_vector(7 downto 0) := (others=>'0');
 			-- start transmitting TxD (ignored until TxReady = 1)
 			-- must be set to '0' before TxReady = '1', otherwise the same byte would be transmitted again

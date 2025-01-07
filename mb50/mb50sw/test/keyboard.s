@@ -51,8 +51,7 @@ main:
 .set r3, 0 # X
  # Set keyboard LEDs
 ack # Acknowledge any pending received byte
-tx 0xff # Reset
-wait_ack: #tx 0xed # Write command byte
+wait_ack: tx 0xed # Write command byte
     rx
     mv r10, r0
     mv r0, r3
@@ -61,8 +60,6 @@ wait_ack: #tx 0xed # Write command byte
     .call .print_byte
     mv r3, r0
     .restore10
-    .set r10, 0xfa
-    .jmpne r9, r10, wait_ack
+    .set r9, 0xfa
+    .jmpne r10, r9, wait_ack
 tx 0x02 # Write data byte (NumLock)
-
-
