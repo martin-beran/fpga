@@ -20,7 +20,7 @@ $macro tx, BYTE
     wait_tx
     .set r10, .KBD_TXD
     .set r9, BYTE
-    sto r10, r9
+    stob r10, r9
 $end_macro
 
  # Ack
@@ -51,8 +51,8 @@ main:
 .set r3, 0 # X
  # Set keyboard LEDs
 ack # Acknowledge any pending received byte
-wait_ack: tx 0xff # Reset
-#tx 0xed # Write command byte
+tx 0xff # Reset
+wait_ack: #tx 0xed # Write command byte
     rx
     mv r10, r0
     mv r0, r3
