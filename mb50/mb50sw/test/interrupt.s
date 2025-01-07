@@ -1,3 +1,5 @@
+# A simple interrupt handler
+
 $use start, ../sys/start.s
 $use constants, ../sys/constants.s
 $use macros, ../sys/macros.s

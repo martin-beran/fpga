@@ -64,14 +64,16 @@ public:
     // Construct output file names from input file name
     output(sfs::path file, bool verbose);
     // Stores binary data for all output files, and an optional instruction for the text output file
-    void add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr = {});
+    void add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr, std::string_view prefix);
     // Stores a source line for text output file
-    void add_src_line(const sfs::path& file, size_t line, std::string text);
-    void add_txt_line(std::string_view text);
+    void add_src_line(const sfs::path& file, size_t line, std::string_view text, std::string_view prefix,
+                      std::string_view macro_prefix);
+    void add_txt_line(std::string_view text, std::string_view prefix);
     void set_byte(uint16_t addr, uint8_t byte);
     void set_word(uint16_t addr, uint16_t word);
     // Writes all output files
     void write();
+    size_t last_line = 0;
 private:
     struct out_line_t {
         std::string text{};
@@ -185,7 +187,7 @@ private:
     void run_lines(const input::files_t& files, input::files_t::const_iterator current,
                    input::text_span full_text, input::text_span text,
                    size_t macro_idx = std::numeric_limits<decltype(macro_idx)>::max(),
-                   macro_args_t* macro_args = nullptr);
+                   macro_args_t* macro_args = nullptr, size_t macro_level = 0);
     // false if symbol name already defined, true otherwise
     bool define_const(input::files_t::const_iterator file, std::string name,
                       std::shared_ptr<assembler::expr_base> expr);
@@ -602,7 +604,7 @@ output::output(sfs::path file, bool verbose):
     this->file.replace_extension();
 }
 
-void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr)
+void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view instr, std::string_view prefix)
 {
     if (addr + bytes.size() > out_bin.size())
         throw fatal_error("Output does not fit to address space");
@@ -613,22 +615,25 @@ void output::add_bytes(uint16_t addr, std::span<uint8_t> bytes, std::string_view
     auto addr_begin = out_bin.begin() + addr;
     auto addr_end = std::ranges::copy(bytes, addr_begin).out;
     if (!instr.empty())
-        out_text.push_back({.text = std::format("; {:04x}: {}", addr, instr)});
-    out_text.push_back({.text = std::format("; {:04x}: $data_b", addr), .bytes = {addr_begin, addr_end}});
+        out_text.push_back({.text = std::format("; {}{:04x}: {}", prefix, addr, instr)});
+    out_text.push_back({.text = std::format("; {}{:04x}: $data_b", prefix, addr), .bytes = {addr_begin, addr_end}});
 }
 
-void output::add_src_line(const sfs::path& file, size_t line, std::string text)
+void output::add_src_line(const sfs::path& file, size_t line, std::string_view text, std::string_view prefix,
+                          std::string_view macro_prefix)
 {
-    if (file != last_file) {
-        out_text.push_back({.text = std::format("; {}:{}", file.string(), line)});
+    if (file != last_file || line != last_line + 1 || !macro_prefix.empty()) {
+        out_text.push_back({.text = std::format("; {}{}{}:{}", prefix.size() >= 2 ? prefix.substr(2) : prefix,
+                                                macro_prefix, file.string(), line)});
         last_file = file;
+        last_line = line;
     }
-    out_text.push_back({.text = std::move(text)});
+    out_text.push_back({.text = std::string(prefix).append(text)});
 }
 
-void output::add_txt_line(std::string_view text)
+void output::add_txt_line(std::string_view text, std::string_view prefix)
 {
-    out_text.push_back({.text = std::format("; {}", text)});
+    out_text.push_back({.text = std::format("; {}{}", prefix, text)});
 }
 
 void output::set_byte(uint16_t addr, uint8_t byte)
@@ -1185,8 +1190,10 @@ void assembler::run()
 
 void assembler::run_lines(const input::files_t& files, input::files_t::const_iterator current,
                           std::span<const std::string> full_text, std::span<const std::string> text,
-                          size_t macro_idx, macro_args_t* macro_args)
+                          size_t macro_idx, macro_args_t* macro_args, size_t macro_level)
 {
+    std::string line_prefix = std::string(4 * macro_level, ' ');
+    std::string_view macro_prefix = macro_args ? "MACRO "sv : ""sv;
     size_t cur_macro = macro_args ? ++max_macro : 0; // for label$
     size_t last_macro = 0; // for label$$
     for (auto [full_it, text_it] = std::pair{full_text.begin(), text.begin()};
@@ -1195,8 +1202,11 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
     ) {
         // Add source line to text output
         size_t line_num = size_t(full_it - current->second.full_text.begin()) + 1;
-        if (!full_it->empty() && full_it->front() != '#')
-            out.add_src_line(current->first, line_num, *full_it);
+        if (!full_it->empty() && full_it->front() != '#') {
+            out.add_src_line(current->first, line_num, *full_it, line_prefix, macro_prefix);
+            macro_prefix = ""sv;
+        } else
+            out.last_line = line_num;
         if (text_it->empty())
             continue;
         // Split to label: cmd args...
@@ -1229,7 +1239,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             } else {
                 if (auto v = (*e)->eval()) {
                     cur_addr = *v;
-                    out.add_txt_line(std::format("$addr {}", cur_addr));
+                    out.add_txt_line(std::format("$addr {}", cur_addr), line_prefix);
                 } else {
                     std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
                         std::endl;
@@ -1277,7 +1287,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         ++cur_addr;
                     }
             }
-            out.add_bytes(start_addr, bytes);
+            out.add_bytes(start_addr, bytes, ""sv, line_prefix);
         } else if (parts.cmd == "$data_w"sv) {
             std::vector<uint8_t> bytes{};
             auto start_addr = cur_addr;
@@ -1299,7 +1309,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     cur_addr += 2;
                 }
             }
-            out.add_bytes(start_addr, bytes);
+            out.add_bytes(start_addr, bytes, ""sv, line_prefix);
         } else if (parts.cmd == "$macro"sv) {
             if (macro_args) {
                 std::cerr << src_pos(current->first, line_num) << "Nested macro definition not allowed" << std::endl;
@@ -1337,6 +1347,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                             "Symbol \"" << id.first->name << "\" already defined" << std::endl;
                         throw silent_error{};
                     }
+                    out.last_line = line_num;
                     break;
                 }
             }
@@ -1397,7 +1408,10 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                             args.emplace(macro->params[i], std::move(*a));
                     }
                     try {
-                        run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args);
+                        run_lines(files, macro->file, macro->full_replace, macro->replace, macro->order, &args,
+                                  macro_level + 1);
+                        // On macro level 0, we cannot strip 2 spaces from (empty) line_prefix
+                        macro_prefix = macro_level > 0 ? "    END_MACRO "sv : "  END_MACRO "sv;
                     } catch (const silent_error&) {
                         std::cerr << src_pos(current->first, line_num) << "Error in macro expansion" << std::endl;
                         throw;
@@ -1447,7 +1461,8 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 bytes[0] = instr->second.opcode;
                 bytes[1] = uint8_t(dst_reg->first << 4U) | (src_reg->first);
                 out.add_bytes(cur_addr, bytes,
-                              std::format("{} {}, {}", id.first->name, (*dst)->eval_reg_str(), (*src)->eval_reg_str()));
+                              std::format("{} {}, {}", id.first->name, (*dst)->eval_reg_str(), (*src)->eval_reg_str()),
+                              line_prefix);
                 cur_addr += 2;
             } else {
                     // Unknown name

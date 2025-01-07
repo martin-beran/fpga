@@ -69,9 +69,9 @@ $const BLINK_1HZ, 30 # blinking frequency 1 Hz
 
 # See section "PS/2 keyboard" in README.md for details.
 
-$const KBD_TXD,   KBD_ADDR     # Transmitted data
-$const KBD_RXD,   KBD_ADDR + 1 # Received data
-$const KBD_READY, KBD_ADDR + 2 # Received or ready to transmit data
+$const KBD_TXD,   KBD_ADDR     # Transmitted data (0xffe0)
+$const KBD_RXD,   KBD_ADDR + 1 # Received data (0xffe1)
+$const KBD_READY, KBD_ADDR + 2 # Received or ready to transmit data (0xffe2)
 
 $const KBD_BIT_TX_RDY, 0b0000_0010 # Ready to transmit
 $const KBD_BIT_RX_RDY, 0b0000_0001 # Received byte available
