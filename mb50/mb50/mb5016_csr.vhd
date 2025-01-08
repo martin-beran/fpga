@@ -31,7 +31,7 @@ end entity;
 
 architecture main of mb5016_csr is
 	signal csr0: unsigned(8 downto 0) := (others=>'0');
-	signal csr1, csr2, csr3, csr4, csr5: word_t := (others=>'0');
+	signal csr1, csr2, csr3: word_t := (others=>'0');
 begin
 	with Idx select RdData <=
 		-- With to_reg_idx(0), compilation in Questa reports:
@@ -40,11 +40,9 @@ begin
 		unsigned("0000000" & std_logic_vector(csr0)) when X"0",
 		-- csr1 when to_reg_idx(1),
 		csr1 when X"1",
-		-- csr2..csr5 when to_reg_idx(2..5)
+		-- csr2..csr3 when to_reg_idx(2..3)
 		csr2 when X"2",
 		csr3 when X"3",
-		csr4 when X"4",
-		csr5 when X"5",
 		X"0000" when others;
 	process (Clk, Rst) is
 	begin
@@ -53,8 +51,6 @@ begin
 			csr1 <= (others=>'0');
 			csr2 <= (others=>'0');
 			csr3 <= (others=>'0');
-			csr4 <= (others=>'0');
-			csr5 <= (others=>'0');
 		elsif rising_edge(Clk) then
 			if Wr = '1' then
 				case Idx is
@@ -69,10 +65,6 @@ begin
 						csr2 <= WrData;
 					when X"3" =>
 						csr3 <= WrData;
-					when X"4" =>
-						csr4 <= WrData;
-					when X"5" =>
-						csr5 <= WrData;
 					when others=>
 						null;
 				end case;
