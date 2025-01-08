@@ -1862,10 +1862,10 @@ Build with Clang 19 and libc++:
   file should start with an underscore, unless the file is the main program,
   not intended to be `$use`d in other files.
 - Each subroutine is documented by a comment block containing a description and
-  lists of input, output, and modified registers, Registers `ca`, `f`, and
-  output registers need not be listed as modified, as their modification is
-  expected implicitly. Input registers that can be modified must be listed in
-  `Modified`.
+  lists of input, output, and modified registers, Registers `ca`, `f`, `csr2`,
+  `csr3`, and output registers (listed in Out:) need not be listed as modified,
+  as their modification is expected implicitly. Input registers that can be
+  modified must be listed in `Modified`.
 
         # Short description
         # Optional detailed description
@@ -1881,6 +1881,17 @@ Build with Clang 19 and libc++:
   `r0`, `r1`, ...
 - Working registers of a subroutine that are not restored before return should
   be allocated in the order `r10`, `r9`, ...
+- Each macro is documented by a comment block containing a description and
+  a list of parameters.
+
+        # Short description
+        # Optional detailed description
+        # ARG1 = description of parameter ARG1
+        # ARG2 = ...
+        $macro some_macro, ARG1, ARG2, ...
+            ...
+        $end_macro
+
 - The stack grows from higher to lower addresses. Instruction `ddsto` is used
   to push values to the stack, `ldis` is used to pop from the stack. Register
   `sp` points to the value at the top of the stack. The stack is located
