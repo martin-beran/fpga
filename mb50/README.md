@@ -1668,9 +1668,14 @@ the [assembler syntax](#syntax).
     break [-] [ADDR]
     b
 
-_The current implementation uses single stepping controlled by the debugger
+_Note: The current implementation uses single stepping controlled by the debugger
 instead of full-speed execution, therefore a program executes much slower if at
 least one breakpoint is defined._
+
+_Note: In the current implementation, a breakpoint set at the first instruction
+of an interrupt handler is ignored if the handler is executed due to an
+interrupt. To stop at the beginning of the handler, set a breakpoint to the
+second instruction._
 
 If a breakpoint is set on an address, the program execution is stopped before
 executing the instruction at that address. If called without arguments, list

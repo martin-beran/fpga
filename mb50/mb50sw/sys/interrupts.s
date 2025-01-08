@@ -38,13 +38,33 @@ $macro _handle_intr_bit, BIT, HANDLER
     _not_exc$:
 $end_macro
 
-intr_hnd:
-.save_all
-_handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
-_handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
-_handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
-.restore_all_intr
-reti pc, pc
+# Variant of the interrupt handler that saves registers to the stack.
+$macro _intr_hnd_stack
+    intr_hnd:
+    .save_all
+    _handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
+    _handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
+    _handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
+    .restore_all_intr
+    reti pc, pc
+$end_macro
+
+# Variant of the interrupt handler that saves registers to a fixed memory area.
+$macro _intr_hnd_mem
+    _intr_reg_begin: $addr _intr_reg_begin + 14 * 2
+    _intr_reg_end:
+    intr_hnd:
+    .mem_save_all_intr _intr_reg_end
+    _handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
+    _handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
+    _handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
+    .mem_restore_all_intr _intr_reg_begin
+    reti pc, pc
+$end_macro
+
+# Select a variant of the interrupt handler (_intr_hnd_stack or _intr_hnd_mem)
+_intr_hnd_stack
+#_intr_hnd_mem
 
 # A no-operation subroutine that can be used as any addr_intr_hnd_*
 noop_intr_hnd:

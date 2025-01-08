@@ -575,6 +575,86 @@ pop r9
 pop r8
 ret
 
+### Saving registers to memory ################################################
+
+# These macros are alternatives to saving and restoring registers to stack
+# (provided by save* and restore*).
+
+$macro _mem_save_all_common, CSR, END
+    csrw CSR, r0
+    .set r0, END
+    ddsto r0, r14
+    ddsto r0, r12
+    ddsto r0, r11
+    ddsto r0, r10
+    ddsto r0, r9
+    ddsto r0, r8
+    ddsto r0, r7
+    ddsto r0, r6
+    ddsto r0, r5
+    ddsto r0, r4
+    ddsto r0, r3
+    ddsto r0, r2
+    ddsto r0, r1
+    csrr r1, CSR
+    ddsto r0, r1 # original r0
+    ldis r1, r0 # skip stored r0 without changing f
+    ldis r1, r0 # restore r1
+    csrr r0, CSR # restore r0
+$end_macro
+
+$macro _mem_restore_all_common, CSR, BEGIN
+    .set r0, BEGIN
+    ldis r1, r0
+    csrw CSR, r1 # save value of r0
+    ldis r1, r0 # restore r1 and following registers
+    ldis r2, r0
+    ldis r3, r0
+    ldis r4, r0
+    ldis r5, r0
+    ldis r6, r0
+    ldis r7, r0
+    ldis r8, r0
+    ldis r9, r0
+    ldis r10, r0
+    ldis r11, r0
+    ldis r12, r0
+    ldis r14, r0
+    csrr r0, CSR # restore r0
+$end_macro
+
+# Save registers to memory in non-interrupt code.
+# It saves all registers except pc and ia to 28 bytes before address END
+# (END-28..END-1). It modifies csr3, but not any ordinary register.
+# END = the address immediately after a block of 28 bytes reserved for storing registers
+$macro mem_save_all, END
+    _mem_save_all_common, csr3, END
+$end_macro
+
+# Restore registers from memory in non-interrupt code.
+# It restores all registers except pc and ia (previously saved by
+# macro_mem_save_all) from 28 bytes starting at address BEGIN (BEGIN..BEGIN+27).
+# BEGIN = the addres of the first byte of a block of 28 bytes with stored register values
+$macro mem_restore_all, BEGIN
+    _mem_restore_all_common csr3, BEGIN
+$end_macro
+
+# Save registers to memory in an interrupt handler.
+# It saves all registers except pc and ia to 28 bytes before address END
+# (END-28..END-1). It modifies csr2, but not any ordinary register.
+# END = the address immediately after a block of 28 bytes reserved for storing registers
+$macro mem_save_all_intr, END
+    _mem_save_all_common csr2, END
+$end_macro
+
+# Restore registers from memory in an interrupt handler.
+# It restores all registers except pc and ia (previously saved by
+# macro_mem_save_all_intr) from 28 bytes starting at address BEGIN (BEGIN..BEGIN+27).
+# BEGIN = the addres of the first byte of a block of 28 bytes with stored register values
+$macro mem_restore_all_intr, BEGIN
+    _mem_restore_all_common csr2, BEGIN
+$end_macro
+
 ### Keep this label at the end of this file ###################################
 
 _skip_this_file:

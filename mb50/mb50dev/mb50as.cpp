@@ -321,7 +321,7 @@ public:
         return {{decltype(idx){idx}, decltype(csr){csr}}};
     }
     [[nodiscard]] std::string eval_reg_str() const override {
-        return std::format("{}r{}", csr ? "csr" : "", uint8_t(idx));
+        return std::format("{}r{}", csr ? "cs" : "", uint8_t(idx));
     }
 private:
     uint8_t idx: 4;
@@ -626,8 +626,8 @@ void output::add_src_line(const sfs::path& file, size_t line, std::string_view t
         out_text.push_back({.text = std::format("; {}{}{}:{}", prefix.size() >= 2 ? prefix.substr(2) : prefix,
                                                 macro_prefix, file.string(), line)});
         last_file = file;
-        last_line = line;
     }
+    last_line = line;
     out_text.push_back({.text = std::string(prefix).append(text)});
 }
 
@@ -708,6 +708,8 @@ CONTENT BEGIN
             ofs << delim << std::format("{:#04x}", b);
             delim = ", "s;
         }
+        if (l.bytes.size() == 2)
+            ofs << std::format(" # 0x{:02x}{:02x}", l.bytes[1], l.bytes[0]);
         ofs << '\n';
     }
     ofs.close();
@@ -1239,7 +1241,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             } else {
                 if (auto v = (*e)->eval()) {
                     cur_addr = *v;
-                    out.add_txt_line(std::format("$addr {}", cur_addr), line_prefix);
+                    out.add_txt_line(std::format("$addr {:#06x}", cur_addr), line_prefix);
                 } else {
                     std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
                         std::endl;

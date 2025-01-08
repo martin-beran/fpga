@@ -362,6 +362,7 @@ begin
 									RegIdxA <= src_reg;
 									RegIdxB <= dst_reg;
 									RegWrA <= '0';
+									RegWrB <= '1';
 									CsrRd <= '1';
 								when OpcodeCsrw =>
 									RegWrA <= '0';
