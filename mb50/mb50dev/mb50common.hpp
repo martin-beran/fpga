@@ -30,6 +30,12 @@ public:
     silent_error(): runtime_error("") {}
 };
 
+// An exception thrown during failed expression evaluation (e.g., on division by zero)
+class eval_error: public std::runtime_error {
+public:
+    explicit eval_error(std::string_view msg): std::runtime_error(std::string(msg)) {}
+};
+
 /*** Parsing text ************************************************************/
 
 // Whitespace characters

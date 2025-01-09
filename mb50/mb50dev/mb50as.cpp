@@ -125,6 +125,8 @@ private:
     class expr_neg;
     // second phase of expression evaluation
     struct phase2_t {
+        const sfs::path& path; // file containing the expression
+        size_t line; // line containing the expression
         std::shared_ptr<expr_base> expr; // evaluate this expression
         uint16_t addr; // store value here
         bool word; // false = byte, true = word
@@ -453,8 +455,12 @@ class assembler::expr_div: public assembler::expr_binop {
 public:
     static constexpr std::string_view op = "/";
     std::optional<uint16_t> eval() override {
-        if (auto [l, r] = std::pair{left->eval(), right->eval()}; l && r && *r != 0)
-            return uint16_t(*l / *r);
+        if (auto [l, r] = std::pair{left->eval(), right->eval()}; l && r) {
+            if (*r != 0)
+                return uint16_t(*l / *r);
+            else
+                throw eval_error("Division by zero");
+        }
         return std::nullopt;
     }
 };
@@ -464,8 +470,12 @@ class assembler::expr_rem: public assembler::expr_binop {
 public:
     static constexpr std::string_view op = "%";
     std::optional<uint16_t> eval() override {
-        if (auto [l, r] = std::pair{left->eval(), right->eval()}; l && r && *r != 0)
-            return uint16_t(*l % *r);
+        if (auto [l, r] = std::pair{left->eval(), right->eval()}; l && r) {
+            if (*r != 0)
+                return uint16_t(*l % *r);
+            else
+                throw eval_error("Division by zero");
+        }
         return std::nullopt;
     }
 };
@@ -1011,29 +1021,31 @@ assembler::parse_expr_binary(std::string_view s, input::files_t::const_iterator 
     auto result = (this->*F)(s, file, macro_args, macro_id);
     if (!result.first)
         return result;
-    auto it = result.second.begin();
-    while (parser::whitespace(*it))
-        ++it;
-    if (it == result.second.end())
-        return result;
-    auto branch = [&]<class T>(T*) -> bool {
-        if (!std::string_view(it, result.second.end()).starts_with(T::op))
-            return false;
-        if (!dynamic_cast<expr_number*>(result.first->get())) {
-            result =
-                {std::unexpected(std::format("Unexpected '{}' after non-numeric expression", *it)), result.second};
-        } else if (auto right = (this->*F)({it  + T::op.size(),  result.second.end()}, file, macro_args, macro_id);
-                   !right.first)
-        {
-            result = std::move(right);
-        } else if (!dynamic_cast<expr_number*>(right.first->get()))
-            result = {std::unexpected(std::format("Unexpected non-numeric expression after '{}'", *it)), right.second};
-        else
-            result = {std::make_shared<T>(std::move(*result.first), std::move(*right.first)), right.second};
-        return true;
-    };
-    (false || ... || branch(static_cast<E*>(nullptr)));
-    return result;
+    for (;;) {
+        auto it = result.second.begin();
+        while (parser::whitespace(*it))
+            ++it;
+        if (it == result.second.end())
+            return result;
+        auto branch = [&]<class T>(T*) -> bool {
+            if (!std::string_view(it, result.second.end()).starts_with(T::op))
+                return false;
+            if (!dynamic_cast<expr_number*>(result.first->get())) {
+                result =
+                    {std::unexpected(std::format("Unexpected '{}' after non-numeric expression", *it)), result.second};
+            } else if (auto right = (this->*F)({it  + T::op.size(),  result.second.end()}, file, macro_args, macro_id);
+                       !right.first)
+            {
+                result = std::move(right);
+            } else if (!dynamic_cast<expr_number*>(right.first->get()))
+                result = {std::unexpected(std::format("Unexpected non-numeric expression after '{}'", *it)), right.second};
+            else
+                result = {std::make_shared<T>(std::move(*result.first), std::move(*right.first)), right.second};
+            return true;
+        };
+        if (!(... || branch(static_cast<E*>(nullptr))) || !result.first)
+            return result;
+    }
 }
 
 std::pair<assembler::parse_expr_t, std::string_view>
@@ -1181,13 +1193,19 @@ void assembler::run()
         throw silent_error{};
     }
     for (auto&& p: phase2)
-        if (auto v = p.expr->eval()) {
-            if (p.word)
-                out.set_word(p.addr, *v);
-            else
-                out.set_byte(p.addr, uint8_t(*v % 256));
-        } else
-            throw fatal_error{"Cannot evaluate an expression in the second phase"};
+        try {
+            if (auto v = p.expr->eval()) {
+                if (p.word)
+                    out.set_word(p.addr, *v);
+                else
+                    out.set_byte(p.addr, uint8_t(*v % 256));
+            } else
+                throw fatal_error{"Cannot evaluate an expression in the second phase"};
+        } catch (eval_error& e) {
+            std::cerr << src_pos(p.path, p.line) << "Cannot evaluate an expression in the second phase: " <<
+                e.what() << std::endl;
+            throw silent_error{};
+        }
 }
 
 void assembler::run_lines(const input::files_t& files, input::files_t::const_iterator current,
@@ -1239,11 +1257,17 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 std::cerr << src_pos(current->first, line_num) << "Invalid argument: " << e.error() << std::endl;
                 throw silent_error{};
             } else {
-                if (auto v = (*e)->eval()) {
-                    cur_addr = *v;
-                    out.add_txt_line(std::format("$addr {:#06x}", cur_addr), line_prefix);
-                } else {
-                    std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
+                try {
+                    if (auto v = (*e)->eval()) {
+                        cur_addr = *v;
+                        out.add_txt_line(std::format("$addr {:#06x}", cur_addr), line_prefix);
+                    } else {
+                        std::cerr << src_pos(current->first, line_num) << "Cannot evaluate $addr in the first phase" <<
+                            std::endl;
+                        throw silent_error{};
+                    }
+                } catch (eval_error& e) {
+                    std::cerr << src_pos(current->first, line_num) << "Cannot evaluate expression: " << e.what() <<
                         std::endl;
                     throw silent_error{};
                 }
@@ -1280,13 +1304,22 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         b.error() << std::endl;
                     throw silent_error{};
                 } else
-                    if (auto v = (*b)->eval_bytes()) {
-                        bytes.append_range(*v);
-                        cur_addr += bytes.size();
-                    } else {
-                        bytes.push_back(0);
-                        phase2.push_back({.expr = std::move(*b), .addr = cur_addr, .word = false});
-                        ++cur_addr;
+                    try {
+                        if (auto v = (*b)->eval_bytes()) {
+                            bytes.append_range(*v);
+                            cur_addr += bytes.size();
+                        } else {
+                            bytes.push_back(0);
+                            phase2.push_back({
+                                .path = current->first, .line = line_num,
+                                .expr = std::move(*b), .addr = cur_addr, .word = false
+                            });
+                            ++cur_addr;
+                        }
+                    } catch (eval_error& e) {
+                        std::cerr << src_pos(current->first, line_num) << "Cannot evaluate expression: " << e.what() <<
+                            std::endl;
+                        throw silent_error{};
                     }
             }
             out.add_bytes(start_addr, bytes, ""sv, line_prefix);
@@ -1300,13 +1333,22 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                         w.error() << std::endl;
                     throw silent_error{};
                 } else {
-                    if (auto v = (*w)->eval()) {
-                        bytes.push_back(uint8_t(*v % 256));
-                        bytes.push_back(uint8_t(*v / 256));
-                    } else {
-                        bytes.push_back(0);
-                        bytes.push_back(0);
-                        phase2.push_back({.expr = std::move(*w), .addr = cur_addr, .word = true});
+                    try {
+                        if (auto v = (*w)->eval()) {
+                            bytes.push_back(uint8_t(*v % 256));
+                            bytes.push_back(uint8_t(*v / 256));
+                        } else {
+                            bytes.push_back(0);
+                            bytes.push_back(0);
+                            phase2.push_back({
+                                .path = current->first, .line = line_num,
+                                .expr = std::move(*w), .addr = cur_addr, .word = true
+                            });
+                        }
+                    } catch (eval_error& e) {
+                        std::cerr << src_pos(current->first, line_num) << "Cannot evaluate expression: " << e.what() <<
+                            std::endl;
+                        throw silent_error{};
                     }
                     cur_addr += 2;
                 }

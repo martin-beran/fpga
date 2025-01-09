@@ -1473,10 +1473,11 @@ integers. Components of an expression:
 - A two-character constant, converted to a number with the lower byte
   containing the first character code and the higher byte containing the second
   character code
-- Unary and binary operators with no associativity (parentheses must be used if
-  more than two subexpressions are connected by operators with the same
-  precedence) and the same meaning and precedence as in C. From highest to
-  lowest priority:
+- Unary and binary operators with left associativity and the same meaning and
+  precedence as in C. If more than two subexpressions are connected by
+  operators with the same precedence then the meaning is the same as if adding
+  parentheses grouped to the left (`a * b * c * d == ((a * b) * c) * d`). From
+  highest to lowest priority:
     - `~` (bitwise NOT), `-` (unary minus, computes two's complement)
     - `*`, `/`, `%` (multiplication, division, remainder)
     - `+`, `-` (addition, subtraction)
