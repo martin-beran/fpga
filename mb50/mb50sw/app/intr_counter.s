@@ -13,6 +13,8 @@ title_clk_val: $data_b  "Value:      \0"
 title_keyboard: $data_b "=== Keyboard ===\0"
 title_ikbd: $data_b     "Interrupts: \0"
 title_kbd_rxd: $data_b  "Received:   \0"
+msg_halt: $data_b "Press Esc to generate exception\0"
+msg_reg: $data_b "Press Enter to display registers\0"
 
 cnt_iclk: $data_w 0
 cnt_ikbd: $data_w 0
@@ -77,6 +79,10 @@ sto r10, r8
 .set r1, 12
 .set r2, title_keyboard
 .call .putstr0
+.set r0, 0
+.set r1, 17
+.set r2, msg_halt
+.call .putstr0
 .set r0, 0x07
 .call .kbd_set_leds
  # Infinite loop, interrupt counts are displayed by interrupt handlers
@@ -112,5 +118,16 @@ forever:
     .set r2, title_kbd_rxd
     .call .putstr0
     .lda r2, .kbd_rx_buf
-    .call .print_word
+    # Test for Esc
+    .set r10, 0xff
+    and r2, r10
+    .set r10, 0x76
+    .jmpne r2, r10, not_esc
+    ill r0, r0 # Hardware exception
+    # Test for Enter
+    not_esc: .set r10, 0x5a
+    .jmpne r2, r10, not_enter
+    .set r10, .FLAG_BIT_EXC
+    or f, r10 # Software exception
+    not_enter: .call .print_word
     .jmp forever

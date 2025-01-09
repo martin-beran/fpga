@@ -389,7 +389,7 @@ _loop_csr:
     add r4, r10
     .set r10, 15
     .jmpleu r5, r10, _loop_csr
-.restore_all
+.restore_all_intr # allow use in an interrupt handler
 .ret
 
 ### Keep this label at the end of this file ###################################

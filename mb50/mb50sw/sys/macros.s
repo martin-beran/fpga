@@ -583,7 +583,6 @@ ret
 $macro _mem_save_all_common, CSR, END
     csrw CSR, r0
     .set r0, END
-    ddsto r0, r14
     ddsto r0, r12
     ddsto r0, r11
     ddsto r0, r10
@@ -595,6 +594,7 @@ $macro _mem_save_all_common, CSR, END
     ddsto r0, r4
     ddsto r0, r3
     ddsto r0, r2
+    ddsto r0, r14 # saved here for easier handling in _mem_restore_all_common
     ddsto r0, r1
     csrr r1, CSR
     ddsto r0, r1 # original r0
@@ -603,11 +603,19 @@ $macro _mem_save_all_common, CSR, END
     csrr r0, CSR # restore r0
 $end_macro
 
+# It does not change the upper byte of register f, because new pending
+# interrupts must be correctly recorded during execution of an interrupt handler.
 $macro _mem_restore_all_common, CSR, BEGIN
     .set r0, BEGIN
     ldis r1, r0
     csrw CSR, r1 # save value of r0
     ldis r1, r0 # restore r1 and following registers
+    ldis r2, r0 # saved f
+    .set r3, 0x00ff
+    and r2, r3 # clear upper byte of r2
+    not r3, r3 # 0xff00
+    and f, r3
+    or f, r2 # No instruction potentially modifying f allowed until reti
     ldis r2, r0
     ldis r3, r0
     ldis r4, r0
@@ -619,7 +627,6 @@ $macro _mem_restore_all_common, CSR, BEGIN
     ldis r10, r0
     ldis r11, r0
     ldis r12, r0
-    ldis r14, r0
     csrr r0, CSR # restore r0
 $end_macro
 

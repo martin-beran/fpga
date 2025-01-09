@@ -73,11 +73,14 @@ noop_intr_hnd:
 _exc_msg: $data_b "Exception, CPU halted\0"
 
 # Default exception handler
-# It displays registers and halts the CPU. Subroutine display_registers pushes
-# and pops register f, which may lose new pending interrupts, but it does not
-# matter here, because the CPU is halted anyway.
+# It displays registers. Then it halts the CPU for a hardware interrupt and
+# returns for a software interrupt.
 default_intr_hnd_exc:
 .call .display_registers
+csrr r10, csr0
+.set r9, 0x0100
+and r10, r9
+.retz
 .set r0, 0
 .set r1, 23
 .set r2, _exc_msg
