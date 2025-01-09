@@ -120,13 +120,13 @@ forever:
     .lda r2, .kbd_rx_buf
     # Test for Esc
     .set r10, 0xff
-    and r2, r10
-    .set r10, 0x76
-    .jmpne r2, r10, not_esc
+    and r10, r2
+    .set r9, 0x76
+    .jmpne r10, r9, not_esc
     ill r0, r0 # Hardware exception
     # Test for Enter
-    not_esc: .set r10, 0x5a
-    .jmpne r2, r10, not_enter
+    not_esc: .set r9, 0x5a
+    .jmpne r10, r9, not_enter
     .set r10, .FLAG_BIT_EXC
     or f, r10 # Software exception
     not_enter: .call .print_word
