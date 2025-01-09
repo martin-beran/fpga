@@ -215,7 +215,6 @@ begin
 			variable dst_reg, src_reg: reg_idx_t;
 			variable decoded: decoded_t;
 			variable cond: boolean;
-			variable handling_intr: boolean := false;
 
 			procedure init_signals is
 			begin
@@ -256,7 +255,6 @@ begin
 			procedure illegal_instruction(reason: op_t) is
 			begin
 				Exception <= '1';
-				handling_intr := false; -- force halt in interrupt handler
 				RegIdxA <= to_reg_idx(0);
 				RegWrA <= '1';
 				CsrWr <= '1';
@@ -286,7 +284,6 @@ begin
 		begin
 			if Rst = '1' then
 				init_signals;
-				handling_intr := false;
 				state <= Init;
 			elsif rising_edge(Clk) then
 				init_signals;
@@ -301,9 +298,8 @@ begin
 								RegWrA <= '1';
 								RegWrB <= '1';
 								AluOp <= OpExch;
-								handling_intr := true;
 								state <= IntrHnd;
-							elsif not handling_intr and RegRdF(flags_idx_ie) = '0' and RegRdF(flags_idx_exc) = '1' then
+							elsif RegRdF(flags_idx_ie) = '0' and RegRdF(flags_idx_exc) = '1' then
 								-- Exception with disabled interrupts
 								state <= Halt;
 							else
@@ -380,7 +376,6 @@ begin
 									RegIdxA <= to_reg_idx(reg_idx_f);
 									RegIdxB <= to_reg_idx(reg_idx_f);
 									RegWrB <= '1';
-									handling_intr := false;
 									state <= RetiPc;
 								when others =>
 									null;
