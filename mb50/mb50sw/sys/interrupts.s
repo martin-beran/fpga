@@ -19,13 +19,13 @@ $use dev_kbd, dev_kbd.s
 # interrupt handler.
 
 # Handler for interrupt bit exc (E, exception)
-addr_intr_hnd_exc: $data_w default_intr_hnd_exc
+addr_intr_hnd_exc: $data_w 0x0000
 
 # Handler for interrupt bit iclk (C, system clock)
-addr_intr_hnd_iclk: $data_w .dev_clk_intr_hnd
+addr_intr_hnd_iclk: $data_w 0x0000
 
 # Handler for interrupt bit ikbd (K keyboard)
-addr_intr_hnd_ikbd: $data_w .dev_kbd_intr_hnd
+addr_intr_hnd_ikbd: $data_w 0x0000
 
 # The main interrupt handler
 $macro _handle_intr_bit, BIT, HANDLER
@@ -92,6 +92,15 @@ ill r0, r0 # halt
 # Install the main interrupt handler
 intr_init:
  # install interrupt handler
+.set r10, default_intr_hnd_exc
+.set r9, addr_intr_hnd_exc
+sto r9, r10
+.set r10, .dev_clk_intr_hnd
+inc2 r9, r9
+sto r9, r10
+.set r10, .dev_kbd_intr_hnd
+inc2 r9, r9
+sto r9, r10
 .set ia, intr_hnd
 csrw csr1, ia
  # enable interrupts
