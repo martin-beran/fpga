@@ -45,6 +45,7 @@ package types is
 	constant flags_idx_o: natural := 7;
 	constant flags_idx_ie: natural := 8;
 	constant flags_idx_exc: natural := 9;
+	constant flags_idx_iexc: natural := 10;
 	-- Type of exception/interrupt bits in register F
 	subtype irq_t is std_logic_vector(15 downto 9);
 end package;

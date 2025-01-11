@@ -19,7 +19,7 @@ $use dev_kbd, dev_kbd.s
 # interrupt handler.
 
 # Handler for interrupt bit exc (E, exception)
-addr_intr_hnd_exc: $data_w 0x0000
+addr_intr_hnd_iexc: $data_w 0x0000
 
 # Handler for interrupt bit iclk (C, system clock)
 addr_intr_hnd_iclk: $data_w 0x0000
@@ -42,7 +42,7 @@ $end_macro
 $macro _intr_hnd_stack
     intr_hnd:
     .save_all
-    _handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
+    _handle_intr_bit .FLAG_BIT_IEXC, addr_intr_hnd_iexc
     _handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
     _handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
     .restore_all_intr
@@ -55,7 +55,7 @@ $macro _intr_hnd_mem
     _intr_reg_end:
     intr_hnd:
     .mem_save_all_intr _intr_reg_end
-    _handle_intr_bit .FLAG_BIT_EXC, addr_intr_hnd_exc
+    _handle_intr_bit .FLAG_BIT_IEXC, addr_intr_hnd_iexc
     _handle_intr_bit .FLAG_BIT_ICLK, addr_intr_hnd_iclk
     _handle_intr_bit .FLAG_BIT_IKBD, addr_intr_hnd_ikbd
     .mem_restore_all_intr _intr_reg_begin
@@ -63,8 +63,8 @@ $macro _intr_hnd_mem
 $end_macro
 
 # Select a variant of the interrupt handler (_intr_hnd_stack or _intr_hnd_mem)
-_intr_hnd_stack
-#_intr_hnd_mem
+#_intr_hnd_stack
+_intr_hnd_mem
 
 # A no-operation subroutine that can be used as any addr_intr_hnd_*
 noop_intr_hnd:
@@ -76,10 +76,12 @@ _exc_msg: $data_b "Exception, CPU halted\0"
 # It displays registers. Then it halts the CPU for a hardware interrupt and
 # returns for a software interrupt.
 default_intr_hnd_exc:
+.push ca
 .call .display_registers
 csrr r10, csr0
 .set r9, 0x0100
 and r10, r9
+.pop ca
 .retz
 .set r0, 0
 .set r1, 23
@@ -93,7 +95,7 @@ ill r0, r0 # halt
 intr_init:
  # install interrupt handler
 .set r10, default_intr_hnd_exc
-.set r9, addr_intr_hnd_exc
+.set r9, addr_intr_hnd_iexc
 sto r9, r10
 .set r10, .dev_clk_intr_hnd
 inc2 r9, r9
@@ -104,8 +106,7 @@ sto r9, r10
 .set ia, intr_hnd
 csrw csr1, ia
  # enable interrupts
-.set r10, .FLAG_BIT_IE
-or f, r10
+.enable_intr r10
 .ret
 
 ### Keep this label at the end of this file ###################################

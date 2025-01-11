@@ -531,7 +531,7 @@ bool cmd_csr::operator()(cdi& mb50, script_history& log, std::string_view, std::
         if (size_t value_b = args.find_first_not_of(whitespace_chars, name_e); value_b != npos)
             value = args.substr(value_b);
     if (value.empty()) {
-        log.output() << "REG      HEX     DEC    SIGNED  LO   HI   LH    ---- KCEI oscz 3210";
+        log.output() << "REG      HEX     DEC    SIGNED  LO   HI   LH    ---K CXEI oscz 3210";
                       // r15(pc)  0x04d2  01234  +01234  210  004      0b0000_0100_1101_0010
         log.endl();
         if (reg_idx)

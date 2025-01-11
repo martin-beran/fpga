@@ -12,8 +12,9 @@ $const FLAG_BIT_S,    0b0000_0000_0100_0000
 $const FLAG_BIT_O,    0b0000_0000_1000_0000
 $const FLAG_BIT_IE,   0b0000_0001_0000_0000
 $const FLAG_BIT_EXC,  0b0000_0010_0000_0000
-$const FLAG_BIT_ICLK, 0b0000_0100_0000_0000
-$const FLAG_BIT_IKBD, 0b0000_1000_0000_0000
+$const FLAG_BIT_IEXC, 0b0000_0100_0000_0000
+$const FLAG_BIT_ICLK, 0b0000_1000_0000_0000
+$const FLAG_BIT_IKBD, 0b0001_0000_0000_0000
 
 ### System parameters #########################################################
 

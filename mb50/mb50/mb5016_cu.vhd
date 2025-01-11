@@ -87,8 +87,8 @@ entity mb5016_cu is
 		Halted: out std_logic := '0';
 		-- Generate an exception
 		Exception: out std_logic;
-		-- Disable interrupts
-		DisableIntr: out std_logic;
+		-- Update flags when entering an interrupt handler
+		HandleIntr: out std_logic;
 		-- Select the first (destination) register argument of an instruction
 		RegIdxA: out reg_idx_t := (others=>'0');
 		-- Select the second (source) register argument of an instruction
@@ -144,7 +144,8 @@ begin
 			Store2, -- Store the second byte of a register to memory
 			DdstoStore, -- Store after decrement in instruction DDSTO
 			RetiPc, -- Set register PC in instruction RETI
-			RetiIa -- Set register IA in instruction RETI
+			RetiIa, -- Set register IA in instruction RETI
+			RetiCsr -- Clear CSR0 in instruction RETI
 		);
 		signal state: state_t := Init;
 
@@ -163,6 +164,8 @@ begin
 				op(3 downto 0) := "0000";
 			end if;
 			case op is
+			                                -- is_impl   alu_op           is_load1      is_alu        is_store1
+					                        --       cond_op       is_cond       is_load2      is_flags      is_store2
 				when OpcodeAdd     => return ( true, op,    OpAdd, false, false, false,  true,  true, false, false);
 				when OpcodeAnd     => return ( true, op,    OpAnd, false, false, false,  true,  true, false, false);
 				when OpcodeCmps    => return ( true, op,   OpCmps, false, false, false,  true,  true, false, false);
@@ -219,7 +222,7 @@ begin
 			procedure init_signals is
 			begin
 				Exception <= '0';
-				DisableIntr <= '0';
+				HandleIntr <= '0';
 				RegIdxA <= to_reg_idx(0);
 				RegIdxB <= to_reg_idx(0);
 				RegWrA <= '0';
@@ -292,7 +295,7 @@ begin
 						if Run = '1' then
 							if RegRdF(flags_idx_ie) = '1' and RegRdF(15 downto 9) /= "0000000" then
 								-- Call interrupt handler
-								DisableIntr <= '1';
+								HandleIntr <= '1';
 								RegIdxA <= to_reg_idx(reg_idx_ia);
 								RegIdxB <= to_reg_idx(reg_idx_pc);
 								RegWrA <= '1';
@@ -436,6 +439,13 @@ begin
 						RegWrB <= '1';
 						CsrRd <= '1';
 						AluOp <= OpExch;
+						state <= RetiCsr;
+					when RetiCsr =>
+						RegIdxA <= to_reg_idx(0);
+						RegWrA <= '1';
+						CsrWr <= '1';
+						EnaCsr0H <= '1';
+						AluOp <= OpConstZero;
 						state <= Execute;
 				end case;
 			end if;

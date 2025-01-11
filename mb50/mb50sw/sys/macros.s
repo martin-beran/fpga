@@ -662,6 +662,22 @@ $macro mem_restore_all_intr, BEGIN
     _mem_restore_all_common csr2, BEGIN
 $end_macro
 
+### Interrupts ################################################################
+
+# Enable interrupts.
+# REG = use this register (will modify its value)
+$macro enable_intr, REG
+    .set REG, .FLAG_BIT_IE
+    or f, REG
+$end_macro
+
+# Disable interrupts.
+# REG = use this register (will modify its value)
+$macro disable_intr, REG
+    .set REG, ~.FLAG_BIT_IE
+    and f, REG
+$end_macro
+
 ### Keep this label at the end of this file ###################################
 
 _skip_this_file:

@@ -83,6 +83,10 @@ sto r10, r8
 .set r1, 17
 .set r2, msg_halt
 .call .putstr0
+.set r0, 0
+.set r1, 18
+.set r2, msg_reg
+.call .putstr0
 .set r0, 0x07
 .call .kbd_set_leds
  # Infinite loop, interrupt counts are displayed by interrupt handlers
@@ -95,16 +99,15 @@ forever:
     .lda r2, .CLK_ADDR
     .call .print_word
     # Read clock value with disabled interrupts
-    .set r10, ~.FLAG_BIT_IE
-    and f, r10
+    .disable_intr r10
     .lda r4, .dev_clk_val_s
     .lda r5, .dev_clk_val_ms
-    not r10, r10
-    or f, r10
+    .enable_intr r10
     # Display processed clock value
     .set r0, 0
     .set r1, 4
     .set r2, title_clk_val
+    .disable_intr r10
     .call .putstr0
     mv r2, r4
     .call .print_word
@@ -112,6 +115,7 @@ forever:
     .call .putchar
     mv r2, r5
     .call .print_word
+    .enable_intr r10
     # Display last two bytes received from keyboard
     .set r0, 0
     .set r1, 15
@@ -129,5 +133,6 @@ forever:
     .jmpne r10, r9, not_enter
     .set r10, .FLAG_BIT_EXC
     or f, r10 # Software exception
+    .jmp forever
     not_enter: .call .print_word
     .jmp forever

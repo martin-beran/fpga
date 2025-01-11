@@ -11,6 +11,8 @@ package pkg_mb5016_alu is
 	-- InA, OutA are connected to the first (destination) register of an instruction
 	-- InB, OutB are connected to the second (source) register of an instruction
 	type op_t is (
+	    -- Constant: Zero (OutA := OutB := const)
+		OpConstZero,
 		-- Constant: Exception reason "Unspecified" (OutA := OutB := const)
 		OpConstExcUnspec,
 		-- Constant: Exception reason "Illegal instruction with opcode zero" (OutA := OutB := const)
@@ -304,6 +306,7 @@ begin
 	FS <= output.FS;
 	FO <= output.FO;
 	with Op select output <=
+		(X"0000", X"0000", '0', '0', '0', '0') when OpConstZero,
 		(X"0100", X"0100", '0', '0', '0', '0') when OpConstExcUnspec,
 		(X"0101", X"0101", '0', '0', '0', '0') when OpConstExcIZero,
 		(X"0102", X"0102", '0', '0', '0', '0') when OpConstExcIInstr,

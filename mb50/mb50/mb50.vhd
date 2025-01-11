@@ -66,7 +66,7 @@ begin
 	cpu: entity work.mb5016_cpu port map (
 		Clk=>FPGA_CLK, Rst=>Rst,
 		Run=>run, Busy=>busy, Halted=>halted,
-		Irq(10)=>irq_clk, Irq(11)=>irq_keyboard, Irq(15 downto 12)=>(others=>'0'),
+		Irq(11)=>irq_clk, Irq(12)=>irq_keyboard, Irq(15 downto 13)=>(others=>'0'),
 		AddrBus=>cpu_addr_bus,
 		DataBusRd=>data_bus_rd, DataBusWr=>cpu_data_bus_wr, Rd=>cpu_rd, Wr=>cpu_wr,
 		RegIdx=>reg_idx, RegDataRd=>reg_data_rd, RegDataWr=>reg_data_wr, RegRd=>reg_rd, RegWr=>reg_wr, RegCsr=>reg_csr
