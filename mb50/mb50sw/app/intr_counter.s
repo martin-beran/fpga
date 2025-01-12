@@ -98,11 +98,8 @@ forever:
     .call .putstr0
     .lda r2, .CLK_ADDR
     .call .print_word
-    # Read clock value with disabled interrupts
-    .dintr r10
-    .lda r4, .dev_clk_val_s
-    .lda r5, .dev_clk_val_ms
-    .eintr r10
+    # Read clock value
+    .dev_clk_read r4, r5, r10
     # Display processed clock value
     .set r0, 0
     .set r1, 4
