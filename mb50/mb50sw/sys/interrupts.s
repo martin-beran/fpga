@@ -106,7 +106,7 @@ sto r9, r10
 .set ia, intr_hnd
 csrw csr1, ia
  # enable interrupts
-.enable_intr r10
+.eintr r10
 .ret
 
 ### Keep this label at the end of this file ###################################

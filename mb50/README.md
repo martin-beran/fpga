@@ -1873,6 +1873,8 @@ Build with Clang 19 and libc++:
 
 - Assembler code is generally lowercase. Constants and macro parameters are
   written in uppercase.
+- Macros and subroutines that substitute nonexistent or unimplemented
+  instructions should have short names resembling instruction mnemonics.
 - Symbols (constants, macros, and labels) logically private to a single source
   file should start with an underscore, unless the file is the main program,
   not intended to be `$use`d in other files.

@@ -666,14 +666,14 @@ $end_macro
 
 # Enable interrupts.
 # REG = use this register (will modify its value)
-$macro enable_intr, REG
+$macro eintr, REG
     .set REG, .FLAG_BIT_IE
     or f, REG
 $end_macro
 
 # Disable interrupts.
 # REG = use this register (will modify its value)
-$macro disable_intr, REG
+$macro dintr, REG
     .set REG, ~.FLAG_BIT_IE
     and f, REG
 $end_macro
