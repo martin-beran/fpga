@@ -27,6 +27,7 @@ package pkg_mb5016_cu is
 	-- Opcodes of instructions
 	constant OpcodeAdd: byte_t := X"01";
 	constant OpcodeAnd: byte_t := X"02";
+	constant OpcodeBrk: byte_t := X"22";
 	constant OpcodeCmps: byte_t := X"1b";
 	constant OpcodeCmpu: byte_t := X"19";
 	constant OpcodeCsrr: byte_t := X"03";
@@ -87,6 +88,8 @@ entity mb5016_cu is
 		Halted: out std_logic := '0';
 		-- Generate an exception
 		Exception: out std_logic;
+		-- Signal reaching a hardware breakpoint (instruction brk)
+		Breakpoint: out std_logic := '0';
 		-- Update flags when entering an interrupt handler
 		HandleIntr: out std_logic;
 		-- Select the first (destination) register argument of an instruction
@@ -133,6 +136,7 @@ begin
 		type state_t is (
 			Init, -- Initial state, CPU stopped
 			Halt, -- CPU halted (due to an exception when interrupts are disabled)
+			ExeBrk, -- Execute instruction BRK (give CDI time to notice a breakpoint)
 			IntrHnd, -- Called interrupt handler
 			IGetOpcode, -- Reading opcode (1st byte of an instruction)
 			IGetRegisters, -- Reading source and destination registers (2nd byte of an instruction)
@@ -168,6 +172,7 @@ begin
 					                        --       cond_op       is_cond       is_load2      is_flags      is_store2
 				when OpcodeAdd     => return ( true, op,    OpAdd, false, false, false,  true,  true, false, false);
 				when OpcodeAnd     => return ( true, op,    OpAnd, false, false, false,  true,  true, false, false);
+				when OpcodeBrk     => return ( true, op,     OpMv, false, false, false, false, false, false, false);
 				when OpcodeCmps    => return ( true, op,   OpCmps, false, false, false,  true,  true, false, false);
 				when OpcodeCmpu    => return ( true, op,   OpCmpu, false, false, false,  true,  true, false, false);
 				when OpcodeCsrr    => return ( true, op,   OpExch, false, false, false,  true, false, false, false);
@@ -210,7 +215,7 @@ begin
 		end function;
 
 	begin
-		Busy <= '0' when state = Init or state = Halt else '1';
+		Busy <= '0' when state = Init or state = Halt or state = ExeBrk else '1';
 		Halted <= '1' when state = Halt else '0';
 
 		process (Clk, Rst) is
@@ -247,6 +252,7 @@ begin
 				MemRd <= '1';
 				RegWrA <= '1';
 				AluOp <= OpInc1;
+				Breakpoint <= '0';
 			end procedure;
 	
 			procedure decode_regs is
@@ -286,6 +292,7 @@ begin
 		begin
 			if Rst = '1' then
 				init_signals;
+				Breakpoint <= '0';
 				state <= Init;
 			elsif rising_edge(Clk) then
 				init_signals;
@@ -336,6 +343,9 @@ begin
 							illegal_instruction(OpConstExcIInstr);
 						elsif decoded.cond_op = OpcodeIll then
 							illegal_instruction(OpConstExcIZero);
+						elsif decoded.cond_op = OpcodeBrk then
+							Breakpoint <= '1';
+							state <= ExeBrk;
 						elsif not cond and decoded.cond_op = OpcodeLdnfis then
 							inc_src_reg;
 							state <= Execute;
@@ -390,7 +400,7 @@ begin
 						else
 							state <= Init; -- Conditional instruction that does nothing in the false branch
 						end if;
-					when Execute =>
+					when Execute | ExeBrk =>
 						state <= Init;
 					when Load2 =>
 						RegIdxA <= dst_reg;

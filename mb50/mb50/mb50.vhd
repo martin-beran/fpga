@@ -32,7 +32,7 @@ entity mb50 is
 end entity;
 
 architecture main of mb50 is
-	signal Rst, run, busy, halted: std_logic;
+	signal Rst, run, busy, halted, breakpoint: std_logic;
 	signal irq_clk, irq_keyboard: std_logic;
 	signal cpu_addr_bus, cdi_addr_bus, memctl_addr_bus: addr_t;
 	signal data_bus_rd, cpu_data_bus_wr, cdi_data_bus_wr, memctl_data_bus_wr: byte_t;
@@ -65,7 +65,7 @@ begin
 		
 	cpu: entity work.mb5016_cpu port map (
 		Clk=>FPGA_CLK, Rst=>Rst,
-		Run=>run, Busy=>busy, Halted=>halted,
+		Run=>run, Busy=>busy, Halted=>halted, Breakpoint=>breakpoint,
 		Irq(11)=>irq_clk, Irq(12)=>irq_keyboard, Irq(15 downto 13)=>(others=>'0'),
 		AddrBus=>cpu_addr_bus,
 		DataBusRd=>data_bus_rd, DataBusWr=>cpu_data_bus_wr, Rd=>cpu_rd, Wr=>cpu_wr,
@@ -142,7 +142,7 @@ begin
 	cdi: entity work.cdi port map (
 		Clk=>FPGA_CLK, Rst=>Rst,
 		UartTxD=>UART_TXD, UartRxD=>UART_RXD,
-		CpuRun=>run, CpuBusy=>busy, CpuHalted=>halted,
+		CpuRun=>run, CpuBusy=>busy, CpuHalted=>halted, CpuBreakpoint=>breakpoint,
 		CpuRegIdx=>reg_idx, CpuRegDataRd=>reg_data_rd,
 		CpuRegDataWr=>reg_data_wr, CpuRegRd=>reg_rd, CpuRegWr=>reg_wr, CpuRegCsr=>reg_csr,
 		AddrBus=>cdi_addr_bus, DataBusRd=>data_bus_rd, DataBusWr=>cdi_data_bus_wr, Rd=>cdi_rd, Wr=>cdi_wr

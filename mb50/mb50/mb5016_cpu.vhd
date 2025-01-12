@@ -28,6 +28,8 @@ entity mb5016_cpu is
 		-- Indicates that the CPU is halted, because an exception has occurred when interrupts are disabled.
 		-- The CPU must be reset or interrupts must be enabled by the CDI in order to leave the halted state
 		Halted: out std_logic;
+		-- Indicates that the CPU reached a hardware breakpoint (executed instruction brk)
+		Breakpoint: out std_logic;
 		-- Interrupt request lines, mapped to corresponding bits of register f
 		-- 11 = iclk (system clock)
 		-- 12 = ikbd (keyboard)
@@ -61,7 +63,7 @@ entity mb5016_cpu is
 end entity;
 
 architecture main of mb5016_cpu is
-	signal cpu_running, cu_exception, cu_halted, cu_handle_intr: std_logic;
+	signal cpu_running, cu_exception, cu_halted, cu_breakpoint, cu_handle_intr: std_logic;
 	signal reg_idx_a, reg_idx_b, cu_reg_idx_a: reg_idx_t;
 	signal reg_rd_data_a, reg_rd_data_b, alu_rd_data_a, alu_rd_data_b: word_t;
 	signal reg_wr_data_a, reg_wr_data_b, alu_wr_data_a, alu_wr_data_b: word_t;
@@ -76,6 +78,7 @@ begin
 	-- External out/inout signals
 	Busy <= cpu_running;
 	Halted <= cu_halted;
+	Breakpoint <= cu_breakpoint;
 	RegDataRd <=
 		(others=>'0') when cpu_running = '1' or RegRd /= '1' or RegWr /= '0' else
 		reg_rd_data_a when RegCsr = '0' else
@@ -105,7 +108,8 @@ begin
 	);
 	cu: entity work.mb5016_cu port map (
 		Clk=>Clk, Rst=>Rst, Run=>Run,
-		Busy=>cpu_running, Halted=>cu_halted, Exception=>cu_exception, HandleIntr=>cu_handle_intr,
+		Busy=>cpu_running, Halted=>cu_halted, Breakpoint=>cu_breakpoint,
+		Exception=>cu_exception, HandleIntr=>cu_handle_intr,
 		RegIdxA=>cu_reg_idx_a, RegIdxB=>reg_idx_b,
 		RegWrA=>cu_reg_wr_a, RegWrB=>reg_wr_b,
 		CsrRd=>cu_csr_rd, CsrWr=>cu_csr_wr, EnaCsr0H=>cu_ena_csr0_h,

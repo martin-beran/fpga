@@ -838,6 +838,17 @@ the result into `dstr`. It sets flags: `z` to 1 if the result is zero; `c` to
 0; `s` to 1 if the result is negative (copies the highest bit of the result);
 `o` to 0.
 
+#### BRK (breakpoint)
+
+    brk dstr, srcr
+
+Opcode: 0x22
+
+It signals to the CDI that this instruction has been executed. Otherwise it
+does nothing. It marks a position in the machine code, which can be used to
+implement hardware breakpoints in the CDI. Arguments `dstr` and `srcr` are
+ignored.
+
 #### CMPS (Compare Signed)
 
     cmps dstr, srcr
@@ -1287,6 +1298,7 @@ table shows executed phases for each instruction.
 | :---------: | :---------: | :-------: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `add` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
 | `and` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
+| `brk` | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
 | `cmps` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
 | `cmpu` | ✔ | ✘ | ✘ | ✘ | ✔ | ✔ | ✘ | ✘ |
 | `csrr` | ✔ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ |

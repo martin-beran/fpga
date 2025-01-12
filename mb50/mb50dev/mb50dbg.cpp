@@ -135,6 +135,12 @@ std::string errno_message()
 
 class cdi {
 public:
+    struct status_t {
+        std::string msg;
+        uint16_t pc;
+        bool halted;
+        bool breakpoint;
+    };
     explicit cdi(script_history& log, const std::filesystem::path& p);
     cdi(const cdi&) = delete;
     cdi(cdi&&) = delete;
@@ -147,14 +153,14 @@ public:
     uint16_t cmd_register(uint8_t r, bool csr);
     void cmd_register(uint8_t r, bool csr, uint16_t v);
     void cmd_status();
-    std::tuple<std::string, uint16_t, bool> cmd_step(bool quiet = false);
+    status_t cmd_step(bool quiet = false);
 private:
     [[nodiscard]] std::vector<uint8_t> read_serial(size_t n) const;
     void write_serial(std::span<const uint8_t> data) const;
     static void check_response(uint8_t resp, cdi_response expected);
     // expect_exe_resp=true if response from an uninterrupted cdi_request::execute is expected
-    std::tuple<std::string, uint16_t, bool> read_status(bool expect_exe_resp = false);
-    std::tuple<std::string, uint16_t, bool> show_status(bool expect_exe_resp = false);
+    status_t read_status(bool expect_exe_resp = false);
+    status_t show_status(bool expect_exe_resp = false);
     script_history& log;
     int tty_fd = -1;
 };
@@ -278,7 +284,7 @@ void cdi::cmd_status()
     show_status();
 }
 
-std::tuple<std::string, uint16_t, bool> cdi::cmd_step(bool quiet)
+cdi::status_t cdi::cmd_step(bool quiet)
 {
     std::array req{
         static_cast<uint8_t>(cdi_request::step),
@@ -301,27 +307,29 @@ std::vector<uint8_t> cdi::read_serial(size_t n) const
     return result;
 }
 
-std::tuple<std::string, uint16_t, bool> cdi::read_status(bool expect_exe_resp)
+cdi::status_t cdi::read_status(bool expect_exe_resp)
 {
-    bool halted = false;
     bool exe_resp = false;
-    uint16_t pc = 0x0000;
+    status_t status{};
     do {
         auto resp = read_serial(4);
         check_response(resp[0], cdi_response::status);
-        halted = (resp[1] & 0b0000'0001U) != 0;
+        status.halted = (resp[1] & 0b0000'0001U) != 0;
         exe_resp = (resp[1] & 0b0000'0010U) != 0;
-        pc = uint16_t(resp[2] + (resp[3] << 8U));
+        status.breakpoint = (resp[1] & 0b0000'0100U) != 0;
+        status.pc = uint16_t(resp[2] + (resp[3] << 8U));
     } while (!expect_exe_resp && exe_resp);
-    return {std::format("Ready r15(pc)={:#06x} halted={}", pc, halted), pc, halted};
+    status.msg =
+        std::format("Ready r15(pc)={:#06x} halted={} breakpoint={}", status.pc, status.halted, status.breakpoint);
+    return status;
 }
 
-std::tuple<std::string, uint16_t, bool> cdi::show_status(bool expect_exe_resp)
+cdi::status_t cdi::show_status(bool expect_exe_resp)
 {
-    auto [result, addr, halted] = read_status(expect_exe_resp);
-    log.output() << result;
+    auto status = read_status(expect_exe_resp);
+    log.output() << status.msg;
     log.endl();
-    return {std::move(result), addr, halted};
+    return status;
 }
 
 void cdi::write_serial(std::span<const uint8_t> data) const
@@ -779,11 +787,9 @@ bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view, s
         log.endl();
         log.output() << "Executing program, press Enter to break";
         log.endl();
-        std::string status;
+        cdi::status_t status{};
         for (;;) {
-            uint16_t addr{};
-            bool halted;
-            std::tie(status, addr, halted) = mb50.cmd_step(true);
+            status = mb50.cmd_step(true);
             fd_set fds;
             FD_ZERO(&fds);
             FD_SET(STDIN_FILENO, &fds);
@@ -795,15 +801,15 @@ bool cmd_execute::operator()(cdi& mb50, script_history& log, std::string_view, s
                 std::getline(std::cin, line);
                 break;
             }
-            if (halted)
+            if (status.halted || status.breakpoint)
                 break;
-            if (bp->contains(addr)) {
-                log.output() << std::format("Breakpoint at {:#06x}", addr);
+            if (bp->contains(status.pc)) {
+                log.output() << std::format("Breakpoint at {:#06x}", status.pc);
                 log.endl();
                 break;
             }
         }
-        log.output() << status;
+        log.output() << status.msg;
         log.endl();
     }
     return true;

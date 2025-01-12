@@ -742,6 +742,7 @@ assembler::assembler(input& in, output& out, bool verbose):
     opcodes{
         {"add", {.opcode = 0x01}},
         {"and", {.opcode = 0x02}},
+        {"brk", {.opcode = 0x22}},
         {"cmps", {.opcode = 0x1b}},
         {"cmpu", {.opcode = 0x19}},
         {"csrr", {.opcode = 0x03, .src_csr = true}},

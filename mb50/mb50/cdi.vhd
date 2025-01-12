@@ -24,6 +24,8 @@ entity cdi is
 		CpuBusy: in std_logic;
 		-- Connected to CPU signal Halted
 		CpuHalted: in std_logic;
+		-- Connected to CPU signal Breakpoint
+		CpuBreakpoint: in std_logic;
 		-- Connected to CPU signal RegIdx
 		CpuRegIdx: out reg_idx_t;
 		-- Connected to CPU signal RegDataRd
@@ -109,9 +111,10 @@ entity cdi is
 	-- Register (or CSR) written
 	constant RespRegWr: UartData := X"04";
 	-- System status, followed by bytes:
-	-- 1. "000000XH"
+	-- 1. "00000BXH"
 	--    H = CPU signal Halted
 	--    X = '1' returned as a response to ReqExecute, '0' otherwise
+	--    B = CPU signal Breakpoint
 	-- 2. lower byte of register PC
 	-- 3. upper byte of register PC
 	constant RespStatus: UartData := X"02";
@@ -288,7 +291,7 @@ begin
 					when SendStatus1 =>
 						CpuRegIdx <= to_reg_idx(reg_idx_pc);
 						CpuRegRd <= '1';
-						send_byte("0000000" & CpuHalted, SendStatus2);
+						send_byte("00000" & CpuBreakpoint & '0' & CpuHalted, SendStatus2);
 					when SendStatus2 =>
 						CpuRegIdx <= to_reg_idx(reg_idx_pc);
 						CpuRegRd <= '1';
@@ -309,7 +312,8 @@ begin
 						state <= DoExecuteRun;
 					when DoExecuteRun =>
 						CpuRun <= '1';
-						if CpuBusy /= '1' and CpuHalted = '1' then
+						if CpuBusy /= '1' and (CpuHalted = '1' or CpuBreakpoint = '1') then
+							CpuRun <= '0';
 							-- CPU halted
 							state <= DoExecuteHalt;
 						elsif uart_rx_valid = '1' then
@@ -324,7 +328,7 @@ begin
 					when DoExecuteHalt1 =>
 						CpuRegIdx <= to_reg_idx(reg_idx_pc);
 						CpuRegRd <= '1';
-						send_byte("0000001" & CpuHalted, SendStatus2);
+						send_byte("00000" & CpuBreakpoint & '1' & CpuHalted, SendStatus2);
 					when DoRegRd =>
 						recv_byte(received, rx_byte, DoRegRdVal);
 						if received then
