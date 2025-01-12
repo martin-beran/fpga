@@ -259,7 +259,6 @@ begin
 			begin
 				Exception <= '1';
 				RegIdxA <= to_reg_idx(0);
-				RegWrA <= '1';
 				CsrWr <= '1';
 				EnaCsr0H <= '1';
 				AluOp <= reason;
@@ -377,8 +376,6 @@ begin
 									RegWrB <= '1';
 								when OpcodeReti =>
 									RegIdxA <= to_reg_idx(reg_idx_f);
-									RegIdxB <= to_reg_idx(reg_idx_f);
-									RegWrB <= '1';
 									state <= RetiPc;
 								when others =>
 									null;
@@ -442,7 +439,6 @@ begin
 						state <= RetiCsr;
 					when RetiCsr =>
 						RegIdxA <= to_reg_idx(0);
-						RegWrA <= '1';
 						CsrWr <= '1';
 						EnaCsr0H <= '1';
 						AluOp <= OpConstZero;

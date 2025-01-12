@@ -99,15 +99,14 @@ forever:
     .lda r2, .CLK_ADDR
     .call .print_word
     # Read clock value with disabled interrupts
-    .disable_intr r10
+    .dintr r10
     .lda r4, .dev_clk_val_s
     .lda r5, .dev_clk_val_ms
-    .enable_intr r10
+    .eintr r10
     # Display processed clock value
     .set r0, 0
     .set r1, 4
     .set r2, title_clk_val
-    .disable_intr r10
     .call .putstr0
     mv r2, r4
     .call .print_word
@@ -115,7 +114,6 @@ forever:
     .call .putchar
     mv r2, r5
     .call .print_word
-    .enable_intr r10
     # Display last two bytes received from keyboard
     .set r0, 0
     .set r1, 15

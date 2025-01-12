@@ -326,7 +326,7 @@ begin
 		(InA, InB, '0', '0', '0', '0') when OpMv,
 		f_not(InB) when OpNot,
 		f_or(InA, InB) when OpOr,
-		(InA or to_word(1) sll flags_idx_ie, InB, '0', '0', '0', '0') when OpRetiIe,
+		(InA or (to_word(1) sll flags_idx_ie), InB, '0', '0', '0', '0') when OpRetiIe,
 		f_rev(InB) when OpRev,
 		f_shl(InA, InB) when OpShl,
 		f_shr(InA, InB) when OpShr,
