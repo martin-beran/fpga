@@ -68,6 +68,7 @@ public:
     // Stores a source line for text output file
     void add_src_line(const sfs::path& file, size_t line, std::string_view text, std::string_view prefix,
                       std::string_view macro_prefix);
+    void add_src_location(const sfs::path& file, size_t line, std::string_view prefix, std::string_view macro_prefix);
     void add_txt_line(std::string_view text, std::string_view prefix);
     void set_byte(uint16_t addr, uint8_t byte);
     void set_word(uint16_t addr, uint16_t word);
@@ -633,12 +634,18 @@ void output::add_src_line(const sfs::path& file, size_t line, std::string_view t
                           std::string_view macro_prefix)
 {
     if (file != last_file || line != last_line + 1 || !macro_prefix.empty()) {
-        out_text.push_back({.text = std::format("; {}{}{}:{}", prefix.size() >= 2 ? prefix.substr(2) : prefix,
-                                                macro_prefix, file.string(), line)});
+        add_src_location(file, line, prefix, macro_prefix);
         last_file = file;
     }
     last_line = line;
     out_text.push_back({.text = std::string(prefix).append(text)});
+}
+
+void output::add_src_location(const sfs::path& file, size_t line, std::string_view prefix,
+                              std::string_view macro_prefix)
+{
+    out_text.push_back({.text = std::format("; {}{}{}:{}", prefix.size() >= 2 ? prefix.substr(2) : prefix,
+                                            macro_prefix, file.string(), line)});
 }
 
 void output::add_txt_line(std::string_view text, std::string_view prefix)
@@ -1517,6 +1524,11 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
             }
         }
     }
+    if (macro_prefix.find("END_MACRO"sv) != std::string_view::npos)
+        out.add_src_location(current->first,
+                             size_t(current->second.full_text.end() - current->second.full_text.begin()) + 1,
+                             line_prefix,
+                             macro_prefix);
 }
                           
 void assembler::run_file(const input::files_t& files, input::files_t::const_iterator current)
