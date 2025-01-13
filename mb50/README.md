@@ -838,7 +838,7 @@ the result into `dstr`. It sets flags: `z` to 1 if the result is zero; `c` to
 0; `s` to 1 if the result is negative (copies the highest bit of the result);
 `o` to 0.
 
-#### BRK (breakpoint)
+#### BRK (Breakpoint)
 
     brk dstr, srcr
 
