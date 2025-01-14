@@ -28,47 +28,47 @@ _scan_1: $data_b 0
 # The last entered character in the lower byte:
 # - Zero means no new character received.
 # - Printable ASCII characters are stored using their ASCII codes.
-# - Other keys are stored as KEY_CHAR_* constants, with values 0x01..0x19 and 0x7f..0xff.
+# - Other keys are stored as KEY_* constants, with values 0x01..0x19 and 0x7f..0xff.
 # - Keys on the numeric pad are not distinguished from the main block of keys.
-# - Modifier keys are not reported as received characters. Their KEY_CHAR_*
+# - Modifier keys are not reported as received characters. Their KEY_*
 #   constants are used only for translation from scan codes to a modifier state
-#   bitmap. Modifiers are recognized by KEY_CHAR_* = 0xfX
+#   bitmap. Modifiers are recognized by KEY_* = 0xfX
 _kbd_state: $data_w 0
 
-$const KEY_CHAR_ESC         0x1b # ASCII ESC
-$const KEY_CHAR_F1          0x81
-$const KEY_CHAR_F2          0x82
-$const KEY_CHAR_F3          0x83
-$const KEY_CHAR_F4          0x84
-$const KEY_CHAR_F5          0x85
-$const KEY_CHAR_F6          0x86
-$const KEY_CHAR_F7          0x87
-$const KEY_CHAR_F8          0x88
-$const KEY_CHAR_F9          0x89
-$const KEY_CHAR_F10         0x8a
-$const KEY_CHAR_F11         0x8b
-$const KEY_CHAR_F12         0x8c
-$const KEY_CHAR BACKSPACE   0x08 # ASCII BS
-$const KEY_CHAR_TAB         0x09 # ASCII HT
-$const KEY_CHAR_ENTER       0x0a # ASCII LF
-$const KEY_CHAR_LEFT        0xa0
-$const KEY_CHAR_RIGHT       0xa1
-$const KEY_CHAR_UP          0xa2
-$const KEY_CHAR_DOWN        0xa3
-$const KEY_CHAR_INSERT      0xa4
-$const KEY_CHAR_DELETE      0x7F
-$const KEY_CHAR_HOME        0xa5
-$const KEY_CHAR_END         0xa6
-$const KEY_CHAR_PGUP        0xa7
-$const KEY_CHAR_PGDN        0xa8
+$const KEY_ESC    0x1b # ASCII ESC
+$const KEY_F1     0x81
+$const KEY_F2     0x82
+$const KEY_F3     0x83
+$const KEY_F4     0x84
+$const KEY_F5     0x85
+$const KEY_F6     0x86
+$const KEY_F7     0x87
+$const KEY_F8     0x88
+$const KEY_F9     0x89
+$const KEY_F10    0x8a
+$const KEY_F11    0x8b
+$const KEY_F12    0x8c
+$const KEY_BS     0x08 # ASCII BS (backspace)
+$const KEY_TAB    0x09 # ASCII HT (horizontal tab)
+$const KEY_ENTER  0x0a # ASCII LF ('\n', not CR '\r')
+$const KEY_LEFT   0xa0
+$const KEY_RIGHT  0xa1
+$const KEY_UP     0xa2
+$const KEY_DOWN   0xa3
+$const KEY_INSERT 0xa4
+$const KEY_DELETE 0x7F
+$const KEY_HOME   0xa5
+$const KEY_END    0xa6
+$const KEY_PGUP   0xa7
+$const KEY_PGDN   0xa8
 
-$const KEY_CHAR_SHIFT       0xf0
-$const KEY_CHAR_CTRL        0xf1
-$const KEY_CHAR_SHIFT       0xf2
-$const KEY_CHAR_WIN         0xf3
-$const KEY_CHAR_CAPS_LOCK   0xf4
-$const KEY_CHAR_NUM_LOCK    0xf5
-$const KEY_CHAR_SCROLL_LOCK 0xf6
+$const KEY_SHIFT  0xf0
+$const KEY_CTRL   0xf1
+$const KEY_ALT    0xf2
+$const KEY_WIN    0xf3
+$const KEY_CAPS   0xf4 # CapsLock
+$const KEY_NUM    0xf5 # NumLock
+$const KEY_SCROLL 0xf6 # ScrollLock
 
 # Bits for modifier keys. Left and right modifier keys are not distinguished.
 $const KEY_BIT_SHIFT       0x01
@@ -79,12 +79,84 @@ $const KEY_BIT_CAPS_LOCK   0x10
 $const KEY_BIT_NUM_LOCK    0x20
 $const KEY_BIT_SCROLL_LOCK 0x40
 
+# Conversion table from single-byte (basic) scan codes to KEY_* constants (0=unused code)
+#               X0          X1          X2          X3          X4          X5          X6          X7
+#               X8          X9          Xa          Xb          Xc          Xd          Xe          Xf
+_scan_codes:
+$data_b          0,     KEY_F9,          0,     KEY_F5,     KEY_F3,     KEY_F1,     KEY_F2,    KEY_F12, # 00
+$data_b          0,    KEY_F10,     KEY_F8,     KEY_F6,     KEY_F4,    KEY_TAB,        '`',          0, # 08
+$data_b          0,    KEY_ALT,  KEY_SHIFT,          0,   KEY_CTRL,        'q',        '1',          0, # 10
+$data_b          0,          0,        'z',        's',        'a',        'w',        '2',          0, # 18
+$data_b          0,        'c',        'x',        'd',        'e',        '4',        '3',          0, # 20
+$data_b          0,        ' ',        'v',        'f',        't',        'r',        '5',          0, # 28
+$data_b          0,        'n',        'b',        'h',        'g',        'y',        '6',          0, # 30
+$data_b          0,          0,        'm',        'j',        'u',        '7',        '8',          0, # 38
+$data_b          0,        ',',        'k',        'i',        'o',        '0',        '9',          0, # 40
+$data_b          0,        '.',        '/',        'l',        ';',        'p',        '-',          0, # 48
+$data_b          0,          0,       '\'',          0,        '[',        '=',          0,          0, # 50
+$data_b   KEY_CAPS,  KEY_SHIFT,  KEY_ENTER,        ']',          0,       '\\',          0,          0, # 58
+$data_b          0,          0,          0,          0,          0,          0,     KEY_BS,          0, # 60
+$data_b          0,        '1',          0,        '4',        '7',          0,          0,          0, # 68
+$data_b        '0',        '.',        '2',        '5',        '6',        '8',    KEY_ESC,    KEY_NUM, # 70
+$data_b    KEY_F11,        '+',        '3',        '-',        '*',        '9', KEY_SCROLL,          0, # 78
+$data_b          0,          0,          0,     KEY_F7,          0,          0,          0,          0, # 80
+_scan_codes_end:
+
+# Conversion table from extended (prefixed by 0xe0) scan codes to KEY_* constants (0=unused code)
+#               X0          X1          X2          X3          X4          X5          X6          X7
+#               X8          X9          Xa          Xb          Xc          Xd          Xe          Xf
+_scan_codes_e0:
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 00
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 08
+$data_b          0,    KEY_ALT,          0,          0,   KEY_CTRL,          0,          0,          0, # 10
+$data_b          0,          0,          0,          0,          0,          0,          0,    KEY_WIN, # 18
+$data_b          0,          0,          0,          0,          0,          0,          0,    KEY_WIN, # 20
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 28
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 30
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 38
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 40
+$data_b          0,          0,        '/',          0,          0,          0,          0,          0, # 48
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 50
+$data_b          0,          0,  KEY_ENTER,          0,          0,          0,          0,          0, # 58
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 60
+$data_b          0,    KEY_END,          0,   KEY_LEFT,   KEY_HOME,          0,          0,          0, # 68
+$data_b KEY_INSERT, KEY_DELETE,   KEY_DOWN,          0,  KEY_RIGHT,     KEY_UP,          0,          0, # 70
+$data_b          0,          0,   KEY_PGDN,          0,          0,   KEY_PGUP,          0,          0, # 78
+_scan_codes_e0_end:
+
+# Conversion table for scan codes of in the interval used by numeric keypad without NumLock
+#               X0          X1          X2          X3          X4          X5          X6          X7
+#               X8          X9          Xa          Xb          Xc          Xd          Xe          Xf
+_kp_codes:
+$data_b          0,    KEY_END,          0,   KEY_LEFT,   KEY_HOME,          0,          0,          0, # 68
+$data_b KEY_INSERT, KEY_DELETE,   KEY_DOWN,          0,  KEY_RIGHT,     KEY_UP,    KEY_ESC,    KEY_NUM, # 70
+$data_b    KEY_F11,        '+',   KEY_PGDN,        '-',        '*',   KEY_PGDN, KEY_SCROLL,          0, # 78
+_kp_codes_end:
+
+# Conversion table to keys with Shift
+#               X0          X1          X2          X3          X4          X5          X6          X7
+#               X8          X9          Xa          Xb          Xc          Xd          Xe          Xf
+_shift_codes:
+$data_b          0,          0,          0,          0,          0,          0,          0,        '"', # 20
+$data_b          0,          0,          0,          0,        '<',        '_',        '>',        '?', # 28
+$data_b        ')',        '!',        '@',        '#',        '$',        '%',        '^',        '&', # 30
+$data_b        '*',        '(',          0,        ':',          0,        '+',          0,          0, # 38
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 40
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 48
+$data_b          0,          0,          0,          0,          0,          0,          0,          0, # 50
+$data_b          0,          0,          0,        '{',        '|',        '}',          0,          0, # 58
+$data_b        '~',        'A',        'B',        'C',        'D',        'E',        'F',        'G', # 60
+$data_b        'H',        'I',        'J',        'K',        'L',        'M',        'N',        'O', # 68
+$data_b        'P',        'Q',        'R',        'S',        'T',        'U',        'V',        'W', # 70
+$data_b        'X',        'Y',        'Z',          0,          0,          0,          0,          0, # 78
+_shift_codes_end:
+
 # Read the keyboard state.
 # A repeated call returns 0 in r0 if no key has been pressed since the previous
 # call.
 # In:
 # Out:
-# r0 = the last entered character (printable ASCII or one of KEY_CHAR_*)
+# r0 = the last entered character (printable ASCII or one of KEY_*)
 # r1 = the current state of modifier keys (a combination of KEY_BIT_*)
 # Modifies: r10
 read_keyboard:
