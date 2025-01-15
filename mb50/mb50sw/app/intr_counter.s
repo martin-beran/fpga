@@ -87,8 +87,6 @@ sto r10, r8
 .set r1, 18
 .set r2, msg_reg
 .call .putstr0
-.set r0, 0x07
-.call .kbd_set_leds
  # Infinite loop, interrupt counts are displayed by interrupt handlers
 forever:
      # Display raw clock counter register
@@ -116,7 +114,7 @@ forever:
     .set r1, 15
     .set r2, title_kbd_rxd
     .call .putstr0
-    .lda r2, .kbd_rx_buf
+    .set0 r2 # TODO: Update to new keaboard driver
     # Test for Esc
     .set r10, 0xff
     and r10, r2

@@ -1,5 +1,4 @@
 # Device driver for the PS/2 keyboard
-# TODO: Improve receive buffer and indication of new received data.
 
 $use constants, constants.s
 $use macros, macros.s
@@ -36,49 +35,49 @@ _scan_1: $data_b 0
 #   0b1111_01XY locks)
 _kbd_state: $data_w 0
 
-$const KEY_ESC    0x1b # ASCII ESC
-$const KEY_F1     0x81
-$const KEY_F2     0x82
-$const KEY_F3     0x83
-$const KEY_F4     0x84
-$const KEY_F5     0x85
-$const KEY_F6     0x86
-$const KEY_F7     0x87
-$const KEY_F8     0x88
-$const KEY_F9     0x89
-$const KEY_F10    0x8a
-$const KEY_F11    0x8b
-$const KEY_F12    0x8c
-$const KEY_BS     0x08 # ASCII BS (backspace)
-$const KEY_TAB    0x09 # ASCII HT (horizontal tab)
-$const KEY_ENTER  0x0a # ASCII LF ('\n', not CR '\r')
-$const KEY_LEFT   0xa0
-$const KEY_RIGHT  0xa1
-$const KEY_UP     0xa2
-$const KEY_DOWN   0xa3
-$const KEY_INSERT 0xa4
-$const KEY_DELETE 0x7f
-$const KEY_HOME   0xa5
-$const KEY_END    0xa6
-$const KEY_PGUP   0xa7
-$const KEY_PGDN   0xa8
+$const KEY_ESC,    0x1b # ASCII ESC
+$const KEY_F1,     0x81
+$const KEY_F2,     0x82
+$const KEY_F3,     0x83
+$const KEY_F4,     0x84
+$const KEY_F5,     0x85
+$const KEY_F6,     0x86
+$const KEY_F7,     0x87
+$const KEY_F8,     0x88
+$const KEY_F9,     0x89
+$const KEY_F10,    0x8a
+$const KEY_F11,    0x8b
+$const KEY_F12,    0x8c
+$const KEY_BS,     0x08 # ASCII BS (backspace)
+$const KEY_TAB,    0x09 # ASCII HT (horizontal tab)
+$const KEY_ENTER,  0x0a # ASCII LF ('\n', not CR '\r')
+$const KEY_LEFT,   0xa0
+$const KEY_RIGHT,  0xa1
+$const KEY_UP,     0xa2
+$const KEY_DOWN,   0xa3
+$const KEY_INSERT, 0xa4
+$const KEY_DELETE, 0x7f
+$const KEY_HOME,   0xa5
+$const KEY_END,    0xa6
+$const KEY_PGUP,   0xa7
+$const KEY_PGDN,   0xa8
 
-$const KEY_SHIFT  0xf0
-$const KEY_CTRL   0xf1
-$const KEY_ALT    0xf2
-$const KEY_WIN    0xf3
-$const KEY_CAPS   0xf4 # CapsLock
-$const KEY_NUM    0xf5 # NumLock
-$const KEY_SCROLL 0xf6 # ScrollLock
+$const KEY_SHIFT,  0xf0
+$const KEY_CTRL,   0xf1
+$const KEY_ALT,    0xf2
+$const KEY_WIN,    0xf3
+$const KEY_CAPS,   0xf4 # CapsLock
+$const KEY_NUM,    0xf5 # NumLock
+$const KEY_SCROLL, 0xf6 # ScrollLock
 
 # Bits for modifier keys. Left and right modifier keys are not distinguished.
-$const KEY_BIT_SHIFT       0x01
-$const KEY_BIT_CTRL        0x02
-$const KEY_BIT_ALT         0x04
-$const KEY_BIT_WIN         0x08
-$const KEY_BIT_CAPS_LOCK   0x10
-$const KEY_BIT_NUM_LOCK    0x20
-$const KEY_BIT_SCROLL_LOCK 0x40
+$const KEY_BIT_SHIFT,       0x01
+$const KEY_BIT_CTRL,        0x02
+$const KEY_BIT_ALT,         0x04
+$const KEY_BIT_WIN,         0x08
+$const KEY_BIT_CAPS_LOCK,   0x10
+$const KEY_BIT_NUM_LOCK,    0x20
+$const KEY_BIT_SCROLL_LOCK, 0x40
 
 # Conversion table from single-byte (basic) scan codes to KEY_* constants (0=unused code)
 #               X0          X1          X2          X3          X4          X5          X6          X7
@@ -164,7 +163,7 @@ read_keyboard:
 .dintr r10
 .set r10, _kbd_state
 ld r0, r10
-.set r1 0xff00
+.set r1, 0xff00
 stob r10, r1 # character read, set lower byte of _kbd_state to 0
 .eintr r10
 and r1, r0
@@ -180,22 +179,22 @@ dev_kbd_intr_hnd:
  # Test if a byte has been received
 .set r10, .KBD_READY
 ldb r10, r10
-.set r9, KBD_BIT_RX_RDY
+.set r9, .KBD_BIT_RX_RDY
 and r10, r9
 .retz
  # Shift received bytes and add a new one
-.set r10, _scan0
-.set r9, _scan1
+.set r10, _scan_0
+.set r9, _scan_1
 .set0 r0
 .set0 r1
 .set0 r2
-ldb r0, r10 # r0 = *_scan0
-ldb r1, r9 # r1 = *_scan1
-stob r10, r1 # *_scan0 = *_scan1
-.set r10, KDB_RXD
+ldb r0, r10 # r0 = *_scan_0
+ldb r1, r9 # r1 = *_scan_1
+stob r10, r1 # *_scan_0 = *_scan_1
+.set r10, .KBD_RXD
 ldb r2, r10
 stob r10, r2 # Acknowledge received byte
-stob r9, r2 # *_scan1 = received byte
+stob r9, r2 # *_scan_1 = received byte
 # Received data (last 3 bytes in r0, r1, r2)
 # r0 r1 r2
 # XX YY SC = basic key with scan code 0xSC pressed (YY != 0xf0, 0xe0)
@@ -219,7 +218,7 @@ _not_e0:
 _not_f0:
  # r2 == basic or extended scan code
 .set r10, 0x80
-.jmplt r2, r10, _is_key
+.jmpltu r2, r10, _is_key
     # TODO: handle sending LED states
     .ret
 _is_key:
@@ -242,9 +241,9 @@ _basic:
     xor r10, r9 # r10 = SHIFT xor NUM_LOCK
     .jmpnz _kp_numbers
     .set r10, 0x68
-    .jmplt r2, r10, _kp_numbers
+    .jmpltu r2, r10, _kp_numbers
     .set r10, 0x80
-    .jmpge r2, r10, _kp_numbers
+    .jmpgeu r2, r10, _kp_numbers
         # keypad not numbers (arrows)
         .set r10, _kp_codes - 0x68
         add r2, r10
@@ -266,13 +265,13 @@ shr r10, r8
 xor r10, r9 # r10 = SHIFT xor CAPS_LOCK
 .jmpz _not_shift
 .set r10, 0x20
-.jmplt r0, r10, _not_shift
+.jmpltu r0, r10, _not_shift
 .set r10, 0x80
-.jmpge r0, r10, _not_shift
+.jmpgeu r0, r10, _not_shift
     .set r10, _shift_codes - 0x20
     add r0, r10
     ldb r0, r0 # r0 = shifted char
-not_shift:
+_not_shift:
  # r0 == optionally shifted char
 .set0 r1
 .set r10, _kbd_state + 1 # r10 = &modifiers
@@ -287,28 +286,28 @@ mv r2, r1 # r2 = new state of modifiers
     .jmpne r0, r9, _not_mod_shift
         .set r9, KEY_BIT_SHIFT
         or r2, r9
-    _not_mod_shift: set r9, KEY_CTRL
+    _not_mod_shift: .set r9, KEY_CTRL
     .jmpne r0, r9, _not_mod_ctrl
         .set r9, KEY_BIT_CTRL
         or r2, r9
-    _not_mod_ctrl: set r9, KEY_ALT
+    _not_mod_ctrl: .set r9, KEY_ALT
     .jmpne r0, r9, _not_mod_alt
         .set r9, KEY_BIT_ALT
         or r2, r9
-    _not_mod_alt: set r9, KEY_WIN
+    _not_mod_alt: .set r9, KEY_WIN
     .jmpne r0, r9, _not_mod_win
         .set r9, KEY_BIT_WIN
         or r2, r9
     # Handle lock modifiers
-    _not_mod_win: set r9, KEY_CAPS
+    _not_mod_win: .set r9, KEY_CAPS
     .jmpne r0, r9, _not_mod_caps
         .set r9, KEY_BIT_CAPS_LOCK
         xor r2, r9
-    _not_mod_caps: set r9, KEY_NUM
+    _not_mod_caps: .set r9, KEY_NUM
     .jmpne r0, r9, _not_mod_num
         .set r9, KEY_BIT_NUM_LOCK
         xor r2, r9
-    _not_mod_num: set r9, KEY_SCROLL
+    _not_mod_num: .set r9, KEY_SCROLL
     .jmpne r0, r9, _released_end
         .set r9, KEY_BIT_SCROLL_LOCK
         xor r2, r9
@@ -318,15 +317,15 @@ _released:
     .jmpne r0, r9, _not_rel_shift
         .set r9, ~KEY_BIT_SHIFT
         and r2, r9
-    _not_rel_shift: set r9, KEY_CTRL
+    _not_rel_shift: .set r9, KEY_CTRL
     .jmpne r0, r9, _not_rel_ctrl
         .set r9, ~KEY_BIT_CTRL
         and r2, r9
-    _not_rel_ctrl: set r9, KEY_ALT
+    _not_rel_ctrl: .set r9, KEY_ALT
     .jmpne r0, r9, _not_rel_alt
         .set r9, ~KEY_BIT_ALT
         and r2, r9
-    _not_rel_alt: set r9, KEY_WIN
+    _not_rel_alt: .set r9, KEY_WIN
     .jmpne r0, r9, _released_end
         .set r9, ~KEY_BIT_WIN
         and r2, r9
