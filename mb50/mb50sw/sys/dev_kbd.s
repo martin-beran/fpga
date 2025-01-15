@@ -32,7 +32,8 @@ _scan_1: $data_b 0
 # - Keys on the numeric pad are not distinguished from the main block of keys.
 # - Modifier keys are not reported as received characters. Their KEY_*
 #   constants are used only for translation from scan codes to a modifier state
-#   bitmap. Modifiers are recognized by KEY_* = 0xfX
+#   bitmap. Modifiers are recognized by KEY_* = 0xfX (0b1111_00XY non-locks,
+#   0b1111_01XY locks)
 _kbd_state: $data_w 0
 
 $const KEY_ESC    0x1b # ASCII ESC
@@ -56,7 +57,7 @@ $const KEY_RIGHT  0xa1
 $const KEY_UP     0xa2
 $const KEY_DOWN   0xa3
 $const KEY_INSERT 0xa4
-$const KEY_DELETE 0x7F
+$const KEY_DELETE 0x7f
 $const KEY_HOME   0xa5
 $const KEY_END    0xa6
 $const KEY_PGUP   0xa7
@@ -73,7 +74,7 @@ $const KEY_SCROLL 0xf6 # ScrollLock
 # Bits for modifier keys. Left and right modifier keys are not distinguished.
 $const KEY_BIT_SHIFT       0x01
 $const KEY_BIT_CTRL        0x02
-$const KEY_BIT_SHIFT       0x04
+$const KEY_BIT_ALT         0x04
 $const KEY_BIT_WIN         0x08
 $const KEY_BIT_CAPS_LOCK   0x10
 $const KEY_BIT_NUM_LOCK    0x20
@@ -156,7 +157,7 @@ _shift_codes_end:
 # call.
 # In:
 # Out:
-# r0 = the last entered character (printable ASCII or one of KEY_*)
+# r0 = the last entered character (printable ASCII or one of KEY_*, or 0 if no key pressed)
 # r1 = the current state of modifier keys (a combination of KEY_BIT_*)
 # Modifies: r10
 read_keyboard:
@@ -195,7 +196,148 @@ stob r10, r1 # *_scan0 = *_scan1
 ldb r2, r10
 stob r10, r2 # Acknowledge received byte
 stob r9, r2 # *_scan1 = received byte
- # Process received data (last 3 bytes in r0, r1, r2)
+# Received data (last 3 bytes in r0, r1, r2)
+# r0 r1 r2
+# XX YY SC = basic key with scan code 0xSC pressed (YY != 0xf0, 0xe0)
+# XX f0 SC = basic key with scan code 0xSC released (XX != 0xe0)
+# XX e0 SC = extended key with scan code 0xSC pressed
+# e0 f0 SC = extended key with scan code 0xSC released
+ # Process received data
+.set r10, ~(.FLAG_BIT_F0 | .FLAG_BIT_F1 | .FLAG_BIT_F2 | .FLAG_BIT_F3)
+and f, r10 # clear f0, f1, f2, f3
+.set r10, 0xf0
+.set r9, 0xe0
+.jmpne r1, r9, _not_e0
+    .set r8, .FLAG_BIT_F0 # r1 == 0xe0
+    or f, r8 # f0 = extended key
+_not_e0:
+.jmpne r1, r10, _not_f0
+    .set r7, .FLAG_BIT_F1 # r1 == 0xf0
+    or f, r7 # f1 = key released
+    .jmpne r0, r9, _not_f0
+        or f, r8 # r0 == 0xe0, f0 = extended key
+_not_f0:
+ # r2 == basic or extended scan code
+.set r10, 0x80
+.jmplt r2, r10, _is_key
+    # TODO: handle sending LED states
+    .ret
+_is_key:
+.set0 r0
+.jmpnf0 _basic
+    # extended key
+    .set r10, _scan_codes_e0
+    add r2, r10
+    ldb r0, r2 # r0 = char = _scan_codes_e0[scan_code]
+    .jmp _basic_end
+_basic:
+    # basic key
+    .lda r10, _kbd_state
+    .set r9, KEY_BIT_SHIFT
+    and r9, r10
+    .set r8, KEY_BIT_NUM_LOCK
+    and r10, r8
+    .set r8, 5
+    shr r10, r8
+    xor r10, r9 # r10 = SHIFT xor NUM_LOCK
+    .jmpnz _kp_numbers
+    .set r10, 0x68
+    .jmplt r2, r10, _kp_numbers
+    .set r10, 0x80
+    .jmpge r2, r10, _kp_numbers
+        # keypad not numbers (arrows)
+        .set r10, _kp_codes - 0x68
+        add r2, r10
+        ldb r0, r2 # r0 = char = _kp_codes[scan_code]
+        .jmp _basic_end
+    _kp_numbers:
+        .set r10, _scan_codes
+        add r2, r10
+        ldb r0, r2 # r0 = char = _scan_codes[scan_code]
+_basic_end:
+ # r0 == char
+.lda r10, _kbd_state
+.set r9, KEY_BIT_SHIFT
+and r9, r10
+.set r8, KEY_BIT_CAPS_LOCK
+and r10, r8
+.set r8, 4
+shr r10, r8
+xor r10, r9 # r10 = SHIFT xor CAPS_LOCK
+.jmpz _not_shift
+.set r10, 0x20
+.jmplt r0, r10, _not_shift
+.set r10, 0x80
+.jmpge r0, r10, _not_shift
+    .set r10, _shift_codes - 0x20
+    add r0, r10
+    ldb r0, r0 # r0 = shifted char
+not_shift:
+ # r0 == optionally shifted char
+.set0 r1
+.set r10, _kbd_state + 1 # r10 = &modifiers
+ld r1, r10 # r1 = current state of modifiers
+mv r2, r1 # r2 = new state of modifiers
+.jmpf1 _released
+    # Key pressed
+    .set r9, _kbd_state
+    stob r9, r0 # store pressed key
+    # Handle non-lock modifiers
+    .set r9, KEY_SHIFT
+    .jmpne r0, r9, _not_mod_shift
+        .set r9, KEY_BIT_SHIFT
+        or r2, r9
+    _not_mod_shift: set r9, KEY_CTRL
+    .jmpne r0, r9, _not_mod_ctrl
+        .set r9, KEY_BIT_CTRL
+        or r2, r9
+    _not_mod_ctrl: set r9, KEY_ALT
+    .jmpne r0, r9, _not_mod_alt
+        .set r9, KEY_BIT_ALT
+        or r2, r9
+    _not_mod_alt: set r9, KEY_WIN
+    .jmpne r0, r9, _not_mod_win
+        .set r9, KEY_BIT_WIN
+        or r2, r9
+    # Handle lock modifiers
+    _not_mod_win: set r9, KEY_CAPS
+    .jmpne r0, r9, _not_mod_caps
+        .set r9, KEY_BIT_CAPS_LOCK
+        xor r2, r9
+    _not_mod_caps: set r9, KEY_NUM
+    .jmpne r0, r9, _not_mod_num
+        .set r9, KEY_BIT_NUM_LOCK
+        xor r2, r9
+    _not_mod_num: set r9, KEY_SCROLL
+    .jmpne r0, r9, _released_end
+        .set r9, KEY_BIT_SCROLL_LOCK
+        xor r2, r9
+_released:
+    # Key released, handle non-lock modifiers
+    .set r9, KEY_SHIFT
+    .jmpne r0, r9, _not_rel_shift
+        .set r9, ~KEY_BIT_SHIFT
+        and r2, r9
+    _not_rel_shift: set r9, KEY_CTRL
+    .jmpne r0, r9, _not_rel_ctrl
+        .set r9, ~KEY_BIT_CTRL
+        and r2, r9
+    _not_rel_ctrl: set r9, KEY_ALT
+    .jmpne r0, r9, _not_rel_alt
+        .set r9, ~KEY_BIT_ALT
+        and r2, r9
+    _not_rel_alt: set r9, KEY_WIN
+    .jmpne r0, r9, _released_end
+        .set r9, ~KEY_BIT_WIN
+        and r2, r9
+_released_end:
+stob r10, r2 # *&modifiers = new state of modifiers
+.set r10, KEY_BIT_CAPS_LOCK | KEY_BIT_NUM_LOCK | KEY_BIT_SCROLL_LOCK
+and r1, r10
+and r2, r10
+cmpu r1, r2
+.retz
+ # Lock modifiers changes, modify LEDs
 # TODO
 .ret
 
