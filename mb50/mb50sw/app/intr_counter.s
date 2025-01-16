@@ -12,6 +12,7 @@ title_clk_reg: $data_b  "Register:   \0"
 title_clk_val: $data_b  "Value:      \0"
 title_keyboard: $data_b "=== Keyboard ===\0"
 title_ikbd: $data_b     "Interrupts: \0"
+title_kbd_mods: $data_b "Modifiers:  \0"
 title_kbd_rxd: $data_b  "Received:   \0"
 msg_halt: $data_b "Press Esc to generate exception\0"
 msg_reg: $data_b "Press Enter to display registers\0"
@@ -80,11 +81,11 @@ sto r10, r8
 .set r2, title_keyboard
 .call .putstr0
 .set r0, 0
-.set r1, 17
+.set r1, 22
 .set r2, msg_halt
 .call .putstr0
 .set r0, 0
-.set r1, 18
+.set r1, 23
 .set r2, msg_reg
 .call .putstr0
  # Infinite loop, interrupt counts are displayed by interrupt handlers
@@ -109,23 +110,40 @@ forever:
     .call .putchar
     mv r2, r5
     .call .print_word
-    # Display last two bytes received from keyboard
+    # Display last character received from keyboard
     .set r0, 0
     .set r1, 15
+    .set r2, title_kbd_mods
+    .call .putstr0
+    mv r3, r0
+    .call .read_keyboard
+    exch r3, r0
+    mv r4, r1
+    .set r1, 15
+    mv r2, r4
+    .call .print_byte
+    .set r0, 0
+    .set r1, 16
     .set r2, title_kbd_rxd
     .call .putstr0
-    .set0 r2 # TODO: Update to new keaboard driver
+    .jmp0 r3, forever
+    mv r2, r3
+    .call .print_byte
+    .set r2, ' '
+    .call .putchar
+    mv r2, r3
+    .set r4, 0x20
+    .jmpltu r2, r4, not_print
+    .set r4, 0x7e
+    .jmpgtu r2, r4, not_print
+    .call .putchar
     # Test for Esc
-    .set r10, 0xff
-    and r10, r2
-    .set r9, 0x76
-    .jmpne r10, r9, not_esc
+    not_print: .set r10, .KEY_ESC
+    .jmpne r3, r10, not_esc
     ill r0, r0 # Hardware exception
     # Test for Enter
-    not_esc: .set r9, 0x5a
-    .jmpne r10, r9, not_enter
+    not_esc: .set r10, .KEY_ENTER
+    .jmpne r3, r10, not_enter
     .set r10, .FLAG_BIT_EXC
     or f, r10 # Software exception
-    .jmp forever
-    not_enter: .call .print_word
-    .jmp forever
+    not_enter: .jmp forever
