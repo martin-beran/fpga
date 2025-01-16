@@ -138,7 +138,7 @@ $end_macro
 # REG = the tested register
 # ADDR = the target address
 $macro jmp0, REG, ADDR
-    testz, REG
+    testz REG
     .jmpz ADDR
 $end_macro
 
@@ -146,7 +146,7 @@ $end_macro
 # REG = the tested register
 # ADDR = the target address
 $macro jmpn0, REG, ADDR
-    testz, REG
+    testz REG
     .jmpnz ADDR
 $end_macro
 

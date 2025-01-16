@@ -22,6 +22,17 @@ sto r10, r10
 _scan_0: $data_b 0
 _scan_1: $data_b 0
 
+# New LED value
+_led_value: $data_b 0
+
+# States of sending LED command
+$const _LED_NONE, 0 # initial state, not sending
+$const _LED_CMD, 0xed # sending command byte 0xed
+$const _LED_ACK, 0xfa # waiting for acknowledgement
+$const _LED_STATE, 1 # sending new LED state
+
+_led_send_state: $data_b _LED_NONE
+
 # Keyboard state.
 # State of modifiers in the upper byte.
 # The last entered character in the lower byte:
@@ -176,7 +187,54 @@ shr r1, r10
 ### The keyboard interrupt handler ############################################
 
 dev_kbd_intr_hnd:
+ # Handle sending LED state
+.set r10, _led_send_state # r10 = _led_send_state
+ldb r9, r10 # r9 = *_led_send_state
+.jmp0 r9, _recv_key # r0 == _LED_NONE
+.set r8, _LED_CMD
+.jmpne r9, r8, _not_led_cmd
+    .set r8, .KBD_READY # r9 == _LED_CMD
+    ldb r8, r8
+    .set r7, .KBD_BIT_TX_RDY
+    and r8, r7
+    .retz
+    .set r8, .KBD_TXD
+    stob r8, r9
+    .set r9, _LED_ACK
+    stob r10, r9 # *_led_send_state = _LED_ACK
+    .ret
+_not_led_cmd:
+.set r8, _LED_ACK
+.jmpne r9, r8, _not_led_ack
+    .set r8, .KBD_READY # r9 == _LED_ACK
+    ldb r8, r8
+    .set r7, .KBD_BIT_RX_RDY
+    and r8, r7
+    .retz
+    .set r8, .KBD_RXD
+    .set0 r7
+    ldb r7, r8
+    stob r8, r7 # acknowledge received byte
+    .jmpeq r8, r9, _led_ack
+        .set r9, _LED_CMD
+        stob r10, r9 # *_led_send_state = _LED_CMD
+        .jmp dev_kbd_intr_hnd # not ack from keyboard, start sending again
+    _led_ack: .set r9, _LED_STATE
+    stob r10, r9 # *_led_send_state = _LED_STATE
+_not_led_ack: # assume _LED_STATE
+    .set r8, .KBD_READY
+    ldb r8, r8
+    .set r7, .KBD_BIT_TX_RDY
+    and r8, r7
+    .retz
+    .set r9, _led_value
+    ldb r9, r9 # r9 = *_led_value
+    .set r8, .KBD_TXD
+    stob r8, r9 # send new LED state values
+    .set r9, _LED_NONE
+    stob r10, r9 # *_led_send_state = _LED_NONE
  # Test if a byte has been received
+_recv_key:
 .set r10, .KBD_READY
 ldb r10, r10
 .set r9, .KBD_BIT_RX_RDY
@@ -218,10 +276,8 @@ _not_e0:
 _not_f0:
  # r2 == basic or extended scan code
 .set r10, 0x80
-.jmpltu r2, r10, _is_key
-    # TODO: handle sending LED states
-    .ret
-_is_key:
+cmpu r2, r10
+.retns # not r2 < r10 = 0x80
 .set0 r0
 .jmpnf0 _basic
     # extended key
@@ -333,12 +389,30 @@ _released_end:
 stob r10, r2 # *&modifiers = new state of modifiers
 .set r10, KEY_BIT_CAPS_LOCK | KEY_BIT_NUM_LOCK | KEY_BIT_SCROLL_LOCK
 and r1, r10
-and r2, r10
-cmpu r1, r2
-.retz
- # Lock modifiers changes, modify LEDs
-# TODO
-.ret
+and r10, r2
+cmpu r1, r10
+.retz # Lock modifiers unchanged
+ # Lock modifiers changed, modify LEDs
+.set0 r10
+.set r9, KEY_BIT_SCROLL_LOCK
+and r9, r2
+.jmpz _not_led_scroll
+    inc1 r10, r10
+_not_led_scroll: .set r9, KEY_BIT_NUM_LOCK
+and r9, r2
+.jmpz _not_led_num
+    inc2 r10, r10
+_not_led_num: .set r9, KEY_BIT_CAPS_LOCK
+and r9, r2
+.jmpz _not_led_caps
+    .set r9, 0x04
+    or r10, r9
+_not_led_caps: .set r9, _led_value
+stob r9, r10 # *_led_value = LED state byte to be sent
+.set r9, _LED_CMD
+.set r10, _led_send_state
+stob r10, r9 # *_led_send_state = _LED_CMD
+.jmp dev_kbd_intr_hnd # start sending to keyboard
 
 ### Keep this label at the end of this file ###################################
 
