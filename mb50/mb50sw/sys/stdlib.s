@@ -88,6 +88,24 @@ add r10, r9
 stob r10, r2
 .ret
 
+# Get attribute.
+# In:
+# R0 = coordinate X
+# R1 = coordinate Y
+# Out:
+# R2 = the attribute value in the lower byte
+# Modifies: r10, r9
+get_attr:
+mv r10, r1
+.set r9, 5
+shl r10, r9
+add r10, r0
+.set r9, .VIDEO_ATTR_ADDR
+add r10, r9
+.set0 r2
+ldb r2, r10
+.ret
+
 # Display a single character.
 # The character must be printable (ASCII 32-126) or newline (LF, ASCII 10).
 # The routine works correctly for other character codes, but interprets bytes

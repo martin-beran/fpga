@@ -17,7 +17,8 @@ $macro set, REG, EXPR
     $data_w EXPR
 $end_macro
 
-# Set a register to zero
+# Set a register to zero.
+# Unlike instructions ld, ldis and macros set, lda, this macro modifies flags.
 # REG = the target register
 $macro set0, REG
     xor REG, REG
