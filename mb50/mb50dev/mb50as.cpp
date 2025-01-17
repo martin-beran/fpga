@@ -1315,7 +1315,7 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     try {
                         if (auto v = (*b)->eval_bytes()) {
                             bytes.append_range(*v);
-                            cur_addr += bytes.size();
+                            cur_addr += v->size();
                         } else {
                             bytes.push_back(0);
                             phase2.push_back({

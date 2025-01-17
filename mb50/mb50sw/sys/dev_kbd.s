@@ -141,15 +141,15 @@ _scan_codes_e0_end:
 _kp_codes:
 $data_b          0,    KEY_END,          0,   KEY_LEFT,   KEY_HOME,          0,          0,          0, # 68
 $data_b KEY_INSERT, KEY_DELETE,   KEY_DOWN,          0,  KEY_RIGHT,     KEY_UP,    KEY_ESC,    KEY_NUM, # 70
-$data_b    KEY_F11,        '+',   KEY_PGDN,        '-',        '*',   KEY_PGDN, KEY_SCROLL,          0, # 78
+$data_b    KEY_F11,        '+',   KEY_PGDN,        '-',        '*',   KEY_PGUP, KEY_SCROLL,          0, # 78
 _kp_codes_end:
 
 # Conversion table to keys with Shift
 #               X0          X1          X2          X3          X4          X5          X6          X7
 #               X8          X9          Xa          Xb          Xc          Xd          Xe          Xf
 _shift_codes:
-$data_b          0,          0,          0,          0,          0,          0,          0,        '"', # 20
-$data_b          0,          0,          0,          0,        '<',        '_',        '>',        '?', # 28
+$data_b        ' ',          0,          0,          0,          0,          0,          0,        '"', # 20
+$data_b          0,          0,        '*',        '+',        '<',        '_',        '>',        '?', # 28
 $data_b        ')',        '!',        '@',        '#',        '$',        '%',        '^',        '&', # 30
 $data_b        '*',        '(',          0,        ':',          0,        '+',          0,          0, # 38
 $data_b          0,          0,          0,          0,          0,          0,          0,          0, # 40
@@ -159,7 +159,7 @@ $data_b          0,          0,          0,        '{',        '|',        '}', 
 $data_b        '~',        'A',        'B',        'C',        'D',        'E',        'F',        'G', # 60
 $data_b        'H',        'I',        'J',        'K',        'L',        'M',        'N',        'O', # 68
 $data_b        'P',        'Q',        'R',        'S',        'T',        'U',        'V',        'W', # 70
-$data_b        'X',        'Y',        'Z',          0,          0,          0,          0,          0, # 78
+$data_b        'X',        'Y',        'Z',          0,          0,          0,          0, KEY_DELETE, # 78
 _shift_codes_end:
 
 # Read the keyboard state.
@@ -189,8 +189,9 @@ shr r1, r10
 dev_kbd_intr_hnd:
  # Handle sending LED state
 .set r10, _led_send_state # r10 = _led_send_state
+.set0 r9
 ldb r9, r10 # r9 = *_led_send_state
-.jmp0 r9, _recv_key # r0 == _LED_NONE
+.jmp0 r9, _recv_key # r9 == _LED_NONE
 .set r8, _LED_CMD
 .jmpne r9, r8, _not_led_cmd
     .set r8, .KBD_READY # r9 == _LED_CMD
@@ -215,7 +216,7 @@ _not_led_cmd:
     .set0 r7
     ldb r7, r8
     stob r8, r7 # acknowledge received byte
-    .jmpeq r8, r9, _led_ack
+    .jmpeq r7, r9, _led_ack
         .set r9, _LED_CMD
         stob r10, r9 # *_led_send_state = _LED_CMD
         .jmp dev_kbd_intr_hnd # not ack from keyboard, start sending again
@@ -272,12 +273,13 @@ _not_e0:
     .set r7, .FLAG_BIT_F1 # r1 == 0xf0
     or f, r7 # f1 = key released
     .jmpne r0, r9, _not_f0
+        .set r8, .FLAG_BIT_F0 # r1 == 0xe0
         or f, r8 # r0 == 0xe0, f0 = extended key
 _not_f0:
  # r2 == basic or extended scan code
-.set r10, 0x80
+.set r10, 0x88
 cmpu r2, r10
-.retns # not r2 < r10 = 0x80
+.retns # not r2 < r10 = 0x88
 .set0 r0
 .jmpnf0 _basic
     # extended key
@@ -287,7 +289,8 @@ cmpu r2, r10
     .jmp _basic_end
 _basic:
     # basic key
-    .lda r10, _kbd_state
+    .set r10, _kbd_state + 1
+    ldb r10, r10
     .set r9, KEY_BIT_SHIFT
     and r9, r10
     .set r8, KEY_BIT_NUM_LOCK
@@ -311,7 +314,8 @@ _basic:
         ldb r0, r2 # r0 = char = _scan_codes[scan_code]
 _basic_end:
  # r0 == char
-.lda r10, _kbd_state
+.set r10, _kbd_state + 1
+ldb r10, r10
 .set r9, KEY_BIT_SHIFT
 and r9, r10
 .set r8, KEY_BIT_CAPS_LOCK
@@ -331,7 +335,7 @@ _not_shift:
  # r0 == optionally shifted char
 .set0 r1
 .set r10, _kbd_state + 1 # r10 = &modifiers
-ld r1, r10 # r1 = current state of modifiers
+ldb r1, r10 # r1 = current state of modifiers
 mv r2, r1 # r2 = new state of modifiers
 .jmpf1 _released
     # Key pressed
@@ -367,6 +371,7 @@ mv r2, r1 # r2 = new state of modifiers
     .jmpne r0, r9, _released_end
         .set r9, KEY_BIT_SCROLL_LOCK
         xor r2, r9
+    .jmp _released_end
 _released:
     # Key released, handle non-lock modifiers
     .set r9, KEY_SHIFT
