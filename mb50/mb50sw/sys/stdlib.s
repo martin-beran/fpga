@@ -39,6 +39,52 @@ inc2 r0, r0
 dec1 r1, r1
 .jmp memset_w
 
+### Arithmetic ################################################################
+
+# Unsigned integer division.
+# Division by zero returns r0=0xffff, r1=0.
+# In:
+# r0 = dividend
+# r1 = divisor
+# Out:
+# r0 = quotient
+# r1 = remainder
+# Modifies: r10, r9, r8
+divu:
+ # Handle division by zero
+.jmpn0 r1, _divu_not0
+.set r0, 0xffff
+.set0 r1
+.ret
+ # Align divisor to dividend, r10 = number of iterations
+_divu_not0: .set0 r10
+.set r9, 1
+_divu_align:
+    inc1 r10, r10
+    shl r1, r9 # r1 <<= 1
+    .jmpnc _divu_align_cmp
+    shr r1, r9
+    .set r8, 0x8000
+    or r1, r8
+    .jmp _divu_aligned
+    _divu_align_cmp: .jmpleu r1, r0, _divu_align
+    shr r1, r9
+ # do division (r9 == 1)
+_divu_aligned:
+.set0 r8 # quotient
+_divu_do:
+    shl r8, r9 # quotient <<= 1
+    .jmpltu r0, r1, _divu_add_0
+        inc1 r8, r8
+        sub r0, r1
+    _divu_add_0: shr r1, r9
+    dec1 r10, r10
+    .jmpnz _divu_do
+ # Set result
+mv r1, r0
+mv r0, r8
+.ret
+
 ### Display output ############################################################
 
 # Display coordinates are:

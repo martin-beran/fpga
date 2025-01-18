@@ -1942,6 +1942,29 @@ Build with Clang 19 and libc++:
         main:
         # User code starts here
 
+- A program that does not need full system initialization, for example, small
+  test programs that do not want to enable interrupts and display the boot
+  message, can start with code:
+
+        # $use directives for any additional initialization modules
+        $use start, ../sys/start.s
+        # Code between here and main: is not executed before a jump to main:
+        $use constants, ../sys/constants.s
+        $use macros, ../sys/macros.s
+        $use stdlib, ../sys/stdlib.s
+        # $use directives for any additional library modules
+
+        main:
+        # Stack initialization (usually required)
+        .set sp, .STACK_BOTTOM
+        # Clear screen (optional)
+        .set r0, (.BG_WHITE | .FG_BLACK) | .BLINK_OFF
+        .call .clear_screen
+        .set r0, .BG_WHITE | (.BLINK_1HZ << 8)
+        .set r1, .VIDEO_BORDER_ADDR
+        sto r1, r0
+        # User code starts here
+
 ### System software
 
 - `sys/`
