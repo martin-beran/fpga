@@ -1266,7 +1266,11 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                 throw silent_error{};
             } else {
                 try {
-                    if (auto v = (*e)->eval()) {
+                    if (!dynamic_cast<expr_number*>(e->get())) {
+                        std::cerr << src_pos(current->first, line_num) << "Expression cannot be evaluated as number" <<
+                            std::endl;
+                        throw silent_error{};
+                    } else if (auto v = (*e)->eval()) {
                         cur_addr = *v;
                         out.add_txt_line(std::format("$addr {:#06x}", cur_addr), line_prefix);
                     } else {
@@ -1313,7 +1317,11 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     throw silent_error{};
                 } else
                     try {
-                        if (auto v = (*b)->eval_bytes()) {
+                        if (!dynamic_cast<expr_number*>(b->get()) && !dynamic_cast<expr_bytes*>(b->get())) {
+                            std::cerr << src_pos(current->first, line_num) <<
+                                "Expression cannot be evaluated as bytes" << std::endl;
+                            throw silent_error{};
+                        } else if (auto v = (*b)->eval_bytes()) {
                             bytes.append_range(*v);
                             cur_addr += v->size();
                         } else {
@@ -1342,7 +1350,11 @@ void assembler::run_lines(const input::files_t& files, input::files_t::const_ite
                     throw silent_error{};
                 } else {
                     try {
-                        if (auto v = (*w)->eval()) {
+                        if (!dynamic_cast<expr_number*>(w->get())) {
+                            std::cerr << src_pos(current->first, line_num) <<
+                                "Expression cannot be evaluated as number" << std::endl;
+                            throw silent_error{};
+                        } if (auto v = (*w)->eval()) {
                             bytes.push_back(uint8_t(*v % 256));
                             bytes.push_back(uint8_t(*v / 256));
                         } else {
