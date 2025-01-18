@@ -21,6 +21,8 @@ msg_reg: $data_b "Press Enter to display registers\0"
 cnt_iclk: $data_w 0
 cnt_ikbd: $data_w 0
 
+dec_buf: $addr __addr + 6 # buffer for printing decimal numbers
+
 orig_hnd_iclk: $data_w 0
 hnd_iclk:
 .push ca
@@ -105,18 +107,29 @@ forever:
     .lda r2, .CLK_ADDR
     .call .print_word
     # Read clock value
-    .dev_clk_read r4, r5, r10
+    .dev_clk_read r1, r5, r10
     # Display processed clock value
+    .set r0, dec_buf
+    .set r2, ' '
+    .call .to_dec_w
     .set0 r0
     .set r1, 4
     .set r2, title_clk_val
     .call .putstr0
-    mv r2, r4
-    .call .print_word
+    .set r1, 4
+    .set r2, dec_buf
+    .call .putstr0
     .set r2, '.'
     .call .putchar
-    mv r2, r5
-    .call .print_word
+    mv r4, r0 # save x position
+    .set r0, dec_buf
+    mv r1, r5 # milliseconds
+    .set r2, '0'
+    .call .to_dec_w
+    mv r0, r4
+    .set r1, 4
+    .set r2, dec_buf + 2 # milliseconds are last 3 digits
+    .call .putstr0
     # Display last character received from keyboard
     .set0 r0
     .set r1, 16

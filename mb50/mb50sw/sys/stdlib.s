@@ -7,7 +7,7 @@ $use font, font.s
 # Do not execute any code in this file.
 .jmp _skip_this_file
 
-### Operations on memory ranges ###############################################
+### Operations on memory ranges and strings ###################################
 
 # Store a byte to a range of memory addresses.
 # In:
@@ -15,7 +15,9 @@ $use font, font.s
 # r1 = the length of the target range in bytes
 # r2 = the register containing the value to store in the lower byte
 # Out:
-# Modifies: r0, r1
+# r0 = the address of the last stored byte plus one
+# r1 = zero
+# Modifies:
 memset_b:
 .testz r1
 .retz
@@ -30,7 +32,9 @@ dec1 r1, r1
 # r1 = the length of the target range in words
 # r2 = the register containing the value to store
 # Out:
-# Modifies: r0, r1
+# r0 = the address of the last stored byte plus one
+# r1 = zero
+# Modifies:
 memset_w:
 .testz r1
 .retz
@@ -38,6 +42,35 @@ sto r0, r2
 inc2 r0, r0
 dec1 r1, r1
 .jmp memset_w
+
+# Convert a word to a string in decimal representation.
+# It stores the result to the provided buffer as a null-terminated string,
+# padded before the first digit by the specified character
+# In:
+# r0 = the address for storing the result, it must point to a buffer of 6 bytes
+# r1 = the word to be converted
+# r2 = the padding character
+# Out:
+# r0 = the address of the first digit of the result (after the last padding character)
+# Modifies: r1, r7, r8, r9, r10
+to_dec_w:
+.push ca
+mv r7, r1 # r7 = input word (r7 unused by memset_b, divu)
+.set r1, 5 # at most 5 digits
+.call memset_b # prepare padding
+stob r0, r1 # null-terminate, r1 = 0 set by memset_b
+exch r0, r7 # r0 = input word, r7 = digit address
+_to_dec_w_digit:
+    dec1 r7, r7
+    .set r1, 10
+    .call divu
+    .set r10, '0' # convert remainder to digit
+    add r1, r10
+    stob r7, r1
+    .jmpn0 r0, _to_dec_w_digit
+mv r0, r7
+.pop ca
+.ret
 
 ### Arithmetic ################################################################
 
