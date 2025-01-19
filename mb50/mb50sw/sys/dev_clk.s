@@ -33,6 +33,39 @@ $macro dev_clk_read, REG_S, REG_MS, REG_INTR
     .eintr REG_INTR
 $end_macro
 
+# Sleep for a specified time.
+# In:
+# r0 = seconds
+# r1 = milliseconds
+# Out:
+# Modifies: r0, r1, r8, r9, 10
+sleep:
+.dev_clk_read r10, r9, r8
+add r0, r10
+add r1, r9
+.set r8, 1000
+.jmpltu r1, r8, _sleep_loop
+inc1 r0, r0
+sub r1, r8
+_sleep_loop: .dev_clk_read r10, r9, r8
+mv r8, r0
+sub r8, r10
+mv r10, r8 # r10 = r0 - r10
+mv r8, r1
+sub r8, r9
+mv r9, r8 # r9 = r1 -r9
+.set r8, 1000
+.jmpgeu r9, r8, _sleep_sub
+dec1 r10, r10
+add r9, r8
+_sleep_sub:
+cmpu r0, r10
+.rets
+.jmpnz _sleep_loop
+cmpu r1, r9
+.retc
+.jmp _sleep_loop
+
 ### The clock interrupt handler ###############################################
 
 dev_clk_intr_hnd:

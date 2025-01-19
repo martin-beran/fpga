@@ -495,7 +495,7 @@ $data_b 0b01000010
 $data_b 0b01111100
 $data_b 0b01000000
 $data_b 0b01000000
-$data_b 0b01000000
+$data_b 0b00000000
 
 # 81 0x51 Q
 $data_b 0b00000000

@@ -256,12 +256,12 @@ inc1 r0, r0
 
 # Display a zero-terminated string.
 # In:
-# R0 = coordinate X (0..32) of the 1st character
-# R1 = coordinate Y (0..23) of the 1st character
-# R2 = address of the string
+# r0 = coordinate X (0..32) of the 1st character
+# r1 = coordinate Y (0..23) of the 1st character
+# r2 = address of the string
 # Out:
-# R0 = coordinate X for the next character
-# R1 = coordinate Y for the next character
+# r0 = coordinate X for the next character
+# r1 = coordinate Y for the next character
 # Modifies: r2, r6, r7, r8, r9, r10
 putstr0:
 mv r6, r2
